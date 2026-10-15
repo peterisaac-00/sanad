@@ -57,7 +57,8 @@ export async function verifyMerchantPassword(
   if (row.password_algo === "argon2id") {
     try {
       const ok = await argon2.verify(row.password_hash, password);
-      return { ok, needsRehash: false };
+      // Upgrade hashes whenever stored parameters drift from current policy.
+      return { ok, needsRehash: ok && argon2.needsRehash(row.password_hash, { ...ARGON_OPTS }) };
     } catch {
       return { ok: false, needsRehash: false };
     }
@@ -66,6 +67,15 @@ export async function verifyMerchantPassword(
   if (!row.password_salt) return { ok: false, needsRehash: false };
   const ok = verifyScrypt(password, row.password_salt, row.password_hash);
   return { ok, needsRehash: ok };
+}
+
+// Precomputed dummy hash so unknown-email logins cost a full Argon2 verify,
+// making their timing indistinguishable from wrong-password attempts.
+let dummyHash: Promise<string> | null = null;
+
+export async function verifyUnknownEmail(password: string): Promise<void> {
+  dummyHash ??= hashPasswordArgon2(`invalid-email-dummy:${randomBytes(8).toString("hex")}`);
+  await argon2.verify(await dummyHash, password).catch(() => false);
 }
 
 /** Opaque session token (256-bit). Only its HMAC is stored in the DB. */
@@ -79,6 +89,15 @@ export function hashSessionToken(token: string): string {
 
 export const SESSION_COOKIE = "sanad_session";
 export const SESSION_TTL_MS = 7 * 24 * 3600 * 1000;
+
+/**
+ * Production uses the __Host- prefix (requires Secure + Path=/ + no Domain,
+ * all of which we set), locking the cookie to the exact host. Dev/test keep
+ * the plain name so http://localhost works without TLS.
+ */
+export function sessionCookieName(): string {
+  return env.isProduction ? "__Host-sanad_session" : SESSION_COOKIE;
+}
 
 export function sessionCookieOptions(): CookieOptions {
   return {

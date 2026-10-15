@@ -21,6 +21,17 @@ const subdomainField = z
   .toLowerCase()
   .regex(/^[a-z0-9-]{3,40}$/, { message: "subdomain must be 3-40 chars: a-z, 0-9, hyphen" });
 
+// Reserved names that would collide with platform routes or infrastructure.
+export const RESERVED_SUBDOMAINS = new Set([
+  "www", "api", "admin", "app", "mail", "static", "assets", "cdn", "status",
+  "health", "docs", "blog", "shop", "store", "stores", "support", "help",
+  "billing", "pay", "auth", "login", "signup", "dashboard", "console",
+]);
+
+const registerSubdomainField = subdomainField.refine((v) => !RESERVED_SUBDOMAINS.has(v), {
+  message: "subdomain is reserved",
+});
+
 const passwordField = z.string().min(8, { message: "password must be at least 8 characters" }).max(128);
 
 export const registerSchema = z.strictObject({
@@ -29,10 +40,9 @@ export const registerSchema = z.strictObject({
   name: z.string().trim().max(120).default(""),
   phone: z.string().trim().max(32).default(""),
   storeName: z.string().trim().min(2, { message: "storeName is required (min 2 chars)" }).max(120),
-  subdomain: subdomainField,
+  subdomain: registerSubdomainField,
   countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, { message: "countryCode must be a 2-letter code" }).default("EG"),
   storeCurrency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, { message: "storeCurrency must be a 3-letter code" }).default("EGP"),
-  selectedPlan: z.enum(["monthly", "annual"]).default("annual"),
 });
 
 export const loginSchema = z.strictObject({
@@ -65,18 +75,34 @@ export const productBodySchema = z.strictObject({
 
 export const merchantOrderBodySchema = z.strictObject({
   customer_name: z.string().trim().min(1, { message: "customer_name is required" }).max(200),
+  customer_phone: z.string().trim().max(32).default(""),
+  address: z.string().trim().max(300).default(""),
   city: z.string().trim().max(200).default(""),
   items_summary: z.string().trim().max(1000).default(""),
   amount_text: z.string().trim().max(120).default(""),
   amount_egp: z.number().min(0).max(1e12).default(0),
   payment_method: z.string().trim().max(80).default("COD"),
-  status: z.enum(["pending", "confirmed", "shipped", "delivered", "cancelled"]).default("pending"),
+  status: z.enum(["pending", "confirmed", "shipped", "delivered", "cancelled", "returned"]).default("pending"),
   courier: z.string().trim().max(200).default(""),
 });
 
 export const leadBodySchema = z.strictObject({
   type: z.string().trim().min(1, { message: "type is required" }).max(64),
-  payload: z.unknown().default({}),
+  // Bounded payload: plain JSON object, limited keys and serialized size,
+  // so leads capture can never be abused as an unbounded blob store.
+  payload: z.unknown().default({}).refine(
+    (v) => {
+      if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+      const keys = Object.keys(v);
+      if (keys.length > 64) return false;
+      try {
+        return JSON.stringify(v).length <= 8192;
+      } catch {
+        return false;
+      }
+    },
+    { message: "payload must be a JSON object with at most 64 keys and 8KB serialized" }
+  ),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
@@ -91,7 +117,7 @@ export const paginationQuerySchema = z.strictObject({
 });
 
 export const orderListQuerySchema = paginationQuerySchema.extend({
-  status: z.enum(["pending", "confirmed", "shipped", "delivered", "cancelled"]).optional(),
+  status: z.enum(["pending", "confirmed", "shipped", "delivered", "cancelled", "returned"]).optional(),
   from: z.string().datetime({ message: "from must be an ISO datetime" }).optional(),
   to: z.string().datetime({ message: "to must be an ISO datetime" }).optional(),
 });
@@ -118,16 +144,17 @@ export const orderIdParamSchema = subdomainParamSchema.extend({
 });
 
 export const orderStatusSchema = z.strictObject({
-  status: z.enum(["pending", "confirmed", "shipped", "delivered", "cancelled"]),
+  status: z.enum(["pending", "confirmed", "shipped", "delivered", "cancelled", "returned"]),
 });
 
 /** Valid order status transitions (server-enforced). */
 export const ORDER_TRANSITIONS: Record<string, string[]> = {
   pending: ["confirmed", "cancelled"],
   confirmed: ["shipped", "cancelled"],
-  shipped: ["delivered"],
-  delivered: [],
+  shipped: ["delivered", "cancelled", "returned"],
+  delivered: ["returned"],
   cancelled: [],
+  returned: [],
 };
 
 export const checkoutItemSchema = z.strictObject({
@@ -137,6 +164,8 @@ export const checkoutItemSchema = z.strictObject({
 
 export const checkoutBodySchema = z.strictObject({
   customer_name: z.string().trim().min(1, { message: "customer_name is required" }).max(200),
+  customer_phone: z.string().trim().max(32).default(""),
+  address: z.string().trim().max(300).default(""),
   city: z.string().trim().max(200).default(""),
   payment_method: z.string().trim().max(80).default("COD"),
   courier: z.string().trim().max(200).default(""),
@@ -149,7 +178,6 @@ export const storeUpdateSchema = z
     phone: z.string().trim().max(32).optional(),
     countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, { message: "countryCode must be a 2-letter code" }).optional(),
     storeCurrency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, { message: "storeCurrency must be a 3-letter code" }).optional(),
-    selectedPlan: z.enum(["monthly", "annual"]).optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: "at least one field must be provided" });
 

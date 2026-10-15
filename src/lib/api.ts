@@ -67,7 +67,6 @@ export interface RegisterPayload {
   subdomain: string;
   countryCode?: string;
   storeCurrency?: string;
-  selectedPlan?: "monthly" | "annual";
 }
 
 export interface ProductInput {

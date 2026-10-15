@@ -38,10 +38,18 @@ All variables are documented in `.env.example`. The critical ones:
 |--------|---------------|-------|
 | `SESSION_SECRET` | `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` | 32+ chars, required in production |
 | `DATABASE_URL` | from your Postgres provider | `postgresql://user:pass@host:5432/sanad` |
-| `ADMIN_TOKEN` | same generator as above | optional; gates full leads listing |
 
 Store them in your hosting provider's secret manager (never in git, chat, or
 screenshots).
+
+Promote a merchant to admin with SQL (no shared secret exists by design):
+
+```sql
+UPDATE merchants SET role='admin' WHERE email='owner@example.com';
+```
+
+Admins can list every lead via `GET /api/admin/leads`. Merchants always see
+only their own store's leads via `GET /api/leads`.
 
 ## 3. Create the first merchant account
 
@@ -103,18 +111,25 @@ merchant) and rotate `SESSION_SECRET`.
 | `403 CSRF_BLOCKED` on mutations | cross-site POST | call API from an allowed origin only |
 | `429` on login | rate limit (30/15 min) | wait, or check for brute force in logs |
 | `/api/health` → `503 db down` | Postgres unreachable | check `DATABASE_URL`, SG/firewall, `docker compose ps` |
-| `422 INVALID_TRANSITION` | illegal order jump | follow pending→confirmed→shipped→delivered |
+| `409 INVALID_TRANSITION` | illegal order jump | follow pending→confirmed→shipped→delivered (or →cancelled/returned) |
+| Register says email is taken | intentional: duplicate emails get 409 so merchants get a clear error; enumeration is blunted by the auth rate limit (30/15 min) | accepted tradeoff, do not "fix" by hiding it |
 
 Logs are structured (pino JSON). Passwords/tokens/cookies are redacted.
 
 ## 8. Out of scope / future work
 
+- Subscription billing is out of scope: every store is created with the
+  server-assigned default plan (`annual`), `plan` is not client-writable via
+  register or `PATCH /api/account/store`, and there are no payment, upgrade,
+  downgrade, or invoicing flows. Handle billing entirely outside the app
+  (e.g. manual invoicing or a billing provider) and change plans with direct
+  database updates until a billing module is built.
 - Email verification, password reset, 2FA, social login.
 - Multiple stores per merchant (schema-ready; API/UI assume one).
 - Product images/media uploads.
 - Shipping-fee engine, coupons, taxes per region.
 - Payment-gateway integrations (Paymob/Fawry/Mada) — COD + manual methods only.
-- Admin/back-office UI (leads are API-only; use `ADMIN_TOKEN` + scripts).
+- Admin/back-office UI (leads are API-only; use `GET /api/admin/leads` with an admin merchant + scripts).
 - Audit logging of merchant actions.
 - Automated DB backups (operator cron, see §4).
 - Horizontal scaling notes: sessions live in Postgres (shared-nothing safe);

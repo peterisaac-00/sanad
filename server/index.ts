@@ -13,12 +13,14 @@ import { prisma, nowIso, newId, checkDb } from "./db.js";
 import {
   hashPasswordArgon2,
   verifyMerchantPassword,
+  verifyUnknownEmail,
   newSessionToken,
   hashSessionToken,
-  SESSION_COOKIE,
   SESSION_TTL_MS,
+  sessionCookieName,
   sessionCookieOptions,
 } from "./auth.js";
+import { startSessionCleanup } from "./sessions.js";
 import { ApiError, asyncHandler, errorHandler, notFoundHandler } from "./errors.js";
 import {
   requireAuth,
@@ -108,6 +110,21 @@ async function createSession(merchantId: string): Promise<string> {
   return token;
 }
 
+/**
+ * Allocate the next per-store order number atomically. The row lock on the
+ * store serializes concurrent checkouts, so numbers are unique per store
+ * (displayed as SND-{n}). May skip on aborted checkouts.
+ */
+async function allocateOrderNumber(storeId: string): Promise<number> {
+  const rows = await prisma.$queryRaw<{ nextOrderNumber: number }[]>`
+    UPDATE "stores" SET "next_order_number" = "next_order_number" + 1
+    WHERE "id" = ${storeId} RETURNING "next_order_number" AS "nextOrderNumber"`;
+  if (rows.length !== 1 || typeof rows[0].nextOrderNumber !== "number") {
+    throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");
+  }
+  return rows[0].nextOrderNumber;
+}
+
 // ---- health (public): liveness + database connectivity ----
 app.get("/api/health", async (_req, res) => {
   try {
@@ -124,7 +141,7 @@ app.post(
   authLimiter,
   validateBody(registerSchema),
   asyncHandler(async (req, res) => {
-    const { email, password, name, phone, storeName, subdomain, countryCode, storeCurrency, selectedPlan } = req.body;
+    const { email, password, name, phone, storeName, subdomain, countryCode, storeCurrency } = req.body;
 
     const emailTaken = await prisma.merchant.findUnique({ where: { email }, select: { id: true } });
     if (emailTaken) throw new ApiError(409, "EMAIL_TAKEN", "This email is already registered.");
@@ -136,6 +153,7 @@ app.post(
     const passwordHash = await hashPasswordArgon2(password);
 
     // Atomic store + merchant creation: a store can never be orphaned or hijacked by handle-claiming.
+    // The subscription plan is server-assigned (billing lives outside the app).
     try {
       await prisma.$transaction([
         prisma.store.create({
@@ -146,7 +164,7 @@ app.post(
             phone,
             countryCode,
             currency: storeCurrency,
-            plan: selectedPlan,
+            plan: "annual",
             status: "active",
           },
         }),
@@ -172,7 +190,7 @@ app.post(
     }
 
     const token = await createSession(merchantId);
-    res.cookie(SESSION_COOKIE, token, sessionCookieOptions());
+    res.cookie(sessionCookieName(), token, sessionCookieOptions());
     const store = await prisma.store.findUnique({ where: { id: storeId } });
     const merchant = (await prisma.merchant.findUnique({ where: { id: merchantId } })) as Merchant;
     res.status(201).json({ merchant: toMerchantJson(merchant), store });
@@ -186,8 +204,12 @@ app.post(
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
     const merchant = await prisma.merchant.findUnique({ where: { email } });
-    // Generic message: never reveal whether the email exists.
-    if (!merchant) throw new ApiError(401, "INVALID_CREDENTIALS", "Invalid email or password.");
+    if (!merchant) {
+      // Unknown email still costs a full Argon2 verify (timing parity with
+      // the wrong-password path), then fails with the generic message.
+      await verifyUnknownEmail(password);
+      throw new ApiError(401, "INVALID_CREDENTIALS", "Invalid email or password.");
+    }
 
     const { ok, needsRehash } = await verifyMerchantPassword(
       { password_hash: merchant.passwordHash, password_salt: merchant.passwordSalt, password_algo: merchant.passwordAlgo },
@@ -204,22 +226,31 @@ app.post(
       });
     }
 
-    // Session rotation: every login issues a fresh token.
+    // Session rotation: an incoming valid cookie is consumed (deleted) so
+    // sessions never accumulate, then a fresh token is issued.
+    const incoming = req.cookies?.[sessionCookieName()];
+    if (typeof incoming === "string" && incoming) {
+      await prisma.session.delete({ where: { tokenHash: hashSessionToken(incoming) } }).catch(() => undefined);
+    }
     const token = await createSession(merchant.id);
-    res.cookie(SESSION_COOKIE, token, sessionCookieOptions());
+    res.cookie(sessionCookieName(), token, sessionCookieOptions());
     const store = merchant.storeId ? await prisma.store.findUnique({ where: { id: merchant.storeId } }) : null;
     res.json({ merchant: toMerchantJson(merchant), store });
   })
 );
 
-app.post("/api/auth/logout", asyncHandler(requireAuth), async (req, res) => {
-  const token = req.cookies?.sanad_session;
-  if (typeof token === "string" && token) {
-    await prisma.session.delete({ where: { tokenHash: hashSessionToken(token) } }).catch(() => undefined);
-  }
-  res.clearCookie(SESSION_COOKIE, { path: "/" });
-  res.json({ ok: true });
-});
+app.post(
+  "/api/auth/logout",
+  asyncHandler(requireAuth),
+  asyncHandler(async (req, res) => {
+    const token = req.cookies?.[sessionCookieName()];
+    if (typeof token === "string" && token) {
+      await prisma.session.delete({ where: { tokenHash: hashSessionToken(token) } }).catch(() => undefined);
+    }
+    res.clearCookie(sessionCookieName(), { path: "/" });
+    res.json({ ok: true });
+  })
+);
 
 app.get(
   "/api/auth/me",
@@ -248,7 +279,7 @@ app.post(
     if (!ok) throw new ApiError(401, "INVALID_CREDENTIALS", "Current password is incorrect.");
 
     const hash = await hashPasswordArgon2(newPassword);
-    const current = req.cookies?.sanad_session;
+    const current = req.cookies?.[sessionCookieName()];
     await prisma.$transaction([
       prisma.merchant.update({
         where: { id: merchant.id },
@@ -467,19 +498,43 @@ app.patch(
   asyncHandler(requireStoreOwnership),
   validateBody(orderStatusSchema),
   asyncHandler(async (req, res) => {
-    const order = await prisma.order.findFirst({
+    const target = req.body.status as string;
+    const current = await prisma.order.findFirst({
       where: { id: req.params.id, storeId: req.ownedStore!.id },
+      include: { items: true },
     });
-    if (!order) throw new ApiError(404, "ORDER_NOT_FOUND", "Order not found.");
-    const allowed = ORDER_TRANSITIONS[order.status] ?? [];
-    if (!allowed.includes(req.body.status)) {
+    if (!current) throw new ApiError(404, "ORDER_NOT_FOUND", "Order not found.");
+    const allowed = ORDER_TRANSITIONS[current.status] ?? [];
+    if (!allowed.includes(target)) {
       throw new ApiError(
-        422,
+        409,
         "INVALID_TRANSITION",
-        `Cannot move order from '${order.status}' to '${req.body.status}'. Allowed: ${allowed.join(", ") || "none"}.`
+        `Cannot move order from '${current.status}' to '${target}'. Allowed: ${allowed.join(", ") || "none"}.`
       );
     }
-    const updated = await prisma.order.update({ where: { id: order.id }, data: { status: req.body.status } });
+    // Atomic write: only succeeds if the status is still what we validated.
+    // A concurrent transition wins the race; losers get 409, never a lost update.
+    const updated = await prisma.$transaction(async (tx) => {
+      const wrote = await tx.order.updateMany({
+        where: { id: current.id, storeId: current.storeId, status: current.status },
+        data: { status: target },
+      });
+      if (wrote.count !== 1) {
+        throw new ApiError(409, "ORDER_CONFLICT", "Order changed concurrently, please retry.");
+      }
+      // Restore reserved stock exactly once when entering a terminal
+      // no-fulfillment state. The flag makes retries/double requests safe.
+      if ((target === "cancelled" || target === "returned") && !current.stockRestored) {
+        for (const item of current.items) {
+          if (!item.productId) continue;
+          await tx.product
+            .update({ where: { id: item.productId }, data: { stock: { increment: item.qty } } })
+            .catch(() => null);
+        }
+        await tx.order.update({ where: { id: current.id }, data: { stockRestored: true } });
+      }
+      return tx.order.findUnique({ where: { id: current.id }, include: { items: true } });
+    });
     res.json({ order: updated });
   })
 );
@@ -491,15 +546,17 @@ app.post(
   asyncHandler(requireStoreOwnership),
   validateBody(merchantOrderBodySchema),
   asyncHandler(async (req, res) => {
-    const { customer_name, city, items_summary, amount_text, amount_egp, payment_method, status, courier } = req.body;
-    const count = await prisma.order.count({ where: { storeId: req.ownedStore!.id } });
-    const id = `SND-${4825 + count}`;
+    const { customer_name, customer_phone, address, city, items_summary, amount_text, amount_egp, payment_method, status, courier } = req.body;
+    const orderNumber = await allocateOrderNumber(req.ownedStore!.id);
     try {
       const order = await prisma.order.create({
         data: {
-          id,
+          id: newId("ord_"),
           storeId: req.ownedStore!.id,
+          orderNumber,
           customerName: customer_name,
+          customerPhone: customer_phone,
+          address,
           city,
           itemsSummary: items_summary,
           amountText: amount_text,
@@ -534,45 +591,74 @@ app.post(
   asyncHandler(async (req, res) => {
     const store = await prisma.store.findUnique({ where: { subdomain: req.params.subdomain } });
     if (!store || store.status !== "active") throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");
-    const { customer_name, city, payment_method, courier, items } = req.body as {
+    const { customer_name, customer_phone, address, city, payment_method, courier, items } = req.body as {
       customer_name: string;
+      customer_phone: string;
+      address: string;
       city: string;
       payment_method: string;
       courier: string;
       items: { sku: string; qty: number }[];
     };
 
-    const skus = [...new Set(items.map((i) => i.sku))];
+    // Merge duplicate SKUs first (summed qty), so stock checks and totals
+    // can never be split across lines to oversell.
+    const merged = new Map<string, number>();
+    for (const i of items) merged.set(i.sku, (merged.get(i.sku) ?? 0) + i.qty);
+    const mergedItems = [...merged.entries()].map(([sku, qty]) => ({ sku, qty }));
+
+    const skus = mergedItems.map((i) => i.sku);
     const catalog = await prisma.product.findMany({ where: { storeId: store.id, sku: { in: skus } } });
     const bySku = new Map(catalog.map((p) => [p.sku, p]));
     const missing = skus.filter((s) => !bySku.has(s));
     if (missing.length > 0) {
       throw new ApiError(400, "UNKNOWN_SKU", `Unknown product(s): ${missing.join(", ")}.`, { missing });
     }
-    const short = items.filter((i) => (bySku.get(i.sku)?.stock ?? 0) < i.qty).map((i) => i.sku);
+    // Fast-path check only; the guarded decrement inside the transaction is authoritative.
+    const short = mergedItems.filter((i) => (bySku.get(i.sku)?.stock ?? 0) < i.qty).map((i) => i.sku);
     if (short.length > 0) {
       throw new ApiError(409, "INSUFFICIENT_STOCK", `Not enough stock for: ${short.join(", ")}.`, { short });
     }
 
-    const lines = items.map((i) => {
+    const lines = mergedItems.map((i) => {
       const p = bySku.get(i.sku)!;
-      return { productId: p.id, sku: p.sku, name: p.nameEn || p.nameAr || p.sku, qty: i.qty, unitPriceEgp: p.priceEgp };
+      // Currency rule: checkout charges the price column matching the
+      // store's currency. Products without a positive price there are
+      // rejected; other currencies are unsupported at checkout.
+      const priceColumn = store.currency === "EGP" ? "priceEgp" : store.currency === "SAR" ? "priceSar" : null;
+      if (!priceColumn) {
+        throw new ApiError(
+          400,
+          "CHECKOUT_CURRENCY_UNSUPPORTED",
+          `Checkout supports EGP and SAR priced catalogs; this store uses ${store.currency}.`
+        );
+      }
+      const unit = p[priceColumn];
+      if (!(unit > 0)) {
+        throw new ApiError(400, "PRODUCT_NOT_PRICED", `Product ${p.sku} has no ${store.currency} price.`, {
+          sku: p.sku,
+        });
+      }
+      return { productId: p.id, sku: p.sku, name: p.nameEn || p.nameAr || p.sku, qty: i.qty, unitPrice: unit };
     });
-    const total = lines.reduce((s, l) => s + l.qty * l.unitPriceEgp, 0);
+    const total = lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
 
-    const base = await prisma.order.count({ where: { storeId: store.id } });
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const id = attempt === 0 ? `SND-${4825 + base}` : `SND-${Date.now().toString(36).toUpperCase()}${attempt}`;
-      try {
-        const order = await prisma.$transaction(async (tx) => {
-          const created = await tx.order.create({
-            data: {
-              id,
-              storeId: store.id,
-              customerName: customer_name,
-              city,
+    const orderNumber = await allocateOrderNumber(store.id);
+    try {
+      const order = await prisma.$transaction(async (tx) => {
+        const created = await tx.order.create({
+          data: {
+            id: newId("ord_"),
+            storeId: store.id,
+            orderNumber,
+            customerName: customer_name,
+            customerPhone: customer_phone,
+            address,
+            city,
               itemsSummary: lines.map((l) => `${l.name} ×${l.qty}`).join(" + "),
               amountText: `${total} ${store.currency}`,
+              // Legacy column names: amountEgp / unitPriceEgp hold the total
+              // denominated in the STORE's currency (EGP or SAR per the rule above).
               amountEgp: total,
               paymentMethod: payment_method,
               status: "pending",
@@ -584,28 +670,37 @@ app.post(
                   sku: l.sku,
                   name: l.name,
                   qty: l.qty,
-                  unitPriceEgp: l.unitPriceEgp,
+                  unitPriceEgp: l.unitPrice,
                 })),
               },
             },
             include: { items: true },
           });
           for (const l of lines) {
-            await tx.product.update({ where: { id: l.productId }, data: { stock: { decrement: l.qty } } });
+            // Guarded decrement: only succeeds when enough stock remains at
+            // write time. Concurrent checkouts serialize here; losers abort
+            // with 409 and the whole transaction rolls back.
+            const moved = await tx.product.updateMany({
+              where: { id: l.productId, storeId: store.id, stock: { gte: l.qty } },
+              data: { stock: { decrement: l.qty } },
+            });
+            if (moved.count !== 1) {
+              throw new ApiError(409, "INSUFFICIENT_STOCK", `Not enough stock for: ${l.sku}.`, { short: [l.sku] });
+            }
           }
           return created;
         });
         res.status(201).json({ order });
-        return;
       } catch (e: unknown) {
-        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") continue;
+        if (e instanceof ApiError) throw e;
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+          throw new ApiError(409, "ORDER_CONFLICT", "Order number collision, please retry.");
+        }
         if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003") {
           throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");
         }
         throw e;
       }
-    }
-    throw new ApiError(409, "ORDER_CONFLICT", "Could not place the order, please retry.");
   })
 );
 
@@ -627,12 +722,12 @@ app.patch(
   validateBody(storeUpdateSchema),
   asyncHandler(async (req, res) => {
     if (!req.auth!.storeId) throw new ApiError(404, "STORE_NOT_FOUND", "No store linked to this account.");
-    const { storeName, phone, countryCode, storeCurrency, selectedPlan } = req.body as {
+    // NOTE: plan is intentionally not writable here (server-assigned billing).
+    const { storeName, phone, countryCode, storeCurrency } = req.body as {
       storeName?: string;
       phone?: string;
       countryCode?: string;
       storeCurrency?: string;
-      selectedPlan?: "monthly" | "annual";
     };
     const store = await prisma.store.update({
       where: { id: req.auth!.storeId },
@@ -641,7 +736,6 @@ app.patch(
         ...(phone !== undefined ? { phone } : {}),
         ...(countryCode !== undefined ? { countryCode } : {}),
         ...(storeCurrency !== undefined ? { currency: storeCurrency } : {}),
-        ...(selectedPlan !== undefined ? { plan: selectedPlan } : {}),
       },
     }).catch(() => null);
     if (!store) throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");
@@ -656,21 +750,29 @@ app.get(
   validateParams(subdomainParamSchema),
   asyncHandler(requireStoreOwnership),
   asyncHandler(async (req, res) => {
-    const store = await prisma.store.findUnique({ where: { id: req.ownedStore!.id } });
-    const orders = await prisma.order.findMany({ where: { storeId: req.ownedStore!.id } });
-    const totalSales = orders.reduce((s, o) => s + (Number(o.amountEgp) || 0), 0);
-    const delivered = orders.filter((o) => o.status === "delivered").length;
+    const storeId = req.ownedStore!.id;
+    const store = await prisma.store.findUnique({ where: { id: storeId } });
+    const [total, delivered, sales, methods, recent] = await prisma.$transaction([
+      prisma.order.count({ where: { storeId } }),
+      prisma.order.count({ where: { storeId, status: "delivered" } }),
+      prisma.order.aggregate({ where: { storeId }, _sum: { amountEgp: true } }),
+      prisma.order.groupBy({ by: ["paymentMethod"], where: { storeId }, _count: { _all: true } }),
+      prisma.order.findMany({ where: { storeId }, orderBy: { createdAt: "desc" }, take: 5 }),
+    ]);
+    const totalSales = Math.round(sales._sum.amountEgp ?? 0);
+    const codCount = methods
+      .filter((m) => /cod/i.test(m.paymentMethod) || m.paymentMethod.includes("استلام"))
+      .reduce((s, m) => s + m._count._all, 0);
     res.json({
       store,
       kpis: {
-        total_orders: orders.length,
+        total_orders: total,
         delivered_orders: delivered,
         total_sales_egp: totalSales,
-        avg_order_egp: orders.length ? Math.round(totalSales / orders.length) : 0,
-        cod_share: "65%+",
-        commission: "0%",
+        avg_order_egp: total ? Math.round(totalSales / total) : 0,
+        cod_share_percent: total ? Math.round((codCount / total) * 100) : 0,
       },
-      recent_orders: orders.slice(-5).reverse(),
+      recent_orders: recent,
     });
   })
 );
@@ -695,20 +797,11 @@ app.post(
   })
 );
 
-// Authenticated listing scoped to the merchant's own store.
-// With a matching ADMIN_TOKEN header, all leads are returned.
+// Authenticated listing, always scoped to the caller's own store.
 app.get(
   "/api/leads",
   asyncHandler(requireAuth),
   asyncHandler(async (req, res) => {
-    if (env.adminToken) {
-      if (req.headers["x-admin-token"] !== env.adminToken) {
-        throw new ApiError(403, "FORBIDDEN", "Admin token required.");
-      }
-      const rows = await prisma.lead.findMany({ orderBy: { createdAt: "desc" }, take: 200 });
-      res.json({ leads: rows });
-      return;
-    }
     const rows = req.auth!.storeId
       ? await prisma.lead.findMany({
           where: { storeId: req.auth!.storeId },
@@ -716,6 +809,20 @@ app.get(
           take: 200,
         })
       : [];
+    res.json({ leads: rows });
+  })
+);
+
+// Admin-only: full leads listing across all stores.
+app.get(
+  "/api/admin/leads",
+  asyncHandler(requireAuth),
+  asyncHandler(async (req, res) => {
+    const merchant = await prisma.merchant.findUnique({ where: { id: req.auth!.merchantId } });
+    if (!merchant || merchant.role !== "admin") {
+      throw new ApiError(403, "FORBIDDEN", "Admin access required.");
+    }
+    const rows = await prisma.lead.findMany({ orderBy: { createdAt: "desc" }, take: 200 });
     res.json({ leads: rows });
   })
 );
@@ -735,9 +842,27 @@ app.use(errorHandler);
 async function boot() {
   // No seeding on boot. Demo data comes only from `npm run db:seed` (DEMO_MODE-gated).
   await checkDb();
-  app.listen(env.port, "0.0.0.0", () => {
+  startSessionCleanup();
+  const server = app.listen(env.port, "0.0.0.0", () => {
     logger.info(`[sanad-backend] listening on http://localhost:${env.port} (env=${env.nodeEnv})`);
   });
+
+  // Graceful shutdown: stop accepting, drain, then release the DB pool.
+  const shutdown = (signal: string) => {
+    logger.info(`[sanad-backend] ${signal} received, shutting down`);
+    server.close(() => {
+      prisma
+        .$disconnect()
+        .catch(() => undefined)
+        .finally(() => process.exit(0));
+    });
+    // Hard stop if connections linger.
+    setTimeout(() => process.exit(0), 10_000).unref();
+  };
+  if (process.env.VITEST !== "true") {
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    process.on("SIGINT", () => shutdown("SIGINT"));
+  }
 }
 
 if (process.env.VITEST !== "true") {

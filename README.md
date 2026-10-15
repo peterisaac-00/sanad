@@ -64,7 +64,6 @@ Seeded demo login (dev only): `merchant@saraya.sanad.app` + `DEMO_MERCHANT_PASSW
 | `VITE_API_URL` | no | `""` | build-time API base; empty = same origin |
 | `DEMO_MODE` | no | `false` | `true` enables demo seed/login (dev only) |
 | `DEMO_MERCHANT_PASSWORD` | demo | — | required for seed in production (refuses otherwise) |
-| `ADMIN_TOKEN` | no | — | when set, `GET /api/leads` needs `x-admin-token` for full listing |
 
 ## Scripts
 
@@ -105,8 +104,9 @@ server-side and require it to be the caller's own (`403` otherwise).
 | POST | `/api/stores/:sub/orders` | yes | owner manual order entry |
 | POST | `/api/stores/:sub/checkout` | no, rate-limited | public checkout; totals computed server-side |
 | GET | `/api/stores/:sub/summary` | yes | owner; KPIs from real data |
-| POST | `/api/leads` | no, rate-limited | attributed to store when logged in |
-| GET | `/api/leads` | yes | own store's leads (all with admin token) |
+| POST | `/api/leads` | no, rate-limited | attributed to store when logged in; payload capped 64 keys / 8KB |
+| GET | `/api/leads` | yes | caller's own store leads, always |
+| GET | `/api/admin/leads` | yes, `role=admin` | all stores; others get 403 |
 
 Order transitions: `pending → confirmed/cancelled`, `confirmed → shipped/cancelled`,
 `shipped → delivered`. Everything else is `422 INVALID_TRANSITION`.

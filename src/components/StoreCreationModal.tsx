@@ -36,7 +36,6 @@ export const StoreCreationModal: React.FC<StoreCreationModalProps> = ({
   const [password, setPassword] = useState<string>('');
   const [countryCode, setCountryCode] = useState<string>('EG');
   const [storeCurrency, setStoreCurrency] = useState<string>('EGP');
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string>('');
@@ -48,8 +47,8 @@ export const StoreCreationModal: React.FC<StoreCreationModalProps> = ({
       setStep(step + 1);
     } else {
       // Final step: create the store AND the merchant account atomically.
-      // The session arrives as an httpOnly cookie. Failures are shown,
-      // never silently bypassed.
+      // The subscription plan is assigned by the server (billing is handled
+      // outside the app). Failures are shown, never silently bypassed.
       setIsSaving(true);
       setSaveError('');
       try {
@@ -61,7 +60,6 @@ export const StoreCreationModal: React.FC<StoreCreationModalProps> = ({
           subdomain: subdomain.trim().toLowerCase(),
           countryCode,
           storeCurrency,
-          selectedPlan,
         });
         setIsSuccess(true);
       } catch (err: any) {
@@ -158,9 +156,7 @@ export const StoreCreationModal: React.FC<StoreCreationModalProps> = ({
                 <div className="flex justify-between">
                   <span className="text-slate-500">{currentLang === 'ar' ? 'الخطة:' : 'Plan:'}</span>
                   <span className="font-bold text-emerald-700">
-                    {selectedPlan === 'annual'
-                      ? (currentLang === 'ar' ? 'سنوي: 1,000 ج.م/سنة (وفرت 200 ج.م)' : 'Annual: 1,000 EGP/yr (Saved 200 EGP)')
-                      : (currentLang === 'ar' ? 'شهري: 100 ج.م/شهر' : 'Monthly: 100 EGP/mo')}
+                    {currentLang === 'ar' ? 'سنوية (افتراضية، تُدار خارج المنصة)' : 'Annual (default, managed outside the app)'}
                   </span>
                 </div>
               </div>
@@ -333,40 +329,23 @@ export const StoreCreationModal: React.FC<StoreCreationModalProps> = ({
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Annual Plan */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPlan('annual')}
-                      className={`p-4 rounded-xl border text-start transition-all cursor-pointer relative ${
-                        selectedPlan === 'annual'
-                          ? 'border-emerald-600 bg-emerald-50/50 shadow-xs ring-1 ring-emerald-500'
-                          : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
+                    {/* Server-assigned default plan: subscription billing is handled outside the app. */}
+                    <div className="p-4 rounded-xl border border-emerald-600 bg-emerald-50/50 ring-1 ring-emerald-500 relative">
                       <span className="absolute -top-2.5 end-3 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded">
                         {PRICING_MODEL.annual.savings_badge_ar}
                       </span>
                       <div className="font-bold text-slate-900 text-sm">
-                        {currentLang === 'ar' ? 'الخطة السنوية' : 'Annual Plan'}
+                        {currentLang === 'ar' ? 'الخطة السنوية (الافتراضية)' : 'Annual Plan (default)'}
                       </div>
                       <div className="text-xl font-bold font-heading text-slate-900 mt-1">
                         1,000 <span className="text-xs font-normal text-slate-500">{currentLang === 'ar' ? 'ج.م / سنة' : 'EGP / yr'}</span>
                       </div>
                       <div className="text-[11px] text-emerald-700 font-semibold mt-1">
-                        {currentLang === 'ar' ? '12 شهراً = 1,000 ج.م فقط (توفير 200 ج.م)' : '12 months = 1,000 EGP (Save 200 EGP)'}
+                        {currentLang === 'ar' ? 'تُدار الفوترة خارج المنصة' : 'Billing is handled outside the app'}
                       </div>
-                    </button>
+                    </div>
 
-                    {/* Monthly Plan */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPlan('monthly')}
-                      className={`p-4 rounded-xl border text-start transition-all cursor-pointer ${
-                        selectedPlan === 'monthly'
-                          ? 'border-emerald-600 bg-emerald-50/50 shadow-xs ring-1 ring-emerald-500'
-                          : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
+                    <div className="p-4 rounded-xl border border-slate-200">
                       <div className="font-bold text-slate-900 text-sm">
                         {currentLang === 'ar' ? 'الخطة الشهرية' : 'Monthly Plan'}
                       </div>
@@ -374,9 +353,9 @@ export const StoreCreationModal: React.FC<StoreCreationModalProps> = ({
                         100 <span className="text-xs font-normal text-slate-500">{currentLang === 'ar' ? 'ج.م / شهر' : 'EGP / mo'}</span>
                       </div>
                       <div className="text-[11px] text-slate-500 mt-1">
-                        {currentLang === 'ar' ? 'مرونة كاملة وإلغاء في أي وقت' : 'Complete flexibility, cancel anytime'}
+                        {currentLang === 'ar' ? 'متاحة عبر إدارة الاشتراكات خارج المنصة' : 'Available via out-of-app subscription management'}
                       </div>
-                    </button>
+                    </div>
                   </div>
                 </div>
               )}

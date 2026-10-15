@@ -22,6 +22,11 @@ model Store {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  // Next order number to allocate (first order is 4825, displayed SND-4825).
+  // Incremented atomically with UPDATE...RETURNING, so concurrent checkouts
+  // never collide. May skip on aborted checkouts.
+  nextOrderNumber Int @default(4824) @map("next_order_number")
+
   merchants Merchant[]
   products  Product[]
   orders    Order[]
@@ -39,6 +44,7 @@ model Merchant {
   passwordHash String   @map("password_hash")
   passwordSalt String?  @map("password_salt")
   passwordAlgo String   @default("argon2id") @map("password_algo")
+  role         String   @default("merchant")
   name         String   @default("")
   phone        String   @default("")
   createdAt    DateTime @default(now()) @map("created_at")
@@ -69,16 +75,23 @@ model Product {
 }
 
 model Order {
+  // Internal opaque id. Merchants and shoppers see SND-{orderNumber}.
   id           String   @id
   storeId      String   @map("store_id")
   store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderNumber  Int      @map("order_number")
   customerName String   @default("") @map("customer_name")
+  customerPhone String  @default("") @map("customer_phone")
+  address      String   @default("")
   city         String   @default("")
   itemsSummary String   @default("") @map("items_summary")
   amountText   String   @default("") @map("amount_text")
   amountEgp    Float    @default(0) @map("amount_egp")
   paymentMethod String  @default("COD") @map("payment_method")
   status       String   @default("pending")
+  // True once reserved stock was returned (cancel/return). Guarded so a
+  // retry or double request can never restore twice.
+  stockRestored Boolean @default(false) @map("stock_restored")
   courier      String   @default("")
   createdAt    DateTime @default(now()) @map("created_at")
 
@@ -86,6 +99,7 @@ model Order {
 
   @@index([storeId])
   @@index([storeId, status])
+  @@unique([storeId, orderNumber])
   @@map("orders")
 }
 

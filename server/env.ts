@@ -13,7 +13,6 @@ const raw = {
   TRUST_PROXY: process.env.TRUST_PROXY || "false",
   JSON_BODY_LIMIT: process.env.JSON_BODY_LIMIT || "256kb",
   LOG_LEVEL: process.env.LOG_LEVEL || "info",
-  ADMIN_TOKEN: process.env.ADMIN_TOKEN || "",
   DEMO_MERCHANT_PASSWORD: process.env.DEMO_MERCHANT_PASSWORD || "",
   DATABASE_URL: process.env.DATABASE_URL || "",
   SESSION_SECRET: process.env.SESSION_SECRET || "",
@@ -27,7 +26,6 @@ const envSchema = z.object({
   TRUST_PROXY: z.string(),
   JSON_BODY_LIMIT: z.string().min(1),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]),
-  ADMIN_TOKEN: z.string(),
   DEMO_MERCHANT_PASSWORD: z.string(),
   SESSION_SECRET: z.string(),
   DATABASE_URL: z
@@ -102,7 +100,6 @@ export const env = {
   trustProxy: parseTrustProxy(parsed.data.TRUST_PROXY),
   jsonBodyLimit: parsed.data.JSON_BODY_LIMIT,
   logLevel: parsed.data.LOG_LEVEL,
-  adminToken: parsed.data.ADMIN_TOKEN || null,
   demoMerchantPassword,
   databaseUrl: parsed.data.DATABASE_URL,
   sessionSecret,

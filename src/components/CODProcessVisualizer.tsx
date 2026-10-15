@@ -237,10 +237,10 @@ export const CODProcessVisualizer: React.FC<CODProcessVisualizerProps> = ({ curr
             </div>
           </div>
 
-          {/* Quick Metrics Callout */}
+          {/* Illustrative benchmarks callout (not live merchant data) */}
           <div className="md:col-span-4 bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
             <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              {currentLang === 'ar' ? 'مؤشرات أداء COD الحيوية' : 'Live COD Metrics'}
+              {currentLang === 'ar' ? 'نتائج توضيحية (مثال)' : 'Illustrative outcomes (example)'}
             </div>
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs">

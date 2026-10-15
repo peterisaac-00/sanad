@@ -55,9 +55,9 @@ describe("orders: filters, transitions, summary", () => {
     const pend = await agent.get(`${base}?status=pending`).expect(200);
     expect(pend.body.pagination.total).toBe(2);
 
-    await agent.patch(`/api/stores/${subdomain}/orders/${oid}/status`).send({ status: "delivered" }).expect(422);
+    await agent.patch(`/api/stores/${subdomain}/orders/${oid}/status`).send({ status: "delivered" }).expect(409);
     await agent.patch(`/api/stores/${subdomain}/orders/${oid}/status`).send({ status: "confirmed" }).expect(200);
-    await agent.patch(`/api/stores/${subdomain}/orders/${oid}/status`).send({ status: "pending" }).expect(422);
+    await agent.patch(`/api/stores/${subdomain}/orders/${oid}/status`).send({ status: "pending" }).expect(409);
     await agent.patch(`/api/stores/${subdomain}/orders/${oid}/status`).send({ status: "bogus" }).expect(400);
 
     const conf = await agent.get(`${base}?status=confirmed`).expect(200);
@@ -87,10 +87,11 @@ describe("orders: filters, transitions, summary", () => {
     await agent.patch("/api/account/store").send({}).expect(400);
     const upd = await agent
       .patch("/api/account/store")
-      .send({ storeName: "Renamed", phone: "01234567890", storeCurrency: "SAR", selectedPlan: "monthly" })
+      .send({ storeName: "Renamed", phone: "01234567890", storeCurrency: "SAR" })
       .expect(200);
     expect(upd.body.store.storeName).toBe("Renamed");
     expect(upd.body.store.currency).toBe("SAR");
+    expect(upd.body.store.plan).toBe("annual");
     // subdomain is not accepted at all (strict schema rejects unknown field)
     await agent.patch("/api/account/store").send({ subdomain: "hijack" }).expect(400);
   });

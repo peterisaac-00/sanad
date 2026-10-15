@@ -65,10 +65,10 @@ async function main() {
 
   await prisma.order.createMany({
     data: [
-      { id: "SND-4821", storeId, customerName: "أحمد محمود إبراهيم", city: "القاهرة (التجمع الخامس)", itemsSummary: "قميص كتان طبيعي (كحلي - L)", amountText: "750 ج.م", amountEgp: 750, paymentMethod: "الدفع عند الاستلام COD", status: "delivered", courier: "بوسطة Bosta", createdAt: t },
-      { id: "SND-4822", storeId, customerName: "سارة خالد المنصوري", city: "الرياض (حي الملقا - السعودية)", itemsSummary: "عباية حرير مطرزة (مقاس 56)", amountText: "420 ر.س (5,540 ج.م)", amountEgp: 5540, paymentMethod: "Apple Pay (بطاقة دفع إلكتروني)", status: "shipped", courier: "أرامكس إكسبريس", createdAt: t },
-      { id: "SND-4823", storeId, customerName: "كريم عبد العظيم", city: "الإسكندرية (سموحة)", itemsSummary: "حذاء كاجوال جلد طبيعي (كحلي - L)", amountText: "1,120 ج.م", amountEgp: 1120, paymentMethod: "الدفع عند الاستلام COD", status: "confirmed", courier: "بوسطة Bosta", createdAt: t },
-      { id: "SND-4824", storeId, customerName: "منى الشريف", city: "المنصورة (الدلتا)", itemsSummary: "فستان صيفي مطبوع + وشاح", amountText: "890 ج.م", amountEgp: 890, paymentMethod: "الدفع عند الاستلام COD", status: "pending", courier: "بانتظار البوليصة", createdAt: t },
+      { id: "SND-4821", orderNumber: 4821, storeId, customerName: "أحمد محمود إبراهيم", city: "القاهرة (التجمع الخامس)", itemsSummary: "قميص كتان طبيعي (كحلي - L)", amountText: "750 ج.م", amountEgp: 750, paymentMethod: "الدفع عند الاستلام COD", status: "delivered", courier: "بوسطة Bosta", createdAt: t },
+      { id: "SND-4822", orderNumber: 4822, storeId, customerName: "سارة خالد المنصوري", city: "الرياض (حي الملقا - السعودية)", itemsSummary: "عباية حرير مطرزة (مقاس 56)", amountText: "420 ر.س (5,540 ج.م)", amountEgp: 5540, paymentMethod: "Apple Pay (بطاقة دفع إلكتروني)", status: "shipped", courier: "أرامكس إكسبريس", createdAt: t },
+      { id: "SND-4823", orderNumber: 4823, storeId, customerName: "كريم عبد العظيم", city: "الإسكندرية (سموحة)", itemsSummary: "حذاء كاجوال جلد طبيعي (مقاس 43)", amountText: "1,120 ج.م", amountEgp: 1120, paymentMethod: "الدفع عند الاستلام COD", status: "confirmed", courier: "بوسطة Bosta", createdAt: t },
+      { id: "SND-4824", orderNumber: 4824, storeId, customerName: "منى الشريف", city: "المنصورة (الدلتا)", itemsSummary: "فستان صيفي مطبوع + وشاح", amountText: "890 ج.م", amountEgp: 890, paymentMethod: "الدفع عند الاستلام COD", status: "pending", courier: "بانتظار البوليصة", createdAt: t },
     ],
   });
 

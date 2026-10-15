@@ -30,15 +30,21 @@ type Tab = 'overview' | 'orders' | 'products' | 'settings';
 const NEXT_STATUS: Record<string, string[]> = {
   pending: ['confirmed', 'cancelled'],
   confirmed: ['shipped', 'cancelled'],
-  shipped: ['delivered'],
-  delivered: [],
+  shipped: ['delivered', 'cancelled', 'returned'],
+  delivered: ['returned'],
   cancelled: [],
+  returned: [],
 };
 
 function errMsg(err: unknown, fallback: string): string {
   if (err instanceof ApiRequestError) return err.message;
   if (err instanceof Error) return err.message || fallback;
   return fallback;
+}
+
+/** Merchant-facing display number (SND-4825 style); falls back to raw id. */
+function displayOrderId(o: any): string {
+  return o?.orderNumber != null ? `SND-${o.orderNumber}` : String(o?.id ?? '');
 }
 
 export const GrowthCenterPreview: React.FC<GrowthCenterPreviewProps> = ({
@@ -329,7 +335,7 @@ export const GrowthCenterPreview: React.FC<GrowthCenterPreviewProps> = ({
                         )}
                         {(summary.recent_orders ?? []).map((o: any) => (
                           <div key={o.id} className="py-2 border-t border-slate-100 text-xs flex items-center justify-between gap-2">
-                            <span className="font-bold text-slate-900">{o.id} · <span className="font-medium text-slate-600">{o.customerName}</span></span>
+                            <span className="font-bold text-slate-900">{displayOrderId(o)} · <span className="font-medium text-slate-600">{o.customerName}</span></span>
                             <span className="font-bold">{o.amountText}</span>
                           </div>
                         ))}
@@ -343,7 +349,7 @@ export const GrowthCenterPreview: React.FC<GrowthCenterPreviewProps> = ({
                         <span className="font-bold text-slate-800">{ar ? 'الحالة:' : 'Status:'}</span>
                         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="border border-slate-300 rounded-lg px-2 py-1.5 text-xs">
                           <option value="">{ar ? 'الكل' : 'All'}</option>
-                          {['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'].map((s) => (
+                          {['pending', 'confirmed', 'shipped', 'delivered', 'cancelled', 'returned'].map((s) => (
                             <option key={s} value={s}>{s}</option>
                           ))}
                         </select>
@@ -352,8 +358,13 @@ export const GrowthCenterPreview: React.FC<GrowthCenterPreviewProps> = ({
                       {orders.map((o: any) => (
                         <div key={o.id} className="py-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
                           <div>
-                            <div className="font-bold text-slate-900">{o.id} - {o.customerName}</div>
+                            <div className="font-bold text-slate-900">{displayOrderId(o)} - {o.customerName}</div>
                             <div className="text-[11px] text-slate-500">{o.city} · {o.itemsSummary}</div>
+                            {(o.customerPhone || o.address) && (
+                              <div className="text-[11px] text-slate-500" dir="ltr">
+                                {[o.customerPhone, o.address].filter(Boolean).join(' · ')}
+                              </div>
+                            )}
                             <div className="text-[11px] font-bold">{o.amountText} · {o.paymentMethod}</div>
                           </div>
                           <select
