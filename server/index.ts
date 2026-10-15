@@ -514,6 +514,9 @@ app.post(
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
         throw new ApiError(409, "ORDER_CONFLICT", "Order number collision, please retry.");
       }
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003") {
+        throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");
+      }
       throw e;
     }
   })
@@ -596,6 +599,9 @@ app.post(
         return;
       } catch (e: unknown) {
         if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") continue;
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003") {
+          throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");
+        }
         throw e;
       }
     }
