@@ -506,7 +506,7 @@ app.post(
   asyncHandler(requireStoreOwnership),
   validateBody(merchantOrderBodySchema),
   asyncHandler(async (req, res) => {
-    const { customer_name, city, items_summary, amount_text, amount_egp, payment_method, status, courier } = req.body;
+    const { customer_name, customer_phone, address, city, items_summary, amount_text, amount_egp, payment_method, status, courier } = req.body;
     const orderNumber = await allocateOrderNumber(req.ownedStore!.id);
     try {
       const order = await prisma.order.create({
@@ -515,6 +515,8 @@ app.post(
           storeId: req.ownedStore!.id,
           orderNumber,
           customerName: customer_name,
+          customerPhone: customer_phone,
+          address,
           city,
           itemsSummary: items_summary,
           amountText: amount_text,
@@ -549,8 +551,10 @@ app.post(
   asyncHandler(async (req, res) => {
     const store = await prisma.store.findUnique({ where: { subdomain: req.params.subdomain } });
     if (!store || store.status !== "active") throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");
-    const { customer_name, city, payment_method, courier, items } = req.body as {
+    const { customer_name, customer_phone, address, city, payment_method, courier, items } = req.body as {
       customer_name: string;
+      customer_phone: string;
+      address: string;
       city: string;
       payment_method: string;
       courier: string;
@@ -607,8 +611,10 @@ app.post(
             id: newId("ord_"),
             storeId: store.id,
             orderNumber,
-              customerName: customer_name,
-              city,
+            customerName: customer_name,
+            customerPhone: customer_phone,
+            address,
+            city,
               itemsSummary: lines.map((l) => `${l.name} ×${l.qty}`).join(" + "),
               amountText: `${total} ${store.currency}`,
               // Legacy column names: amountEgp / unitPriceEgp hold the total

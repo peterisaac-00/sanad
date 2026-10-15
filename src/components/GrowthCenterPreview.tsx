@@ -359,6 +359,11 @@ export const GrowthCenterPreview: React.FC<GrowthCenterPreviewProps> = ({
                           <div>
                             <div className="font-bold text-slate-900">{displayOrderId(o)} - {o.customerName}</div>
                             <div className="text-[11px] text-slate-500">{o.city} · {o.itemsSummary}</div>
+                            {(o.customerPhone || o.address) && (
+                              <div className="text-[11px] text-slate-500" dir="ltr">
+                                {[o.customerPhone, o.address].filter(Boolean).join(' · ')}
+                              </div>
+                            )}
                             <div className="text-[11px] font-bold">{o.amountText} · {o.paymentMethod}</div>
                           </div>
                           <select

@@ -81,6 +81,8 @@ model Order {
   store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   orderNumber  Int      @map("order_number")
   customerName String   @default("") @map("customer_name")
+  customerPhone String  @default("") @map("customer_phone")
+  address      String   @default("")
   city         String   @default("")
   itemsSummary String   @default("") @map("items_summary")
   amountText   String   @default("") @map("amount_text")

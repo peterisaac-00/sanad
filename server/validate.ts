@@ -65,6 +65,8 @@ export const productBodySchema = z.strictObject({
 
 export const merchantOrderBodySchema = z.strictObject({
   customer_name: z.string().trim().min(1, { message: "customer_name is required" }).max(200),
+  customer_phone: z.string().trim().max(32).default(""),
+  address: z.string().trim().max(300).default(""),
   city: z.string().trim().max(200).default(""),
   items_summary: z.string().trim().max(1000).default(""),
   amount_text: z.string().trim().max(120).default(""),
@@ -151,6 +153,8 @@ export const checkoutItemSchema = z.strictObject({
 
 export const checkoutBodySchema = z.strictObject({
   customer_name: z.string().trim().min(1, { message: "customer_name is required" }).max(200),
+  customer_phone: z.string().trim().max(32).default(""),
+  address: z.string().trim().max(300).default(""),
   city: z.string().trim().max(200).default(""),
   payment_method: z.string().trim().max(80).default("COD"),
   courier: z.string().trim().max(200).default(""),
