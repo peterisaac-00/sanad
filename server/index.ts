@@ -725,20 +725,11 @@ app.post(
   })
 );
 
-// Authenticated listing scoped to the merchant's own store.
-// With a matching ADMIN_TOKEN header, all leads are returned.
+// Authenticated listing, always scoped to the caller's own store.
 app.get(
   "/api/leads",
   asyncHandler(requireAuth),
   asyncHandler(async (req, res) => {
-    if (env.adminToken) {
-      if (req.headers["x-admin-token"] !== env.adminToken) {
-        throw new ApiError(403, "FORBIDDEN", "Admin token required.");
-      }
-      const rows = await prisma.lead.findMany({ orderBy: { createdAt: "desc" }, take: 200 });
-      res.json({ leads: rows });
-      return;
-    }
     const rows = req.auth!.storeId
       ? await prisma.lead.findMany({
           where: { storeId: req.auth!.storeId },
@@ -746,6 +737,20 @@ app.get(
           take: 200,
         })
       : [];
+    res.json({ leads: rows });
+  })
+);
+
+// Admin-only: full leads listing across all stores.
+app.get(
+  "/api/admin/leads",
+  asyncHandler(requireAuth),
+  asyncHandler(async (req, res) => {
+    const merchant = await prisma.merchant.findUnique({ where: { id: req.auth!.merchantId } });
+    if (!merchant || merchant.role !== "admin") {
+      throw new ApiError(403, "FORBIDDEN", "Admin access required.");
+    }
+    const rows = await prisma.lead.findMany({ orderBy: { createdAt: "desc" }, take: 200 });
     res.json({ leads: rows });
   })
 );

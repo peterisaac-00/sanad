@@ -44,6 +44,7 @@ model Merchant {
   passwordHash String   @map("password_hash")
   passwordSalt String?  @map("password_salt")
   passwordAlgo String   @default("argon2id") @map("password_algo")
+  role         String   @default("merchant")
   name         String   @default("")
   phone        String   @default("")
   createdAt    DateTime @default(now()) @map("created_at")

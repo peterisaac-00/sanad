@@ -38,10 +38,18 @@ All variables are documented in `.env.example`. The critical ones:
 |--------|---------------|-------|
 | `SESSION_SECRET` | `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` | 32+ chars, required in production |
 | `DATABASE_URL` | from your Postgres provider | `postgresql://user:pass@host:5432/sanad` |
-| `ADMIN_TOKEN` | same generator as above | optional; gates full leads listing |
 
 Store them in your hosting provider's secret manager (never in git, chat, or
 screenshots).
+
+Promote a merchant to admin with SQL (no shared secret exists by design):
+
+```sql
+UPDATE merchants SET role='admin' WHERE email='owner@example.com';
+```
+
+Admins can list every lead via `GET /api/admin/leads`. Merchants always see
+only their own store's leads via `GET /api/leads`.
 
 ## 3. Create the first merchant account
 
@@ -114,7 +122,7 @@ Logs are structured (pino JSON). Passwords/tokens/cookies are redacted.
 - Product images/media uploads.
 - Shipping-fee engine, coupons, taxes per region.
 - Payment-gateway integrations (Paymob/Fawry/Mada) — COD + manual methods only.
-- Admin/back-office UI (leads are API-only; use `ADMIN_TOKEN` + scripts).
+- Admin/back-office UI (leads are API-only; use `GET /api/admin/leads` with an admin merchant + scripts).
 - Audit logging of merchant actions.
 - Automated DB backups (operator cron, see §4).
 - Horizontal scaling notes: sessions live in Postgres (shared-nothing safe);

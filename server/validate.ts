@@ -76,7 +76,21 @@ export const merchantOrderBodySchema = z.strictObject({
 
 export const leadBodySchema = z.strictObject({
   type: z.string().trim().min(1, { message: "type is required" }).max(64),
-  payload: z.unknown().default({}),
+  // Bounded payload: plain JSON object, limited keys and serialized size,
+  // so leads capture can never be abused as an unbounded blob store.
+  payload: z.unknown().default({}).refine(
+    (v) => {
+      if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+      const keys = Object.keys(v);
+      if (keys.length > 64) return false;
+      try {
+        return JSON.stringify(v).length <= 8192;
+      } catch {
+        return false;
+      }
+    },
+    { message: "payload must be a JSON object with at most 64 keys and 8KB serialized" }
+  ),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
