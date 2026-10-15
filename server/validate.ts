@@ -21,6 +21,17 @@ const subdomainField = z
   .toLowerCase()
   .regex(/^[a-z0-9-]{3,40}$/, { message: "subdomain must be 3-40 chars: a-z, 0-9, hyphen" });
 
+// Reserved names that would collide with platform routes or infrastructure.
+export const RESERVED_SUBDOMAINS = new Set([
+  "www", "api", "admin", "app", "mail", "static", "assets", "cdn", "status",
+  "health", "docs", "blog", "shop", "store", "stores", "support", "help",
+  "billing", "pay", "auth", "login", "signup", "dashboard", "console",
+]);
+
+const registerSubdomainField = subdomainField.refine((v) => !RESERVED_SUBDOMAINS.has(v), {
+  message: "subdomain is reserved",
+});
+
 const passwordField = z.string().min(8, { message: "password must be at least 8 characters" }).max(128);
 
 export const registerSchema = z.strictObject({
@@ -29,7 +40,7 @@ export const registerSchema = z.strictObject({
   name: z.string().trim().max(120).default(""),
   phone: z.string().trim().max(32).default(""),
   storeName: z.string().trim().min(2, { message: "storeName is required (min 2 chars)" }).max(120),
-  subdomain: subdomainField,
+  subdomain: registerSubdomainField,
   countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, { message: "countryCode must be a 2-letter code" }).default("EG"),
   storeCurrency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, { message: "storeCurrency must be a 3-letter code" }).default("EGP"),
 });

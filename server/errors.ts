@@ -43,6 +43,13 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   }
 
   // Unexpected failure: log with request context, never leak internals to clients.
+  // CORS rejections get a proper 403 JSON shape instead of a 500.
+  if (err instanceof Error && /cors/i.test(err.message)) {
+    res.status(403).json({
+      error: { code: "CORS_ORIGIN_REJECTED", message: "Origin not allowed." },
+    } satisfies ApiErrorBody);
+    return;
+  }
   logger.error({ err, method: req.method, path: req.path }, "unhandled error");
   res.status(500).json({
     error: {

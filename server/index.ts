@@ -239,14 +239,18 @@ app.post(
   })
 );
 
-app.post("/api/auth/logout", asyncHandler(requireAuth), async (req, res) => {
-  const token = req.cookies?.[sessionCookieName()];
-  if (typeof token === "string" && token) {
-    await prisma.session.delete({ where: { tokenHash: hashSessionToken(token) } }).catch(() => undefined);
-  }
-  res.clearCookie(sessionCookieName(), { path: "/" });
-  res.json({ ok: true });
-});
+app.post(
+  "/api/auth/logout",
+  asyncHandler(requireAuth),
+  asyncHandler(async (req, res) => {
+    const token = req.cookies?.[sessionCookieName()];
+    if (typeof token === "string" && token) {
+      await prisma.session.delete({ where: { tokenHash: hashSessionToken(token) } }).catch(() => undefined);
+    }
+    res.clearCookie(sessionCookieName(), { path: "/" });
+    res.json({ ok: true });
+  })
+);
 
 app.get(
   "/api/auth/me",
@@ -839,9 +843,26 @@ async function boot() {
   // No seeding on boot. Demo data comes only from `npm run db:seed` (DEMO_MODE-gated).
   await checkDb();
   startSessionCleanup();
-  app.listen(env.port, "0.0.0.0", () => {
+  const server = app.listen(env.port, "0.0.0.0", () => {
     logger.info(`[sanad-backend] listening on http://localhost:${env.port} (env=${env.nodeEnv})`);
   });
+
+  // Graceful shutdown: stop accepting, drain, then release the DB pool.
+  const shutdown = (signal: string) => {
+    logger.info(`[sanad-backend] ${signal} received, shutting down`);
+    server.close(() => {
+      prisma
+        .$disconnect()
+        .catch(() => undefined)
+        .finally(() => process.exit(0));
+    });
+    // Hard stop if connections linger.
+    setTimeout(() => process.exit(0), 10_000).unref();
+  };
+  if (process.env.VITEST !== "true") {
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    process.on("SIGINT", () => shutdown("SIGINT"));
+  }
 }
 
 if (process.env.VITEST !== "true") {
