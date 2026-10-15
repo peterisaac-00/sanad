@@ -41,6 +41,11 @@ function errMsg(err: unknown, fallback: string): string {
   return fallback;
 }
 
+/** Merchant-facing display number (SND-4825 style); falls back to raw id. */
+function displayOrderId(o: any): string {
+  return o?.orderNumber != null ? `SND-${o.orderNumber}` : String(o?.id ?? '');
+}
+
 export const GrowthCenterPreview: React.FC<GrowthCenterPreviewProps> = ({
   currentLang,
   isOpen,
@@ -329,7 +334,7 @@ export const GrowthCenterPreview: React.FC<GrowthCenterPreviewProps> = ({
                         )}
                         {(summary.recent_orders ?? []).map((o: any) => (
                           <div key={o.id} className="py-2 border-t border-slate-100 text-xs flex items-center justify-between gap-2">
-                            <span className="font-bold text-slate-900">{o.id} · <span className="font-medium text-slate-600">{o.customerName}</span></span>
+                            <span className="font-bold text-slate-900">{displayOrderId(o)} · <span className="font-medium text-slate-600">{o.customerName}</span></span>
                             <span className="font-bold">{o.amountText}</span>
                           </div>
                         ))}
@@ -352,7 +357,7 @@ export const GrowthCenterPreview: React.FC<GrowthCenterPreviewProps> = ({
                       {orders.map((o: any) => (
                         <div key={o.id} className="py-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
                           <div>
-                            <div className="font-bold text-slate-900">{o.id} - {o.customerName}</div>
+                            <div className="font-bold text-slate-900">{displayOrderId(o)} - {o.customerName}</div>
                             <div className="text-[11px] text-slate-500">{o.city} · {o.itemsSummary}</div>
                             <div className="text-[11px] font-bold">{o.amountText} · {o.paymentMethod}</div>
                           </div>

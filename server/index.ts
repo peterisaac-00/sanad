@@ -108,6 +108,21 @@ async function createSession(merchantId: string): Promise<string> {
   return token;
 }
 
+/**
+ * Allocate the next per-store order number atomically. The row lock on the
+ * store serializes concurrent checkouts, so numbers are unique per store
+ * (displayed as SND-{n}). May skip on aborted checkouts.
+ */
+async function allocateOrderNumber(storeId: string): Promise<number> {
+  const rows = await prisma.$queryRaw<{ nextOrderNumber: number }[]>`
+    UPDATE "stores" SET "next_order_number" = "next_order_number" + 1
+    WHERE "id" = ${storeId} RETURNING "next_order_number" AS "nextOrderNumber"`;
+  if (rows.length !== 1 || typeof rows[0].nextOrderNumber !== "number") {
+    throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");
+  }
+  return rows[0].nextOrderNumber;
+}
+
 // ---- health (public): liveness + database connectivity ----
 app.get("/api/health", async (_req, res) => {
   try {
@@ -492,13 +507,13 @@ app.post(
   validateBody(merchantOrderBodySchema),
   asyncHandler(async (req, res) => {
     const { customer_name, city, items_summary, amount_text, amount_egp, payment_method, status, courier } = req.body;
-    const count = await prisma.order.count({ where: { storeId: req.ownedStore!.id } });
-    const id = `SND-${4825 + count}`;
+    const orderNumber = await allocateOrderNumber(req.ownedStore!.id);
     try {
       const order = await prisma.order.create({
         data: {
-          id,
+          id: newId("ord_"),
           storeId: req.ownedStore!.id,
+          orderNumber,
           customerName: customer_name,
           city,
           itemsSummary: items_summary,
@@ -567,15 +582,14 @@ app.post(
     });
     const total = lines.reduce((s, l) => s + l.qty * l.unitPriceEgp, 0);
 
-    const base = await prisma.order.count({ where: { storeId: store.id } });
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const id = attempt === 0 ? `SND-${4825 + base}` : `SND-${Date.now().toString(36).toUpperCase()}${attempt}`;
-      try {
-        const order = await prisma.$transaction(async (tx) => {
-          const created = await tx.order.create({
-            data: {
-              id,
-              storeId: store.id,
+    const orderNumber = await allocateOrderNumber(store.id);
+    try {
+      const order = await prisma.$transaction(async (tx) => {
+        const created = await tx.order.create({
+          data: {
+            id: newId("ord_"),
+            storeId: store.id,
+            orderNumber,
               customerName: customer_name,
               city,
               itemsSummary: lines.map((l) => `${l.name} ×${l.qty}`).join(" + "),
@@ -612,16 +626,16 @@ app.post(
           return created;
         });
         res.status(201).json({ order });
-        return;
       } catch (e: unknown) {
-        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") continue;
+        if (e instanceof ApiError) throw e;
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+          throw new ApiError(409, "ORDER_CONFLICT", "Order number collision, please retry.");
+        }
         if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003") {
           throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");
         }
         throw e;
       }
-    }
-    throw new ApiError(409, "ORDER_CONFLICT", "Could not place the order, please retry.");
   })
 );
 
