@@ -48,6 +48,11 @@ export const ExchangeRateSimulator: React.FC<ExchangeRateSimulatorProps> = ({ cu
               ? 'تحديد أسعار منتجاتك في مصر، وعرضها تلقائياً للمتسوق السعودي والإماراتي والكويتي بعملته المحلية.'
               : 'Price items in EGP, and render them in SAR, AED, and KWD with complete FX control.'}
           </p>
+          <p className="text-[11px] text-slate-400 mt-1">
+            {currentLang === 'ar'
+              ? 'أسعار مرجعية توضيحية للتجربة، وليست أسعار صرف حية.'
+              : 'Illustrative reference rates for experimentation, not live FX feeds.'}
+          </p>
         </div>
 
         {/* Mode Toggle Button */}

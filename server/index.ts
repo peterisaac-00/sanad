@@ -686,21 +686,29 @@ app.get(
   validateParams(subdomainParamSchema),
   asyncHandler(requireStoreOwnership),
   asyncHandler(async (req, res) => {
-    const store = await prisma.store.findUnique({ where: { id: req.ownedStore!.id } });
-    const orders = await prisma.order.findMany({ where: { storeId: req.ownedStore!.id } });
-    const totalSales = orders.reduce((s, o) => s + (Number(o.amountEgp) || 0), 0);
-    const delivered = orders.filter((o) => o.status === "delivered").length;
+    const storeId = req.ownedStore!.id;
+    const store = await prisma.store.findUnique({ where: { id: storeId } });
+    const [total, delivered, sales, methods, recent] = await prisma.$transaction([
+      prisma.order.count({ where: { storeId } }),
+      prisma.order.count({ where: { storeId, status: "delivered" } }),
+      prisma.order.aggregate({ where: { storeId }, _sum: { amountEgp: true } }),
+      prisma.order.groupBy({ by: ["paymentMethod"], where: { storeId }, _count: { _all: true } }),
+      prisma.order.findMany({ where: { storeId }, orderBy: { createdAt: "desc" }, take: 5 }),
+    ]);
+    const totalSales = Math.round(sales._sum.amountEgp ?? 0);
+    const codCount = methods
+      .filter((m) => /cod/i.test(m.paymentMethod) || m.paymentMethod.includes("استلام"))
+      .reduce((s, m) => s + m._count._all, 0);
     res.json({
       store,
       kpis: {
-        total_orders: orders.length,
+        total_orders: total,
         delivered_orders: delivered,
         total_sales_egp: totalSales,
-        avg_order_egp: orders.length ? Math.round(totalSales / orders.length) : 0,
-        cod_share: "65%+",
-        commission: "0%",
+        avg_order_egp: total ? Math.round(totalSales / total) : 0,
+        cod_share_percent: total ? Math.round((codCount / total) * 100) : 0,
       },
-      recent_orders: orders.slice(-5).reverse(),
+      recent_orders: recent,
     });
   })
 );
