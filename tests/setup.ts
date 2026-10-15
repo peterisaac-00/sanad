@@ -35,3 +35,12 @@ execSync("node node_modules/prisma/build/index.js migrate deploy", {
   env: { ...process.env, DATABASE_URL: base },
   stdio: "pipe",
 });
+
+// Wipe stale rows left by previous runs (e.g. intentionally oversold stock
+// from regression tests) so every run starts from empty tables.
+const scrub = new pg.Client({ connectionString: base });
+await scrub.connect();
+await scrub.query(
+  'TRUNCATE "sessions", "order_items", "orders", "products", "leads", "merchants", "stores" CASCADE'
+);
+await scrub.end();

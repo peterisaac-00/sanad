@@ -542,19 +542,26 @@ app.post(
       items: { sku: string; qty: number }[];
     };
 
-    const skus = [...new Set(items.map((i) => i.sku))];
+    // Merge duplicate SKUs first (summed qty), so stock checks and totals
+    // can never be split across lines to oversell.
+    const merged = new Map<string, number>();
+    for (const i of items) merged.set(i.sku, (merged.get(i.sku) ?? 0) + i.qty);
+    const mergedItems = [...merged.entries()].map(([sku, qty]) => ({ sku, qty }));
+
+    const skus = mergedItems.map((i) => i.sku);
     const catalog = await prisma.product.findMany({ where: { storeId: store.id, sku: { in: skus } } });
     const bySku = new Map(catalog.map((p) => [p.sku, p]));
     const missing = skus.filter((s) => !bySku.has(s));
     if (missing.length > 0) {
       throw new ApiError(400, "UNKNOWN_SKU", `Unknown product(s): ${missing.join(", ")}.`, { missing });
     }
-    const short = items.filter((i) => (bySku.get(i.sku)?.stock ?? 0) < i.qty).map((i) => i.sku);
+    // Fast-path check only; the guarded decrement inside the transaction is authoritative.
+    const short = mergedItems.filter((i) => (bySku.get(i.sku)?.stock ?? 0) < i.qty).map((i) => i.sku);
     if (short.length > 0) {
       throw new ApiError(409, "INSUFFICIENT_STOCK", `Not enough stock for: ${short.join(", ")}.`, { short });
     }
 
-    const lines = items.map((i) => {
+    const lines = mergedItems.map((i) => {
       const p = bySku.get(i.sku)!;
       return { productId: p.id, sku: p.sku, name: p.nameEn || p.nameAr || p.sku, qty: i.qty, unitPriceEgp: p.priceEgp };
     });
@@ -591,7 +598,16 @@ app.post(
             include: { items: true },
           });
           for (const l of lines) {
-            await tx.product.update({ where: { id: l.productId }, data: { stock: { decrement: l.qty } } });
+            // Guarded decrement: only succeeds when enough stock remains at
+            // write time. Concurrent checkouts serialize here; losers abort
+            // with 409 and the whole transaction rolls back.
+            const moved = await tx.product.updateMany({
+              where: { id: l.productId, storeId: store.id, stock: { gte: l.qty } },
+              data: { stock: { decrement: l.qty } },
+            });
+            if (moved.count !== 1) {
+              throw new ApiError(409, "INSUFFICIENT_STOCK", `Not enough stock for: ${l.sku}.`, { short: [l.sku] });
+            }
           }
           return created;
         });
