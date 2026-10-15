@@ -483,19 +483,43 @@ app.patch(
   asyncHandler(requireStoreOwnership),
   validateBody(orderStatusSchema),
   asyncHandler(async (req, res) => {
-    const order = await prisma.order.findFirst({
+    const target = req.body.status as string;
+    const current = await prisma.order.findFirst({
       where: { id: req.params.id, storeId: req.ownedStore!.id },
+      include: { items: true },
     });
-    if (!order) throw new ApiError(404, "ORDER_NOT_FOUND", "Order not found.");
-    const allowed = ORDER_TRANSITIONS[order.status] ?? [];
-    if (!allowed.includes(req.body.status)) {
+    if (!current) throw new ApiError(404, "ORDER_NOT_FOUND", "Order not found.");
+    const allowed = ORDER_TRANSITIONS[current.status] ?? [];
+    if (!allowed.includes(target)) {
       throw new ApiError(
-        422,
+        409,
         "INVALID_TRANSITION",
-        `Cannot move order from '${order.status}' to '${req.body.status}'. Allowed: ${allowed.join(", ") || "none"}.`
+        `Cannot move order from '${current.status}' to '${target}'. Allowed: ${allowed.join(", ") || "none"}.`
       );
     }
-    const updated = await prisma.order.update({ where: { id: order.id }, data: { status: req.body.status } });
+    // Atomic write: only succeeds if the status is still what we validated.
+    // A concurrent transition wins the race; losers get 409, never a lost update.
+    const updated = await prisma.$transaction(async (tx) => {
+      const wrote = await tx.order.updateMany({
+        where: { id: current.id, storeId: current.storeId, status: current.status },
+        data: { status: target },
+      });
+      if (wrote.count !== 1) {
+        throw new ApiError(409, "ORDER_CONFLICT", "Order changed concurrently, please retry.");
+      }
+      // Restore reserved stock exactly once when entering a terminal
+      // no-fulfillment state. The flag makes retries/double requests safe.
+      if ((target === "cancelled" || target === "returned") && !current.stockRestored) {
+        for (const item of current.items) {
+          if (!item.productId) continue;
+          await tx.product
+            .update({ where: { id: item.productId }, data: { stock: { increment: item.qty } } })
+            .catch(() => null);
+        }
+        await tx.order.update({ where: { id: current.id }, data: { stockRestored: true } });
+      }
+      return tx.order.findUnique({ where: { id: current.id }, include: { items: true } });
+    });
     res.json({ order: updated });
   })
 );

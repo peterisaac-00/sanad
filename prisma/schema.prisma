@@ -89,6 +89,9 @@ model Order {
   amountEgp    Float    @default(0) @map("amount_egp")
   paymentMethod String  @default("COD") @map("payment_method")
   status       String   @default("pending")
+  // True once reserved stock was returned (cancel/return). Guarded so a
+  // retry or double request can never restore twice.
+  stockRestored Boolean @default(false) @map("stock_restored")
   courier      String   @default("")
   createdAt    DateTime @default(now()) @map("created_at")
 

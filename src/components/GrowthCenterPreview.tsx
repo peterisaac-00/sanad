@@ -30,9 +30,10 @@ type Tab = 'overview' | 'orders' | 'products' | 'settings';
 const NEXT_STATUS: Record<string, string[]> = {
   pending: ['confirmed', 'cancelled'],
   confirmed: ['shipped', 'cancelled'],
-  shipped: ['delivered'],
-  delivered: [],
+  shipped: ['delivered', 'cancelled', 'returned'],
+  delivered: ['returned'],
   cancelled: [],
+  returned: [],
 };
 
 function errMsg(err: unknown, fallback: string): string {
@@ -348,7 +349,7 @@ export const GrowthCenterPreview: React.FC<GrowthCenterPreviewProps> = ({
                         <span className="font-bold text-slate-800">{ar ? 'الحالة:' : 'Status:'}</span>
                         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="border border-slate-300 rounded-lg px-2 py-1.5 text-xs">
                           <option value="">{ar ? 'الكل' : 'All'}</option>
-                          {['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'].map((s) => (
+                          {['pending', 'confirmed', 'shipped', 'delivered', 'cancelled', 'returned'].map((s) => (
                             <option key={s} value={s}>{s}</option>
                           ))}
                         </select>

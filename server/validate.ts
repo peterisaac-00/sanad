@@ -71,7 +71,7 @@ export const merchantOrderBodySchema = z.strictObject({
   amount_text: z.string().trim().max(120).default(""),
   amount_egp: z.number().min(0).max(1e12).default(0),
   payment_method: z.string().trim().max(80).default("COD"),
-  status: z.enum(["pending", "confirmed", "shipped", "delivered", "cancelled"]).default("pending"),
+  status: z.enum(["pending", "confirmed", "shipped", "delivered", "cancelled", "returned"]).default("pending"),
   courier: z.string().trim().max(200).default(""),
 });
 
@@ -106,7 +106,7 @@ export const paginationQuerySchema = z.strictObject({
 });
 
 export const orderListQuerySchema = paginationQuerySchema.extend({
-  status: z.enum(["pending", "confirmed", "shipped", "delivered", "cancelled"]).optional(),
+  status: z.enum(["pending", "confirmed", "shipped", "delivered", "cancelled", "returned"]).optional(),
   from: z.string().datetime({ message: "from must be an ISO datetime" }).optional(),
   to: z.string().datetime({ message: "to must be an ISO datetime" }).optional(),
 });
@@ -133,16 +133,17 @@ export const orderIdParamSchema = subdomainParamSchema.extend({
 });
 
 export const orderStatusSchema = z.strictObject({
-  status: z.enum(["pending", "confirmed", "shipped", "delivered", "cancelled"]),
+  status: z.enum(["pending", "confirmed", "shipped", "delivered", "cancelled", "returned"]),
 });
 
 /** Valid order status transitions (server-enforced). */
 export const ORDER_TRANSITIONS: Record<string, string[]> = {
   pending: ["confirmed", "cancelled"],
   confirmed: ["shipped", "cancelled"],
-  shipped: ["delivered"],
-  delivered: [],
+  shipped: ["delivered", "cancelled", "returned"],
+  delivered: ["returned"],
   cancelled: [],
+  returned: [],
 };
 
 export const checkoutItemSchema = z.strictObject({

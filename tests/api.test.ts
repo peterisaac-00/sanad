@@ -55,9 +55,9 @@ describe("orders: filters, transitions, summary", () => {
     const pend = await agent.get(`${base}?status=pending`).expect(200);
     expect(pend.body.pagination.total).toBe(2);
 
-    await agent.patch(`/api/stores/${subdomain}/orders/${oid}/status`).send({ status: "delivered" }).expect(422);
+    await agent.patch(`/api/stores/${subdomain}/orders/${oid}/status`).send({ status: "delivered" }).expect(409);
     await agent.patch(`/api/stores/${subdomain}/orders/${oid}/status`).send({ status: "confirmed" }).expect(200);
-    await agent.patch(`/api/stores/${subdomain}/orders/${oid}/status`).send({ status: "pending" }).expect(422);
+    await agent.patch(`/api/stores/${subdomain}/orders/${oid}/status`).send({ status: "pending" }).expect(409);
     await agent.patch(`/api/stores/${subdomain}/orders/${oid}/status`).send({ status: "bogus" }).expect(400);
 
     const conf = await agent.get(`${base}?status=confirmed`).expect(200);
