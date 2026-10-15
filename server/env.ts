@@ -15,6 +15,7 @@ const raw = {
   LOG_LEVEL: process.env.LOG_LEVEL || "info",
   ADMIN_TOKEN: process.env.ADMIN_TOKEN || "",
   DEMO_MERCHANT_PASSWORD: process.env.DEMO_MERCHANT_PASSWORD || "",
+  DATABASE_URL: process.env.DATABASE_URL || "",
 };
 
 const envSchema = z.object({
@@ -27,6 +28,12 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]),
   ADMIN_TOKEN: z.string(),
   DEMO_MERCHANT_PASSWORD: z.string(),
+  DATABASE_URL: z
+    .string()
+    .min(1, { message: "DATABASE_URL is required (e.g. postgresql://sanad:sanad@localhost:5432/sanad)" })
+    .refine((v) => v.startsWith("postgresql://") || v.startsWith("postgres://"), {
+      message: "DATABASE_URL must be a postgresql:// connection string",
+    }),
 });
 
 const parsed = envSchema.safeParse(raw);
@@ -81,4 +88,5 @@ export const env = {
   logLevel: parsed.data.LOG_LEVEL,
   adminToken: parsed.data.ADMIN_TOKEN || null,
   demoMerchantPassword,
+  databaseUrl: parsed.data.DATABASE_URL,
 };

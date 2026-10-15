@@ -1,6 +1,6 @@
 import { rateLimit } from "express-rate-limit";
 import type { Request, Response, NextFunction } from "express";
-import { db } from "./db.js";
+import { prisma } from "./db.js";
 import { hashSessionToken } from "./auth.js";
 import { ApiError } from "./errors.js";
 import { env } from "./env.js";
@@ -36,30 +36,24 @@ function unauthorized(): ApiError {
   return new ApiError(401, "UNAUTHENTICATED", "Authentication required.");
 }
 
-export function requireAuth(req: Request, _res: Response, next: NextFunction) {
+export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const token = req.cookies?.sanad_session;
   if (!token || typeof token !== "string") {
     next(unauthorized());
     return;
   }
   const tokenHash = hashSessionToken(token);
-  const sess = db
-    .prepare("SELECT token, merchant_id, expires_at FROM sessions WHERE token = ?")
-    .get(tokenHash) as { token: string; merchant_id: string; expires_at: string } | undefined;
-  if (!sess || Number.isNaN(Date.parse(sess.expires_at)) || Date.parse(sess.expires_at) <= Date.now()) {
+  const sess = await prisma.session.findUnique({ where: { tokenHash } });
+  if (!sess || sess.expiresAt.getTime() <= Date.now()) {
     if (sess) {
-      db.prepare("DELETE FROM sessions WHERE token = ?").run(tokenHash);
+      await prisma.session.delete({ where: { tokenHash } }).catch(() => undefined);
     }
     next(new ApiError(401, "SESSION_EXPIRED", "Session is invalid or expired."));
     return;
   }
-  const merchant = db
-    .prepare("SELECT id, store_id, store_handle, email, name FROM merchants WHERE id = ?")
-    .get(sess.merchant_id) as
-    | { id: string; store_id: string | null; store_handle: string; email: string; name: string }
-    | undefined;
+  const merchant = await prisma.merchant.findUnique({ where: { id: sess.merchantId } });
   if (!merchant) {
-    db.prepare("DELETE FROM sessions WHERE token = ?").run(tokenHash);
+    await prisma.session.delete({ where: { tokenHash } }).catch(() => undefined);
     next(unauthorized());
     return;
   }
@@ -67,8 +61,8 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
     merchantId: merchant.id,
     email: merchant.email,
     name: merchant.name ?? "",
-    storeId: merchant.store_id,
-    storeHandle: merchant.store_handle ?? "",
+    storeId: merchant.storeId,
+    storeHandle: merchant.storeHandle ?? "",
   };
   next();
 }
@@ -77,16 +71,17 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
  * Must run after requireAuth on routes with a :subdomain param.
  * Resolves the store server-side and enforces ownership.
  */
-export function requireStoreOwnership(req: Request, _res: Response, next: NextFunction) {
+export async function requireStoreOwnership(req: Request, _res: Response, next: NextFunction) {
   const auth = req.auth;
   if (!auth) {
     next(unauthorized());
     return;
   }
   const subdomain = String(req.params.subdomain || "").toLowerCase();
-  const store = db.prepare("SELECT id, subdomain FROM stores WHERE subdomain = ?").get(subdomain) as
-    | { id: string; subdomain: string }
-    | undefined;
+  const store = await prisma.store.findUnique({
+    where: { subdomain },
+    select: { id: true, subdomain: true },
+  });
   if (!store) {
     next(new ApiError(404, "STORE_NOT_FOUND", "Store not found."));
     return;
@@ -150,7 +145,7 @@ export const authLimiter = rateLimit({
   message: limiterMessage(),
 });
 
-/** Public write endpoints (store signup is now register; leads capture). */
+/** Public write endpoints (leads capture). */
 export const publicWriteLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 60,

@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sanad
+      POSTGRES_PASSWORD: sanad
+      POSTGRES_DB: sanad
+    ports:
+      - "5432:5432"
+    volumes:
+      - sanad-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sanad -d sanad"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  sanad-pgdata:

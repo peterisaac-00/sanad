@@ -1,0 +1,130 @@
+// Prisma schema for Sanad merchant platform (PostgreSQL).
+// IDs are app-generated prefixed strings (store_*, merch_*, prod_*, SND-*, lead_*)
+// so public identifiers stay stable and opaque.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Store {
+  id          String   @id
+  storeName   String   @map("store_name")
+  subdomain   String   @unique
+  phone       String   @default("")
+  countryCode String   @default("EG") @map("country_code")
+  currency    String   @default("EGP")
+  plan        String   @default("annual")
+  status      String   @default("active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  merchants Merchant[]
+  products  Product[]
+  orders    Order[]
+  leads     Lead[]
+
+  @@map("stores")
+}
+
+model Merchant {
+  id           String   @id
+  storeId      String?  @map("store_id")
+  store        Store?   @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  storeHandle  String   @default("") @map("store_handle")
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  passwordSalt String?  @map("password_salt")
+  passwordAlgo String   @default("argon2id") @map("password_algo")
+  name         String   @default("")
+  phone        String   @default("")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  sessions Session[]
+
+  @@index([storeId])
+  @@map("merchants")
+}
+
+model Product {
+  id        String   @id
+  storeId   String   @map("store_id")
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  sku       String
+  nameAr    String   @default("") @map("name_ar")
+  nameEn    String   @default("") @map("name_en")
+  priceEgp  Float    @default(0) @map("price_egp")
+  priceSar  Float    @default(0) @map("price_sar")
+  stock     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  orderItems OrderItem[]
+
+  @@unique([storeId, sku])
+  @@index([storeId])
+  @@map("products")
+}
+
+model Order {
+  id           String   @id
+  storeId      String   @map("store_id")
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customerName String   @default("") @map("customer_name")
+  city         String   @default("")
+  itemsSummary String   @default("") @map("items_summary")
+  amountText   String   @default("") @map("amount_text")
+  amountEgp    Float    @default(0) @map("amount_egp")
+  paymentMethod String  @default("COD") @map("payment_method")
+  status       String   @default("pending")
+  courier      String   @default("")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  items OrderItem[]
+
+  @@index([storeId])
+  @@index([storeId, status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String  @id
+  orderId     String  @map("order_id")
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String? @map("product_id")
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  sku         String  @default("")
+  name        String  @default("")
+  qty         Int     @default(1)
+  unitPriceEgp Float  @default(0) @map("unit_price_egp")
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model Lead {
+  id        String   @id
+  type      String
+  payload   Json     @default("{}")
+  storeId   String?  @map("store_id")
+  store     Store?   @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([storeId])
+  @@index([type])
+  @@map("leads")
+}
+
+model Session {
+  tokenHash  String   @id @map("token")
+  merchantId String   @map("merchant_id")
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([merchantId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
