@@ -578,9 +578,26 @@ app.post(
 
     const lines = mergedItems.map((i) => {
       const p = bySku.get(i.sku)!;
-      return { productId: p.id, sku: p.sku, name: p.nameEn || p.nameAr || p.sku, qty: i.qty, unitPriceEgp: p.priceEgp };
+      // Currency rule: checkout charges the price column matching the
+      // store's currency. Products without a positive price there are
+      // rejected; other currencies are unsupported at checkout.
+      const priceColumn = store.currency === "EGP" ? "priceEgp" : store.currency === "SAR" ? "priceSar" : null;
+      if (!priceColumn) {
+        throw new ApiError(
+          400,
+          "CHECKOUT_CURRENCY_UNSUPPORTED",
+          `Checkout supports EGP and SAR priced catalogs; this store uses ${store.currency}.`
+        );
+      }
+      const unit = p[priceColumn];
+      if (!(unit > 0)) {
+        throw new ApiError(400, "PRODUCT_NOT_PRICED", `Product ${p.sku} has no ${store.currency} price.`, {
+          sku: p.sku,
+        });
+      }
+      return { productId: p.id, sku: p.sku, name: p.nameEn || p.nameAr || p.sku, qty: i.qty, unitPrice: unit };
     });
-    const total = lines.reduce((s, l) => s + l.qty * l.unitPriceEgp, 0);
+    const total = lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
 
     const orderNumber = await allocateOrderNumber(store.id);
     try {
@@ -594,6 +611,8 @@ app.post(
               city,
               itemsSummary: lines.map((l) => `${l.name} ×${l.qty}`).join(" + "),
               amountText: `${total} ${store.currency}`,
+              // Legacy column names: amountEgp / unitPriceEgp hold the total
+              // denominated in the STORE's currency (EGP or SAR per the rule above).
               amountEgp: total,
               paymentMethod: payment_method,
               status: "pending",
@@ -605,7 +624,7 @@ app.post(
                   sku: l.sku,
                   name: l.name,
                   qty: l.qty,
-                  unitPriceEgp: l.unitPriceEgp,
+                  unitPriceEgp: l.unitPrice,
                 })),
               },
             },
