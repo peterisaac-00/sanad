@@ -129,7 +129,22 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({ currentLang, onO
 
       {/* Documentation Categories Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {topics.map((top) => (
+        {topics
+          .map((top) => {
+            const q = searchQuery.trim().toLowerCase();
+            const articles = q
+              ? top.articles.filter(
+                  (a) =>
+                    a.title_ar.includes(searchQuery.trim()) ||
+                    a.title_en.toLowerCase().includes(q) ||
+                    top.title_ar.includes(searchQuery.trim()) ||
+                    top.title_en.toLowerCase().includes(q)
+                )
+              : top.articles;
+            return { ...top, articles };
+          })
+          .filter((top) => top.articles.length > 0)
+          .map((top) => (
           <div key={top.id} className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-2xs">
             <div className="flex items-center gap-2 text-sm font-bold font-heading text-slate-900 border-b border-slate-100 pb-3">
               <BookOpen className="w-4 h-4 text-emerald-600" />
@@ -151,7 +166,20 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({ currentLang, onO
               ))}
             </div>
           </div>
-        ))}
+          ))}
+        {searchQuery.trim() &&
+          topics.every((top) => {
+            const q = searchQuery.trim().toLowerCase();
+            return !top.articles.some(
+              (a) =>
+                a.title_ar.includes(searchQuery.trim()) ||
+                a.title_en.toLowerCase().includes(q)
+            );
+          }) && (
+            <div className="md:col-span-2 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200 p-6">
+              {currentLang === 'ar' ? 'لا توجد نتائج مطابقة لبحثك.' : 'No guides match your search.'}
+            </div>
+          )}
       </div>
     </div>
   );

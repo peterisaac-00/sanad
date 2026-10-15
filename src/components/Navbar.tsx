@@ -13,6 +13,7 @@ import {
   HelpCircle,
   TrendingUp,
   LogIn,
+  LogOut,
   CheckCircle2
 } from 'lucide-react';
 
@@ -24,6 +25,8 @@ interface NavbarProps {
   onOpenStoreModal: () => void;
   onOpenLoginModal: () => void;
   onOpenDemoModal: () => void;
+  session: { merchant: any; store: any } | null;
+  onLogout: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -33,7 +36,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onNavigate,
   onOpenStoreModal,
   onOpenLoginModal,
-  onOpenDemoModal
+  onOpenDemoModal,
+  session,
+  onLogout
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [solutionsDropdownOpen, setSolutionsDropdownOpen] = useState(false);
@@ -215,21 +220,45 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Desktop Action Buttons */}
           <div className="hidden lg:flex items-center gap-3">
-            <button
-              onClick={onOpenLoginModal}
-              className="text-xs font-semibold text-slate-700 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              <LogIn className="w-3.5 h-3.5 text-slate-500" />
-              <span>{t.nav_login}</span>
-            </button>
+            {session ? (
+              <>
+                <span className="text-xs text-slate-600 max-w-44 truncate" title={session.merchant?.email}>
+                  {session.merchant?.email}
+                </span>
+                <button
+                  onClick={onOpenDemoModal}
+                  className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{currentLang === 'ar' ? 'لوحة التحكم' : 'Console'}</span>
+                </button>
+                <button
+                  onClick={onLogout}
+                  className="text-xs font-semibold text-slate-700 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-slate-500" />
+                  <span>{currentLang === 'ar' ? 'خروج' : 'Logout'}</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={onOpenLoginModal}
+                  className="text-xs font-semibold text-slate-700 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <LogIn className="w-3.5 h-3.5 text-slate-500" />
+                  <span>{t.nav_login}</span>
+                </button>
 
-            <button
-              onClick={onOpenStoreModal}
-              className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold px-4 py-2.5 rounded-lg shadow-xs hover:shadow-sm transition-all cursor-pointer flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-            >
-              <Store className="w-3.5 h-3.5" />
-              <span>{t.cta_start_store}</span>
-            </button>
+                <button
+                  onClick={onOpenStoreModal}
+                  className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold px-4 py-2.5 rounded-lg shadow-xs hover:shadow-sm transition-all cursor-pointer flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                >
+                  <Store className="w-3.5 h-3.5" />
+                  <span>{t.cta_start_store}</span>
+                </button>
+              </>
+            )}
           </div>
 
           {/* Mobile menu trigger */}
@@ -327,12 +356,24 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span>{t.cta_interactive_demo}</span>
             </button>
 
-            <button
-              onClick={onOpenLoginModal}
-              className="w-full py-2 px-3 border border-slate-300 text-slate-700 rounded-lg text-xs font-medium text-center"
-            >
-              {t.nav_login}
-            </button>
+            {session ? (
+              <button
+                onClick={() => {
+                  onLogout();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full py-2 px-3 border border-slate-300 text-slate-700 rounded-lg text-xs font-medium text-center"
+              >
+                {currentLang === 'ar' ? `خروج (${session.merchant?.email})` : `Logout (${session.merchant?.email})`}
+              </button>
+            ) : (
+              <button
+                onClick={onOpenLoginModal}
+                className="w-full py-2 px-3 border border-slate-300 text-slate-700 rounded-lg text-xs font-medium text-center"
+              >
+                {t.nav_login}
+              </button>
+            )}
           </div>
         </div>
       )}

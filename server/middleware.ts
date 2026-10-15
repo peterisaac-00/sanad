@@ -95,6 +95,37 @@ export async function requireStoreOwnership(req: Request, _res: Response, next: 
 }
 
 /**
+ * Optional authentication: attaches req.auth when a valid session cookie is
+ * present, otherwise continues anonymously. Used for public endpoints that
+ * attribute data (e.g. leads) without requiring login.
+ */
+export async function attachAuth(req: Request, _res: Response, next: NextFunction) {
+  const token = req.cookies?.sanad_session;
+  if (!token || typeof token !== "string") {
+    next();
+    return;
+  }
+  const sess = await prisma.session.findUnique({ where: { tokenHash: hashSessionToken(token) } });
+  if (!sess || sess.expiresAt.getTime() <= Date.now()) {
+    next();
+    return;
+  }
+  const merchant = await prisma.merchant.findUnique({ where: { id: sess.merchantId } });
+  if (!merchant) {
+    next();
+    return;
+  }
+  req.auth = {
+    merchantId: merchant.id,
+    email: merchant.email,
+    name: merchant.name ?? "",
+    storeId: merchant.storeId,
+    storeHandle: merchant.storeHandle ?? "",
+  };
+  next();
+}
+
+/**
  * CSRF protection for cookie auth: state-changing requests must carry an
  * Origin (or Referer) that matches the configured allowlist when the header
  * is present. SameSite=Lax cookies are the primary defense; this check

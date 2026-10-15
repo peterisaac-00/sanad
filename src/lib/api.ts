@@ -43,9 +43,19 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
     ...init,
   });
+  if (res.status === 204) return {} as T;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw parseError(res.status, data);
   return data as T;
+}
+
+function qs(params: Record<string, string | number | undefined>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== "") q.set(k, String(v));
+  }
+  const s = q.toString();
+  return s ? `?${s}` : "";
 }
 
 export interface RegisterPayload {
@@ -58,6 +68,23 @@ export interface RegisterPayload {
   countryCode?: string;
   storeCurrency?: string;
   selectedPlan?: "monthly" | "annual";
+}
+
+export interface ProductInput {
+  sku: string;
+  name_ar?: string;
+  name_en?: string;
+  price_egp?: number;
+  price_sar?: number;
+  stock?: number;
+}
+
+export interface CheckoutInput {
+  customer_name: string;
+  city?: string;
+  payment_method?: string;
+  courier?: string;
+  items: { sku: string; qty: number }[];
 }
 
 export const api = {
@@ -86,11 +113,42 @@ export const api = {
 
   myStores: () => req<{ stores: any[] }>("/api/stores"),
 
+  accountStore: () => req<{ store: any }>("/api/account/store"),
+
+  updateAccountStore: (body: Record<string, unknown>) =>
+    req<{ store: any }>("/api/account/store", { method: "PATCH", body: JSON.stringify(body) }),
+
   summary: (subdomain: string) => req<any>(`/api/stores/${subdomain}/summary`),
 
-  orders: (subdomain: string) => req<{ orders: any[] }>(`/api/stores/${subdomain}/orders`),
+  orders: {
+    list: (subdomain: string, opts?: { page?: number; pageSize?: number; status?: string; from?: string; to?: string }) =>
+      req<{ orders: any[]; pagination: any }>(`/api/stores/${subdomain}/orders${qs(opts ?? {})}`),
+    get: (subdomain: string, id: string) => req<{ order: any }>(`/api/stores/${subdomain}/orders/${id}`),
+    setStatus: (subdomain: string, id: string, status: string) =>
+      req<{ order: any }>(`/api/stores/${subdomain}/orders/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      }),
+    checkout: (subdomain: string, body: CheckoutInput) =>
+      req<{ order: any }>(`/api/stores/${subdomain}/checkout`, { method: "POST", body: JSON.stringify(body) }),
+  },
 
-  products: (subdomain: string) => req<{ products: any[] }>(`/api/stores/${subdomain}/products`),
+  products: {
+    list: (subdomain: string, opts?: { page?: number; pageSize?: number; search?: string }) =>
+      req<{ products: any[]; pagination: any }>(`/api/stores/${subdomain}/products${qs(opts ?? {})}`),
+    get: (subdomain: string, id: string) => req<{ product: any }>(`/api/stores/${subdomain}/products/${id}`),
+    create: (subdomain: string, body: ProductInput) =>
+      req<{ product: any }>(`/api/stores/${subdomain}/products`, { method: "POST", body: JSON.stringify(body) }),
+    update: (subdomain: string, id: string, body: Partial<ProductInput>) =>
+      req<{ product: any }>(`/api/stores/${subdomain}/products/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(body),
+      }),
+    remove: (subdomain: string, id: string) =>
+      req<{ ok: boolean }>(`/api/stores/${subdomain}/products/${id}`, { method: "DELETE" }),
+  },
+
+  myLeads: () => req<{ leads: any[] }>("/api/leads"),
 
   lead: (type: string, payload: unknown) =>
     req<{ ok: boolean; id: string }>("/api/leads", { method: "POST", body: JSON.stringify({ type, payload }) }),

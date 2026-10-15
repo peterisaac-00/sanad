@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Language, UI_TRANSLATIONS } from './data/translations';
+import { api } from './lib/api';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { StoreCreationModal } from './components/StoreCreationModal';
@@ -26,6 +27,31 @@ export default function App() {
   const [isStoreModalOpen, setIsStoreModalOpen] = useState<boolean>(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [isDemoModalOpen, setIsDemoModalOpen] = useState<boolean>(false);
+  const [session, setSession] = useState<{ merchant: any; store: any } | null>(null);
+
+  const refreshSession = async () => {
+    try {
+      const me = await api.me();
+      setSession(me);
+    } catch {
+      setSession(null);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await api.logout();
+    } catch {
+      // ignore network errors on logout; session state is cleared regardless
+    }
+    setSession(null);
+    setIsDemoModalOpen(false);
+  };
+
+  // Restore session from the httpOnly cookie on load.
+  useEffect(() => {
+    refreshSession();
+  }, []);
 
   // Synchronize html dir and lang attributes
   useEffect(() => {
@@ -164,6 +190,8 @@ export default function App() {
         onOpenStoreModal={() => setIsStoreModalOpen(true)}
         onOpenLoginModal={() => setIsLoginModalOpen(true)}
         onOpenDemoModal={() => setIsDemoModalOpen(true)}
+        session={session}
+        onLogout={handleLogout}
       />
 
       {/* Main View Area */}
@@ -183,7 +211,7 @@ export default function App() {
         currentLang={currentLang}
         isOpen={isStoreModalOpen}
         onClose={() => setIsStoreModalOpen(false)}
-        onSuccessLaunch={() => setIsDemoModalOpen(true)}
+        onSuccessLaunch={() => refreshSession().finally(() => setIsDemoModalOpen(true))}
       />
 
       <LoginModal
@@ -196,17 +224,22 @@ export default function App() {
         }}
         onLoginSuccess={() => {
           setIsLoginModalOpen(false);
-          setIsDemoModalOpen(true);
+          refreshSession().finally(() => setIsDemoModalOpen(true));
         }}
       />
 
       <GrowthCenterPreview
         currentLang={currentLang}
         isOpen={isDemoModalOpen}
+        storeSubdomain={session?.store?.subdomain ?? null}
         onClose={() => setIsDemoModalOpen(false)}
         onOpenStoreModal={() => {
           setIsDemoModalOpen(false);
           setIsStoreModalOpen(true);
+        }}
+        onOpenLoginModal={() => {
+          setIsDemoModalOpen(false);
+          setIsLoginModalOpen(true);
         }}
       />
     </div>

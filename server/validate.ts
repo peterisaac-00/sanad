@@ -82,6 +82,68 @@ export const leadBodySchema = z.strictObject({
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 
+// ---- Phase 3: pagination, product/order detail, checkout, store settings ----
+
+export const paginationQuerySchema = z.strictObject({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().trim().max(100).optional(),
+});
+
+export const orderListQuerySchema = paginationQuerySchema.extend({
+  status: z.enum(["pending", "confirmed", "shipped", "delivered", "cancelled"]).optional(),
+  from: z.string().datetime({ message: "from must be an ISO datetime" }).optional(),
+  to: z.string().datetime({ message: "to must be an ISO datetime" }).optional(),
+});
+
+export const productIdParamSchema = subdomainParamSchema.extend({
+  id: z.string().trim().min(1).max(64),
+});
+
+export const productUpdateSchema = productBodySchema.partial().strict().refine((v) => Object.keys(v).length > 0, {
+  message: "at least one field must be provided",
+});
+
+export const orderIdParamSchema = subdomainParamSchema.extend({
+  id: z.string().trim().min(1).max(64),
+});
+
+export const orderStatusSchema = z.strictObject({
+  status: z.enum(["pending", "confirmed", "shipped", "delivered", "cancelled"]),
+});
+
+/** Valid order status transitions (server-enforced). */
+export const ORDER_TRANSITIONS: Record<string, string[]> = {
+  pending: ["confirmed", "cancelled"],
+  confirmed: ["shipped", "cancelled"],
+  shipped: ["delivered"],
+  delivered: [],
+  cancelled: [],
+};
+
+export const checkoutItemSchema = z.strictObject({
+  sku: z.string().trim().min(1).max(64),
+  qty: z.number().int().min(1).max(99),
+});
+
+export const checkoutBodySchema = z.strictObject({
+  customer_name: z.string().trim().min(1, { message: "customer_name is required" }).max(200),
+  city: z.string().trim().max(200).default(""),
+  payment_method: z.string().trim().max(80).default("COD"),
+  courier: z.string().trim().max(200).default(""),
+  items: z.array(checkoutItemSchema).min(1, { message: "at least one item is required" }).max(50),
+});
+
+export const storeUpdateSchema = z
+  .strictObject({
+    storeName: z.string().trim().min(2).max(120).optional(),
+    phone: z.string().trim().max(32).optional(),
+    countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, { message: "countryCode must be a 2-letter code" }).optional(),
+    storeCurrency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, { message: "storeCurrency must be a 3-letter code" }).optional(),
+    selectedPlan: z.enum(["monthly", "annual"]).optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: "at least one field must be provided" });
+
 function toDetails(issues: z.core.$ZodIssue[]) {
   return issues.map((i) => ({
     path: (i.path ?? []).join("."),
@@ -110,6 +172,18 @@ export function validateParams<T extends z.ZodType>(schema: T) {
       return;
     }
     req.params = result.data as Request["params"];
+    next();
+  };
+}
+
+export function validateQuery<T extends z.ZodType>(schema: T) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    const result = (schema as unknown as z.ZodType).safeParse(req.query ?? {});
+    if (!result.success) {
+      next(new ApiError(400, "VALIDATION_ERROR", "Invalid query params.", toDetails(result.error.issues)));
+      return;
+    }
+    req.query = result.data as Request["query"];
     next();
   };
 }

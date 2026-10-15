@@ -1,15 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Language } from '../data/translations';
+import { api } from '../lib/api';
 import {
-  RefreshCw,
-  FileSpreadsheet,
   Upload,
   CheckCircle2,
   Download,
   ShieldCheck,
   ArrowLeft,
   ArrowRight,
-  Database
+  AlertCircle
 } from 'lucide-react';
 
 interface MigrationCenterViewProps {
@@ -22,15 +21,48 @@ export const MigrationCenterView: React.FC<MigrationCenterViewProps> = ({
   onOpenStoreModal
 }) => {
   const [selectedSource, setSelectedSource] = useState<string>('excel');
-  const [isSimulatingUpload, setIsSimulatingUpload] = useState<boolean>(false);
-  const [uploadSuccess, setUploadSuccess] = useState<boolean>(false);
+  const [parsed, setParsed] = useState<{ rows: number; columns: string[]; fileName: string } | null>(null);
+  const [parseError, setParseError] = useState<string>('');
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleSimulate = () => {
-    setIsSimulatingUpload(true);
-    setTimeout(() => {
-      setIsSimulatingUpload(false);
-      setUploadSuccess(true);
-    }, 1200);
+  const downloadTemplate = () => {
+    const header = 'sku,name_ar,name_en,price_egp,price_sar,stock';
+    const example = 'SKU-001,قميص كتان, Linen Shirt,750,57,48';
+    const blob = new Blob([`${header}\n${example}\n`], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Sanad_Products_Template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const parseCsv = (text: string): { columns: string[]; rows: number } => {
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length < 2) throw new Error(currentLang === 'ar' ? 'الملف فارغ أو بدون صفوف بيانات.' : 'File is empty or has no data rows.');
+    const columns = lines[0].split(',').map((c) => c.trim().toLowerCase()).filter(Boolean);
+    return { columns, rows: lines.length - 1 };
+  };
+
+  const handleFile = async (file: File) => {
+    setParseError('');
+    setParsed(null);
+    try {
+      const text = await file.text();
+      const { columns, rows } = parseCsv(text);
+      setParsed({ rows, columns, fileName: file.name });
+      setIsRecording(true);
+      try {
+        await api.lead('migration_import', { source: selectedSource, fileName: file.name, rows, columns });
+      } finally {
+        setIsRecording(false);
+      }
+    } catch (e: any) {
+      setParseError(e?.message || (currentLang === 'ar' ? 'تعذر قراءة الملف.' : 'Could not read the file.'));
+    }
   };
 
   return (
@@ -88,7 +120,7 @@ export const MigrationCenterView: React.FC<MigrationCenterViewProps> = ({
           </div>
 
           <button
-            onClick={() => alert(currentLang === 'ar' ? 'تم تنزيل قالب المنتجات النموذجي (Sanad_Products_Template.xlsx)' : 'Downloaded sample spreadsheet template')}
+            onClick={downloadTemplate}
             className="px-4 py-2 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 flex items-center gap-1.5 cursor-pointer bg-slate-50"
           >
             <Download className="w-4 h-4 text-emerald-600" />
@@ -96,31 +128,42 @@ export const MigrationCenterView: React.FC<MigrationCenterViewProps> = ({
           </button>
         </div>
 
-        {/* Upload Dropzone Simulation */}
+        {/* Upload Dropzone: parses a real CSV file locally */}
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".csv,.txt"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleFile(f);
+            e.target.value = '';
+          }}
+        />
         <div
-          onClick={handleSimulate}
+          onClick={() => fileRef.current?.click()}
           className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all space-y-3 ${
-            uploadSuccess
+            parsed
               ? 'border-emerald-500 bg-emerald-50/50'
               : 'border-slate-300 hover:border-emerald-500 bg-slate-50/50'
           }`}
         >
-          {isSimulatingUpload ? (
-            <div className="space-y-2 py-4">
-              <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin mx-auto" />
-              <div className="text-xs font-bold text-slate-800">
-                {currentLang === 'ar' ? 'جاري فحص وتدقيق أعمدة الملف والمنتجات...' : 'Validating spreadsheet columns and SKUs...'}
-              </div>
-            </div>
-          ) : uploadSuccess ? (
+          {parsed ? (
             <div className="space-y-2 py-2">
               <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
               <div className="font-bold text-slate-900 text-sm">
-                {currentLang === 'ar' ? 'تمت قراءة 48 منتجاً بنجاح مع كافة المقاسات والأسعار!' : '48 products parsed successfully with sizes and prices!'}
+                {currentLang === 'ar'
+                  ? `تمت قراءة ${parsed.rows} منتجاً من ${parsed.fileName}`
+                  : `${parsed.rows} products parsed from ${parsed.fileName}`}
               </div>
-              <div className="text-xs text-slate-500">
-                {currentLang === 'ar' ? 'جاهز للاستيراد بضغطة زر واحدة إلى لوحة تحكم متجرك.' : 'Ready to load directly into your store.'}
+              <div className="text-xs text-slate-500" dir="ltr">
+                {parsed.columns.join(' · ')}
               </div>
+              {isRecording && (
+                <div className="text-[11px] text-slate-400">
+                  {currentLang === 'ar' ? 'جاري تسجيل طلب الترحيل...' : 'Recording migration request...'}
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -129,15 +172,21 @@ export const MigrationCenterView: React.FC<MigrationCenterViewProps> = ({
               </div>
               <div className="space-y-1">
                 <div className="font-bold text-slate-900 text-xs sm:text-sm">
-                  {currentLang === 'ar' ? 'انقر هنا لتجربة استيراد ملف المنتجات (Excel / CSV)' : 'Click here to test importing your product spreadsheet'}
+                  {currentLang === 'ar' ? 'انقر لاختيار ملف المنتجات (CSV) من جهازك' : 'Click to choose your product CSV file'}
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  {currentLang === 'ar' ? 'يدعم ملفات .xlsx و .csv حتى 10,000 منتج' : 'Supports .xlsx & .csv up to 10,000 SKUs'}
+                  {currentLang === 'ar' ? 'يُقرأ الملف محلياً في متصفحك، ويُرسل ملخص الأعمدة فقط' : 'Parsed locally in your browser; only the column summary is sent'}
                 </div>
               </div>
             </>
           )}
         </div>
+        {parseError && (
+          <div className="text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span>{parseError}</span>
+          </div>
+        )}
 
         {/* Data Ownership Principles */}
         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs text-slate-700 flex items-center gap-3">
