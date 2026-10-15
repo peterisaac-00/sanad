@@ -13,12 +13,14 @@ import { prisma, nowIso, newId, checkDb } from "./db.js";
 import {
   hashPasswordArgon2,
   verifyMerchantPassword,
+  verifyUnknownEmail,
   newSessionToken,
   hashSessionToken,
-  SESSION_COOKIE,
   SESSION_TTL_MS,
+  sessionCookieName,
   sessionCookieOptions,
 } from "./auth.js";
+import { startSessionCleanup } from "./sessions.js";
 import { ApiError, asyncHandler, errorHandler, notFoundHandler } from "./errors.js";
 import {
   requireAuth,
@@ -188,7 +190,7 @@ app.post(
     }
 
     const token = await createSession(merchantId);
-    res.cookie(SESSION_COOKIE, token, sessionCookieOptions());
+    res.cookie(sessionCookieName(), token, sessionCookieOptions());
     const store = await prisma.store.findUnique({ where: { id: storeId } });
     const merchant = (await prisma.merchant.findUnique({ where: { id: merchantId } })) as Merchant;
     res.status(201).json({ merchant: toMerchantJson(merchant), store });
@@ -202,8 +204,12 @@ app.post(
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
     const merchant = await prisma.merchant.findUnique({ where: { email } });
-    // Generic message: never reveal whether the email exists.
-    if (!merchant) throw new ApiError(401, "INVALID_CREDENTIALS", "Invalid email or password.");
+    if (!merchant) {
+      // Unknown email still costs a full Argon2 verify (timing parity with
+      // the wrong-password path), then fails with the generic message.
+      await verifyUnknownEmail(password);
+      throw new ApiError(401, "INVALID_CREDENTIALS", "Invalid email or password.");
+    }
 
     const { ok, needsRehash } = await verifyMerchantPassword(
       { password_hash: merchant.passwordHash, password_salt: merchant.passwordSalt, password_algo: merchant.passwordAlgo },
@@ -220,20 +226,25 @@ app.post(
       });
     }
 
-    // Session rotation: every login issues a fresh token.
+    // Session rotation: an incoming valid cookie is consumed (deleted) so
+    // sessions never accumulate, then a fresh token is issued.
+    const incoming = req.cookies?.[sessionCookieName()];
+    if (typeof incoming === "string" && incoming) {
+      await prisma.session.delete({ where: { tokenHash: hashSessionToken(incoming) } }).catch(() => undefined);
+    }
     const token = await createSession(merchant.id);
-    res.cookie(SESSION_COOKIE, token, sessionCookieOptions());
+    res.cookie(sessionCookieName(), token, sessionCookieOptions());
     const store = merchant.storeId ? await prisma.store.findUnique({ where: { id: merchant.storeId } }) : null;
     res.json({ merchant: toMerchantJson(merchant), store });
   })
 );
 
 app.post("/api/auth/logout", asyncHandler(requireAuth), async (req, res) => {
-  const token = req.cookies?.sanad_session;
+  const token = req.cookies?.[sessionCookieName()];
   if (typeof token === "string" && token) {
     await prisma.session.delete({ where: { tokenHash: hashSessionToken(token) } }).catch(() => undefined);
   }
-  res.clearCookie(SESSION_COOKIE, { path: "/" });
+  res.clearCookie(sessionCookieName(), { path: "/" });
   res.json({ ok: true });
 });
 
@@ -264,7 +275,7 @@ app.post(
     if (!ok) throw new ApiError(401, "INVALID_CREDENTIALS", "Current password is incorrect.");
 
     const hash = await hashPasswordArgon2(newPassword);
-    const current = req.cookies?.sanad_session;
+    const current = req.cookies?.[sessionCookieName()];
     await prisma.$transaction([
       prisma.merchant.update({
         where: { id: merchant.id },
@@ -827,6 +838,7 @@ app.use(errorHandler);
 async function boot() {
   // No seeding on boot. Demo data comes only from `npm run db:seed` (DEMO_MODE-gated).
   await checkDb();
+  startSessionCleanup();
   app.listen(env.port, "0.0.0.0", () => {
     logger.info(`[sanad-backend] listening on http://localhost:${env.port} (env=${env.nodeEnv})`);
   });

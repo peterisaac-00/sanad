@@ -1,7 +1,7 @@
 import { rateLimit } from "express-rate-limit";
 import type { Request, Response, NextFunction } from "express";
 import { prisma } from "./db.js";
-import { hashSessionToken } from "./auth.js";
+import { hashSessionToken, sessionCookieName } from "./auth.js";
 import { ApiError } from "./errors.js";
 import { env } from "./env.js";
 
@@ -37,7 +37,7 @@ function unauthorized(): ApiError {
 }
 
 export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
-  const token = req.cookies?.sanad_session;
+  const token = req.cookies?.[sessionCookieName()];
   if (!token || typeof token !== "string") {
     next(unauthorized());
     return;
@@ -100,7 +100,7 @@ export async function requireStoreOwnership(req: Request, _res: Response, next: 
  * attribute data (e.g. leads) without requiring login.
  */
 export async function attachAuth(req: Request, _res: Response, next: NextFunction) {
-  const token = req.cookies?.sanad_session;
+  const token = req.cookies?.[sessionCookieName()];
   if (!token || typeof token !== "string") {
     next();
     return;

@@ -111,7 +111,8 @@ merchant) and rotate `SESSION_SECRET`.
 | `403 CSRF_BLOCKED` on mutations | cross-site POST | call API from an allowed origin only |
 | `429` on login | rate limit (30/15 min) | wait, or check for brute force in logs |
 | `/api/health` → `503 db down` | Postgres unreachable | check `DATABASE_URL`, SG/firewall, `docker compose ps` |
-| `422 INVALID_TRANSITION` | illegal order jump | follow pending→confirmed→shipped→delivered |
+| `409 INVALID_TRANSITION` | illegal order jump | follow pending→confirmed→shipped→delivered (or →cancelled/returned) |
+| Register says email is taken | intentional: duplicate emails get 409 so merchants get a clear error; enumeration is blunted by the auth rate limit (30/15 min) | accepted tradeoff, do not "fix" by hiding it |
 
 Logs are structured (pino JSON). Passwords/tokens/cookies are redacted.
 
