@@ -32,7 +32,6 @@ export const registerSchema = z.strictObject({
   subdomain: subdomainField,
   countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, { message: "countryCode must be a 2-letter code" }).default("EG"),
   storeCurrency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, { message: "storeCurrency must be a 3-letter code" }).default("EGP"),
-  selectedPlan: z.enum(["monthly", "annual"]).default("annual"),
 });
 
 export const loginSchema = z.strictObject({
@@ -167,7 +166,6 @@ export const storeUpdateSchema = z
     phone: z.string().trim().max(32).optional(),
     countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, { message: "countryCode must be a 2-letter code" }).optional(),
     storeCurrency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, { message: "storeCurrency must be a 3-letter code" }).optional(),
-    selectedPlan: z.enum(["monthly", "annual"]).optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: "at least one field must be provided" });
 

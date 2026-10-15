@@ -117,6 +117,12 @@ Logs are structured (pino JSON). Passwords/tokens/cookies are redacted.
 
 ## 8. Out of scope / future work
 
+- Subscription billing is out of scope: every store is created with the
+  server-assigned default plan (`annual`), `plan` is not client-writable via
+  register or `PATCH /api/account/store`, and there are no payment, upgrade,
+  downgrade, or invoicing flows. Handle billing entirely outside the app
+  (e.g. manual invoicing or a billing provider) and change plans with direct
+  database updates until a billing module is built.
 - Email verification, password reset, 2FA, social login.
 - Multiple stores per merchant (schema-ready; API/UI assume one).
 - Product images/media uploads.

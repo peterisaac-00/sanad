@@ -139,7 +139,7 @@ app.post(
   authLimiter,
   validateBody(registerSchema),
   asyncHandler(async (req, res) => {
-    const { email, password, name, phone, storeName, subdomain, countryCode, storeCurrency, selectedPlan } = req.body;
+    const { email, password, name, phone, storeName, subdomain, countryCode, storeCurrency } = req.body;
 
     const emailTaken = await prisma.merchant.findUnique({ where: { email }, select: { id: true } });
     if (emailTaken) throw new ApiError(409, "EMAIL_TAKEN", "This email is already registered.");
@@ -151,6 +151,7 @@ app.post(
     const passwordHash = await hashPasswordArgon2(password);
 
     // Atomic store + merchant creation: a store can never be orphaned or hijacked by handle-claiming.
+    // The subscription plan is server-assigned (billing lives outside the app).
     try {
       await prisma.$transaction([
         prisma.store.create({
@@ -161,7 +162,7 @@ app.post(
             phone,
             countryCode,
             currency: storeCurrency,
-            plan: selectedPlan,
+            plan: "annual",
             status: "active",
           },
         }),
@@ -682,12 +683,12 @@ app.patch(
   validateBody(storeUpdateSchema),
   asyncHandler(async (req, res) => {
     if (!req.auth!.storeId) throw new ApiError(404, "STORE_NOT_FOUND", "No store linked to this account.");
-    const { storeName, phone, countryCode, storeCurrency, selectedPlan } = req.body as {
+    // NOTE: plan is intentionally not writable here (server-assigned billing).
+    const { storeName, phone, countryCode, storeCurrency } = req.body as {
       storeName?: string;
       phone?: string;
       countryCode?: string;
       storeCurrency?: string;
-      selectedPlan?: "monthly" | "annual";
     };
     const store = await prisma.store.update({
       where: { id: req.auth!.storeId },
@@ -696,7 +697,6 @@ app.patch(
         ...(phone !== undefined ? { phone } : {}),
         ...(countryCode !== undefined ? { countryCode } : {}),
         ...(storeCurrency !== undefined ? { currency: storeCurrency } : {}),
-        ...(selectedPlan !== undefined ? { plan: selectedPlan } : {}),
       },
     }).catch(() => null);
     if (!store) throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");

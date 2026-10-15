@@ -87,10 +87,11 @@ describe("orders: filters, transitions, summary", () => {
     await agent.patch("/api/account/store").send({}).expect(400);
     const upd = await agent
       .patch("/api/account/store")
-      .send({ storeName: "Renamed", phone: "01234567890", storeCurrency: "SAR", selectedPlan: "monthly" })
+      .send({ storeName: "Renamed", phone: "01234567890", storeCurrency: "SAR" })
       .expect(200);
     expect(upd.body.store.storeName).toBe("Renamed");
     expect(upd.body.store.currency).toBe("SAR");
+    expect(upd.body.store.plan).toBe("annual");
     // subdomain is not accepted at all (strict schema rejects unknown field)
     await agent.patch("/api/account/store").send({ subdomain: "hijack" }).expect(400);
   });
