@@ -1,4 +1,4 @@
-import { scryptSync, randomBytes, timingSafeEqual, createHash } from "node:crypto";
+import { scryptSync, randomBytes, timingSafeEqual, createHmac } from "node:crypto";
 import argon2 from "argon2";
 import type { CookieOptions } from "express";
 import { env } from "./env.js";
@@ -68,13 +68,13 @@ export async function verifyMerchantPassword(
   return { ok, needsRehash: ok };
 }
 
-/** Opaque session token (256-bit). Only its SHA-256 hash is stored in the DB. */
+/** Opaque session token (256-bit). Only its HMAC is stored in the DB. */
 export function newSessionToken(): string {
   return randomBytes(32).toString("hex");
 }
 
 export function hashSessionToken(token: string): string {
-  return createHash("sha256").update(token, "utf8").digest("hex");
+  return createHmac("sha256", env.sessionSecret).update(token, "utf8").digest("hex");
 }
 
 export const SESSION_COOKIE = "sanad_session";

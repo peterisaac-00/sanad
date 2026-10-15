@@ -1,6 +1,0 @@
-{
-  "name": "سند للتجارة | Sanad Commerce",
-  "description": "منصة تشغيل التجارة الإلكترونية العربية - أنشئ متجرك، أدر طلباتك وشحنك ومدفوعاتك، وانطلق من مصر إلى الخليج والوطن العربي بعمولة 0% على الطلبات.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

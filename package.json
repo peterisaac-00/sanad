@@ -1,16 +1,22 @@
 {
-  "name": "react-example",
+  "name": "sanad",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "engines": {
+    "node": "24.x",
+    "npm": ">=11"
+  },
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "dev:backend": "tsx --watch server/index.ts",
     "dev:full": "node scripts/dev-full.mjs",
     "build": "vite build",
-    "start": "tsx server/index.ts",
+    "build:server": "node scripts/build-server.mjs",
+    "prestart": "node scripts/build-server.mjs",
+    "start": "node dist-server/server.cjs",
     "preview": "vite preview",
-    "clean": "rm -rf dist server.js",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});require('fs').rmSync('dist-server',{recursive:true,force:true});console.log('cleaned')\"",
     "lint": "tsc --noEmit",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
@@ -18,7 +24,6 @@
     "db:reset": "node scripts/db-reset.mjs"
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@tailwindcss/vite": "^4.3.3",

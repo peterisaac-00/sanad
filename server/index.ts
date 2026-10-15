@@ -108,9 +108,14 @@ async function createSession(merchantId: string): Promise<string> {
   return token;
 }
 
-// ---- health (public; DB connectivity check lands in Phase 4) ----
-app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, service: "sanad-commerce-backend", time: nowIso() });
+// ---- health (public): liveness + database connectivity ----
+app.get("/api/health", async (_req, res) => {
+  try {
+    await checkDb();
+    res.json({ ok: true, service: "sanad-commerce-backend", time: nowIso(), db: "up" });
+  } catch {
+    res.status(503).json({ ok: false, service: "sanad-commerce-backend", time: nowIso(), db: "down" });
+  }
 });
 
 // ---- auth (public: register, login) ----
