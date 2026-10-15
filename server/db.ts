@@ -2,6 +2,8 @@ import { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import fs from "node:fs";
+import { env } from "./env.js";
+import { hashPasswordArgon2 } from "./auth.js";
 
 const DB_PATH =
   process.env.DATABASE_PATH ||
@@ -34,7 +36,8 @@ CREATE TABLE IF NOT EXISTS merchants (
   store_handle TEXT NOT NULL DEFAULT '',
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
-  password_salt TEXT NOT NULL,
+  password_salt TEXT,
+  password_algo TEXT NOT NULL DEFAULT 'scrypt',
   name TEXT DEFAULT '',
   phone TEXT DEFAULT '',
   created_at TEXT NOT NULL
@@ -81,6 +84,12 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 `);
 
+// Lightweight forward migration for dev databases created before password_algo existed.
+const merchantCols = db.prepare("PRAGMA table_info(merchants)").all() as { name: string }[];
+if (!merchantCols.some((c) => c.name === "password_algo")) {
+  db.exec("ALTER TABLE merchants ADD COLUMN password_algo TEXT NOT NULL DEFAULT 'scrypt'");
+}
+
 function tableIsEmpty(table: string): boolean {
   const row = db.prepare(`SELECT COUNT(*) as c FROM ${table}`).get() as { c: number };
   return row.c === 0;
@@ -94,8 +103,47 @@ export function newId(prefix = ""): string {
   return prefix + randomUUID().slice(0, 8);
 }
 
-/** Seed demo store (saraya) + products + orders matching the frontend demo cockpit. */
-export function seedIfEmpty() {
+/** Full merchant row as stored in SQLite. */
+export interface MerchantRow {
+  id: string;
+  store_id: string | null;
+  store_handle: string;
+  email: string;
+  name: string;
+  phone: string;
+  password_hash: string;
+  password_salt: string | null;
+  password_algo: string;
+  created_at: string;
+}
+
+/** node:sqlite has no transaction helper: implement BEGIN/COMMIT/ROLLBACK. */
+export function runTransaction<T>(fn: () => T): T {
+  db.exec("BEGIN");
+  try {
+    const value = fn();
+    db.exec("COMMIT");
+    return value;
+  } catch (err) {
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      // ignore rollback failure; original error matters
+    }
+    throw err;
+  }
+}
+
+const DEMO_EMAIL = "merchant@saraya.sanad.app";
+
+/**
+ * Demo seed. Runs ONLY when DEMO_MODE=true (default off) and only fills
+ * empty tables — never touches real merchant data. Phase 2 moves this to a
+ * standalone seed script; until then boot-time seeding stays strictly
+ * demo-gated.
+ */
+export async function seedDemoIfNeeded(): Promise<void> {
+  if (!env.demoMode) return;
   if (!tableIsEmpty("stores")) return;
 
   const t = nowIso();
@@ -130,7 +178,15 @@ export function seedIfEmpty() {
     ).run(o.id, storeId, o.customer, o.city, o.items, o.amount_text, o.amount_egp, o.payment, o.status, o.courier, t);
   }
 
-  console.log(`[db] seeded demo store 'saraya' (${DB_PATH})`);
-}
+  // Demo merchant account (demo mode only). Password comes from
+  // DEMO_MERCHANT_PASSWORD, never hardcoded.
+  if (tableIsEmpty("merchants")) {
+    const hash = await hashPasswordArgon2(env.demoMerchantPassword);
+    db.prepare(
+      `INSERT INTO merchants (id, store_id, store_handle, email, password_hash, password_salt, password_algo, name, phone, created_at)
+       VALUES (?, ?, ?, ?, ?, NULL, 'argon2id', ?, ?, ?)`
+    ).run(newId("merch_"), storeId, "saraya", DEMO_EMAIL, hash, "Saraya Demo", "01000000000", t);
+  }
 
-seedIfEmpty();
+  console.log(`[db] DEMO_MODE seed complete (${DB_PATH})`);
+}

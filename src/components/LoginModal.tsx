@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Language } from '../data/translations';
-import { X, LogIn, Lock, Mail, Store, ShieldCheck } from 'lucide-react';
-import { api, saveSession } from '../lib/api';
+import { X, LogIn, Lock, Mail, ShieldCheck } from 'lucide-react';
+import { api } from '../lib/api';
 
 interface LoginModalProps {
   currentLang: Language;
@@ -18,8 +18,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onOpenStoreModal,
   onLoginSuccess
 }) => {
-  const [storeHandle, setStoreHandle] = useState<string>('saraya');
-  const [email, setEmail] = useState<string>('merchant@saraya.sanad.app');
+  const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -31,24 +30,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setError('');
     setIsLoading(true);
     try {
-      const res = await api.login(email.trim().toLowerCase(), password, storeHandle.trim().toLowerCase());
-      saveSession(res.token);
+      // Session is issued as an httpOnly cookie; nothing is stored in JS storage.
+      await api.login(email.trim().toLowerCase(), password);
       onClose();
       onLoginSuccess();
     } catch (err: any) {
-      // Demo fallback: allow the prefilled demo account to enter the cockpit
-      // even before a merchant row exists in the DB.
-      const isDemo = email.trim().toLowerCase() === 'merchant@saraya.sanad.app' && storeHandle.trim().toLowerCase() === 'saraya';
-      if (isDemo) {
-        console.warn('[login] backend unavailable, entering demo cockpit:', err?.message);
-        onClose();
-        onLoginSuccess();
-        return;
-      }
       setError(
         currentLang === 'ar'
-          ? 'تعذر تسجيل الدخول. تحقق من البريد وكلمة المرور ومعرّف المتجر، أو أنشئ حساباً جديداً.'
-          : (err?.message || 'Login failed. Check your credentials.')
+          ? 'تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور، أو أنشئ حساب تاجر جديداً.'
+          : (err?.message || 'Login failed. Check your email and password.')
       );
     } finally {
       setIsLoading(false);
@@ -85,29 +75,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
           <div>
             <label className="block font-semibold text-slate-700 mb-1">
-              {currentLang === 'ar' ? 'معرّف المتجر (Store Handle):' : 'Store Handle / Subdomain:'}
-            </label>
-            <div className="flex items-center">
-              <input
-                type="text"
-                value={storeHandle}
-                onChange={(e) => setStoreHandle(e.target.value)}
-                className="w-full py-2.5 px-3 border border-slate-300 rounded-s-lg text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-              />
-              <span className="py-2.5 px-3 bg-slate-100 border border-slate-300 text-slate-500 text-xs font-mono border-s-0 rounded-e-lg">
-                .sanad.app
-              </span>
-            </div>
-          </div>
-
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">
               {currentLang === 'ar' ? 'البريد الإلكتروني للتاجر:' : 'Merchant Email:'}
             </label>
             <div className="relative">
               <input
                 type="email"
+                required
+                autoComplete="email"
                 value={email}
+                placeholder={currentLang === 'ar' ? 'name@store.com' : 'name@store.com'}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full py-2.5 px-3 border border-slate-300 rounded-lg text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
               />
@@ -122,8 +98,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <div className="relative">
               <input
                 type="password"
+                required
+                autoComplete="current-password"
                 value={password}
-                placeholder={currentLang === 'ar' ? 'أدخل كلمة المرور (6 أحرف على الأقل)' : 'Enter password (min 6 chars)'}
+                placeholder={currentLang === 'ar' ? 'أدخل كلمة المرور' : 'Enter your password'}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full py-2.5 px-3 border border-slate-300 rounded-lg text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
               />

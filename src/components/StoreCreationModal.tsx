@@ -32,6 +32,8 @@ export const StoreCreationModal: React.FC<StoreCreationModalProps> = ({
   const [storeName, setStoreName] = useState<string>('');
   const [subdomain, setSubdomain] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
   const [countryCode, setCountryCode] = useState<string>('EG');
   const [storeCurrency, setStoreCurrency] = useState<string>('EGP');
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
@@ -45,29 +47,28 @@ export const StoreCreationModal: React.FC<StoreCreationModalProps> = ({
     if (step < 3) {
       setStep(step + 1);
     } else {
-      // Final step: persist store to backend, then show success screen.
-      // Falls back to local success if backend is unreachable (demo mode).
+      // Final step: create the store AND the merchant account atomically.
+      // The session arrives as an httpOnly cookie. Failures are shown,
+      // never silently bypassed.
       setIsSaving(true);
       setSaveError('');
       try {
-        await api.createStore({
-          storeName: storeName.trim() || (currentLang === 'ar' ? 'متجري التجاري' : 'My Store'),
-          subdomain: subdomain.trim().toLowerCase(),
+        await api.register({
+          email: email.trim().toLowerCase(),
+          password,
           phone: phone.trim(),
+          storeName: storeName.trim(),
+          subdomain: subdomain.trim().toLowerCase(),
           countryCode,
           storeCurrency,
           selectedPlan,
         });
         setIsSuccess(true);
       } catch (err: any) {
-        const msg = err?.message || 'save failed';
-        if (/already taken|409/i.test(msg)) {
-          setSaveError(currentLang === 'ar' ? 'هذا الرابط محجوز. جرّب اسماً آخر.' : 'This subdomain is taken. Try another.');
-        } else {
-          // Backend down? Still show success so demo isn't blocked, but note it.
-          console.warn('[store] backend save failed, continuing in demo mode:', msg);
-          setIsSuccess(true);
-        }
+        setSaveError(
+          err?.message ||
+            (currentLang === 'ar' ? 'تعذر إنشاء المتجر. حاول مرة أخرى.' : 'Could not create the store. Try again.')
+        );
       } finally {
         setIsSaving(false);
       }
@@ -224,6 +225,37 @@ export const StoreCreationModal: React.FC<StoreCreationModalProps> = ({
                       onChange={(e) => setPhone(e.target.value)}
                       className="w-full py-2.5 px-3 border border-slate-300 rounded-lg text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                     />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        {currentLang === 'ar' ? 'البريد الإلكتروني (حساب الدخول):' : 'Email (login account):'}
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        autoComplete="email"
+                        placeholder="name@store.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full py-2.5 px-3 border border-slate-300 rounded-lg text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        {currentLang === 'ar' ? 'كلمة المرور (8 أحرف على الأقل):' : 'Password (min 8 chars):'}
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        autoComplete="new-password"
+                        minLength={8}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full py-2.5 px-3 border border-slate-300 rounded-lg text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
