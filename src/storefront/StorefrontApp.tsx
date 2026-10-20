@@ -32,14 +32,14 @@ function StoreLogo({ size = "md", onDark = false }: { size?: "sm" | "md" | "lg";
   const { store, theme } = useStorefront();
   const name = store.store_name || "المتجر";
   const logo = store.logo_url || "";
-  const sizes = { sm: "h-8 w-8 rounded-lg text-xs", md: "h-10 w-10 rounded-xl text-sm", lg: "h-16 w-16 rounded-2xl text-xl" };
+  const sizes = { sm: "h-8 w-8 rounded-brand-sm text-xs", md: "h-10 w-10 rounded-brand text-sm", lg: "h-16 w-16 rounded-brand text-xl" };
   return (
     <span className="flex items-center gap-2.5">
       {logo ? (
         <img src={mediaUrl(logo)} alt={name} className={cn("shrink-0 object-cover", sizes[size])} />
       ) : (
         <span
-          className={cn("flex shrink-0 items-center justify-center font-bold text-white shadow-sm", sizes[size])}
+          className={cn("flex shrink-0 items-center justify-center font-bold text-on-brand shadow-sm", sizes[size])}
           style={{ background: theme.primary }}
         >
           {name.trim().charAt(0) || "س"}
@@ -87,7 +87,7 @@ function StorefrontHeader() {
   return (
     <header className="sticky top-0 z-40">
       {published ? (
-        <div className="text-white" style={{ background: theme.primary }}>
+        <div className="text-on-brand" style={{ background: theme.primary }}>
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-1.5 text-[10px] font-semibold sm:px-6">
             <span className="flex items-center gap-1.5"><Truck className="h-3 w-3" /> {headerNotice()}</span>
             <div className="flex items-center gap-3">
@@ -102,7 +102,7 @@ function StorefrontHeader() {
         </div>
       ) : null}
 
-      <div className={cn("border-b backdrop-blur-md", theme.dark ? "border-white/10 bg-[#070b13]/90" : "border-slate-200 bg-white/90")}>
+      <div className="border-b border-line bg-card/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
           <Link href={base} aria-label={store.store_name} className="min-w-0 shrink-0">
             <StoreLogo />
@@ -137,12 +137,12 @@ function StorefrontHeader() {
             {published ? (
               <Link
                 href={`${base}/cart`}
-                className={cn("relative inline-flex h-10 w-10 items-center justify-center rounded-xl border transition", theme.border, theme.navLink)}
+                className={cn("relative inline-flex h-10 w-10 items-center justify-center rounded-brand border transition", theme.border, theme.navLink)}
                 aria-label="سلة التسوق"
               >
                 <ShoppingBag className="h-4 w-4" />
                 {cartCount > 0 ? (
-                  <span className="absolute -end-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white" style={{ background: theme.primary }}>
+                  <span className="absolute -end-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-on-brand" style={{ background: theme.primary }}>
                     {cartCount > 99 ? "99+" : cartCount}
                   </span>
                 ) : null}
@@ -151,7 +151,7 @@ function StorefrontHeader() {
             <button
               type="button"
               onClick={() => setMenuOpen((open) => !open)}
-              className={cn("inline-flex h-10 w-10 items-center justify-center rounded-xl border transition lg:hidden", theme.border, theme.navLink)}
+              className={cn("inline-flex h-10 w-10 items-center justify-center rounded-brand border transition lg:hidden", theme.border, theme.navLink)}
               aria-label="القائمة"
               aria-expanded={menuOpen}
             >
@@ -174,16 +174,16 @@ function StorefrontHeader() {
                       <Link
                         key={item.href}
                         href={item.href}
-                        className={cn("flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold", theme.soft, item.active ? theme.heading : theme.muted)}
+                        className={cn("flex items-center gap-2 rounded-brand px-3 py-2.5 text-xs font-semibold", theme.soft, item.active ? theme.heading : theme.muted)}
                       >
                         <Icon className="h-4 w-4" /> {item.label}
                       </Link>
                     );
                   })}
-                  <Link href={`${base}/cart`} className={cn("flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold", theme.soft, theme.heading)}>
+                  <Link href={`${base}/cart`} className={cn("flex items-center gap-2 rounded-brand px-3 py-2.5 text-xs font-semibold", theme.soft, theme.heading)}>
                     <ShoppingBag className="h-4 w-4" /> السلة {cartCount ? `(${cartCount})` : ""}
                   </Link>
-                  <Link href={`${base}/track`} className={cn("flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold", theme.soft, theme.muted)}>
+                  <Link href={`${base}/track`} className={cn("flex items-center gap-2 rounded-brand px-3 py-2.5 text-xs font-semibold", theme.soft, theme.muted)}>
                     <Search className="h-4 w-4" /> تتبع الطلب
                   </Link>
                 </div>
@@ -192,7 +192,7 @@ function StorefrontHeader() {
                     href={store.whatsapp_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-2 flex items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-xs font-bold text-emerald-500"
+                    className="mt-2 flex items-center justify-center gap-2 rounded-brand border border-success-line bg-success-soft px-3 py-2.5 text-xs font-bold text-success"
                   >
                     <MessageCircle className="h-4 w-4" /> تواصل على واتساب
                   </a>
@@ -215,7 +215,7 @@ function StorefrontFooter() {
   const year = new Date().getFullYear();
   const whatsapp = store.whatsapp_url || "";
   return (
-    <footer className={cn("mt-10 border-t", theme.border, theme.dark ? "bg-[#050810]" : "bg-white")}>
+    <footer className={cn("mt-10 border-t bg-surface", theme.border)}>
       <div className="mx-auto grid max-w-6xl gap-7 px-4 py-10 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
         <div className="space-y-3 sm:col-span-2 lg:col-span-1">
           <StoreLogo />
@@ -263,7 +263,7 @@ function StorefrontFooter() {
           <ul className={cn("space-y-2 text-[11px]", theme.muted)}>
             {whatsapp ? (
               <li>
-                <a href={whatsapp} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-emerald-500 hover:opacity-80">
+                <a href={whatsapp} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-success hover:text-brand-hover">
                   <MessageCircle className="h-3.5 w-3.5" /> واتساب المتجر
                 </a>
               </li>
@@ -299,7 +299,7 @@ function FloatingWhatsApp() {
       href={store.whatsapp_url}
       target="_blank"
       rel="noreferrer"
-      className="fixed bottom-5 start-5 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 text-white shadow-2xl transition hover:bg-emerald-600"
+      className="fixed bottom-5 start-5 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full bg-success text-on-success shadow-brand-popover transition hover:brightness-95"
       aria-label="تواصل عبر واتساب"
     >
       <MessageCircle className="h-5 w-5" />
@@ -313,17 +313,17 @@ function ComingSoon() {
   const whatsapp = store.whatsapp_url || "";
   return (
     <div className="mx-auto max-w-4xl px-4 py-14">
-      <div className={cn("overflow-hidden rounded-3xl border", theme.panel)}>
+      <div className={cn("overflow-hidden rounded-brand-lg border", theme.panel)}>
         <div className="relative min-h-56 overflow-hidden">
           {cover ? (
             <img src={mediaUrl(cover)} alt="" className="absolute inset-0 h-full w-full object-cover" />
           ) : (
             <div
               className="absolute inset-0"
-              style={{ background: `radial-gradient(circle at 20% 20%, ${theme.primary}66, transparent 55%), #0b1220` }}
+              style={{ background: `radial-gradient(circle at 20% 20%, color-mix(in srgb, ${theme.primary} 40%, transparent), transparent 55%), var(--color-secondary)` }}
             />
           )}
-          <div className="absolute inset-0 bg-slate-950/65" />
+          <div className="absolute inset-0 bg-overlay" />
           <div className="relative flex min-h-56 flex-col items-center justify-center gap-3 p-6 text-center">
             <StoreLogo size="lg" onDark />
             <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-bold text-white backdrop-blur">
@@ -342,16 +342,16 @@ function ComingSoon() {
                 href={whatsapp}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white"
+                className="inline-flex items-center gap-2 rounded-brand px-4 py-2.5 text-xs font-bold text-on-brand"
                 style={{ background: theme.primary }}
               >
                 <MessageCircle className="h-4 w-4" /> تواصل مع المتجر
               </a>
             ) : null}
-            <Link href="/" className={cn("inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold", theme.border)}>
+            <Link href="/" className={cn("inline-flex items-center gap-2 rounded-brand border bg-card px-4 py-2.5 text-xs font-bold text-ink-soft", theme.border)}>
               <Store className="h-4 w-4" /> العودة إلى سند
             </Link>
-            <Link href="/dashboard" className={cn("inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold", theme.border)}>
+            <Link href="/dashboard" className={cn("inline-flex items-center gap-2 rounded-brand border bg-card px-4 py-2.5 text-xs font-bold text-ink-soft", theme.border)}>
               <ArrowLeft className="h-4 w-4" /> إدارة المتجر
             </Link>
           </div>
@@ -411,13 +411,13 @@ function StorefrontShell() {
 
 function StorefrontLoading() {
   return (
-    <div dir="rtl" className="min-h-screen bg-[#070b13] px-4 py-16 text-slate-300">
+    <div dir="rtl" data-theme="light" className="min-h-screen bg-canvas px-4 py-16 text-subtle">
       <div className="mx-auto max-w-6xl space-y-5">
-        <div className="h-10 w-48 animate-pulse rounded-xl bg-white/5" />
-        <div className="h-64 animate-pulse rounded-3xl bg-white/5" />
+        <div className="h-10 w-48 animate-pulse rounded-brand bg-surface" />
+        <div className="h-64 animate-pulse rounded-brand-lg bg-surface" />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="h-52 animate-pulse rounded-2xl bg-white/5" />
+            <div key={index} className="h-52 animate-pulse rounded-brand bg-surface" />
           ))}
         </div>
       </div>
@@ -427,20 +427,20 @@ function StorefrontLoading() {
 
 function StorefrontUnavailable({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#070b13] p-5 text-slate-200">
-      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/[0.04] p-7 text-center">
-        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-400">
+    <div dir="rtl" data-theme="light" className="flex min-h-screen items-center justify-center bg-canvas p-5 text-ink-soft">
+      <div className="surface-card w-full max-w-md p-7 text-center">
+        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-brand bg-brand-soft text-brand">
           <Store className="h-6 w-6" />
         </div>
-        <h1 className="font-heading text-xl font-bold text-white">المتجر غير متاح</h1>
-        <p className="mt-2 text-xs leading-6 text-slate-400">{message}</p>
+        <h1 className="font-heading text-xl font-bold text-ink">المتجر غير متاح</h1>
+        <p className="mt-2 text-xs leading-6 text-subtle">{message}</p>
         <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
           {onRetry ? (
-            <button type="button" onClick={onRetry} className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white">
+            <button type="button" onClick={onRetry} className="rounded-brand bg-brand px-4 py-2.5 text-xs font-bold text-on-brand">
               إعادة المحاولة
             </button>
           ) : null}
-          <Link href="/" className="rounded-xl border border-white/15 px-4 py-2.5 text-xs font-bold text-slate-200">
+          <Link href="/" className="rounded-brand border border-line bg-card px-4 py-2.5 text-xs font-bold text-ink-soft">
             العودة إلى سند
           </Link>
         </div>

@@ -52,7 +52,7 @@ export function LoginPage() {
       footer={
         <>
           ليس لديك حساب؟{" "}
-          <Link href="/auth/register" className="font-bold text-blue-400 hover:text-blue-300">
+          <Link href="/auth/register" className="font-bold text-brand hover:text-brand">
             أنشئ حساباً جديداً
           </Link>
         </>
@@ -63,14 +63,14 @@ export function LoginPage() {
 
         <Field label="البريد الإلكتروني" required>
           <div className="relative">
-            <Mail className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Mail className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
             <Input
               type="email"
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@store.com"
-              className="pe-10"
+              className="pe-10 ps-10"
               dir="ltr"
               required
             />
@@ -79,7 +79,7 @@ export function LoginPage() {
 
         <Field label="كلمة المرور" required>
           <div className="relative">
-            <LockKeyhole className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <LockKeyhole className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
             <Input
               type={showPassword ? "text" : "password"}
               autoComplete="current-password"
@@ -93,7 +93,7 @@ export function LoginPage() {
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute start-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-500 hover:bg-slate-800 hover:text-slate-200"
+              className="absolute start-2 top-1/2 -translate-y-1/2 rounded-brand-sm p-1.5 text-subtle hover:bg-surface hover:text-ink"
               aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -101,12 +101,12 @@ export function LoginPage() {
           </div>
         </Field>
 
-        <div className="flex items-center justify-between text-[11px] text-slate-500">
+        <div className="flex items-center justify-between text-[11px] text-subtle">
           <span className="inline-flex items-center gap-1.5">
             <LockKeyhole className="h-3 w-3" />
             جلسة آمنة عبر كوكي httpOnly
           </span>
-          <Link href="/auth/register" className="hover:text-slate-300">نسيت كلمة المرور؟</Link>
+          <Link href="/auth/register" className="hover:text-ink">نسيت كلمة المرور؟</Link>
         </div>
 
         <Button type="submit" size="lg" className="w-full" loading={submitting}>
@@ -116,13 +116,13 @@ export function LoginPage() {
       </form>
 
       <div className="mt-5 grid grid-cols-2 gap-2">
-        <Link href="/auth/register" className="rounded-xl border border-slate-700/80 bg-slate-950/40 px-3 py-3 text-center transition hover:border-blue-500/50 hover:bg-slate-900">
-          <div className="text-xs font-bold text-white">حساب جديد</div>
-          <div className="mt-0.5 text-[10px] text-slate-500">ابدأ متجرك مجاناً</div>
+        <Link href="/auth/register" className="rounded-brand border border-line bg-surface px-3 py-3 text-center transition hover:border-brand-line hover:bg-brand-soft">
+          <div className="text-xs font-bold text-ink">حساب جديد</div>
+          <div className="mt-0.5 text-[10px] text-subtle">ابدأ متجرك مجاناً</div>
         </Link>
-        <Link href="/" className="rounded-xl border border-slate-700/80 bg-slate-950/40 px-3 py-3 text-center transition hover:border-blue-500/50 hover:bg-slate-900">
-          <div className="flex items-center justify-center gap-1 text-xs font-bold text-white">استكشف سند</div>
-          <div className="mt-0.5 text-[10px] text-slate-500">تعرف على المنصة</div>
+        <Link href="/" className="rounded-brand border border-line bg-surface px-3 py-3 text-center transition hover:border-brand-line hover:bg-brand-soft">
+          <div className="flex items-center justify-center gap-1 text-xs font-bold text-ink">استكشف سند</div>
+          <div className="mt-0.5 text-[10px] text-subtle">تعرف على المنصة</div>
         </Link>
       </div>
     </AuthShell>

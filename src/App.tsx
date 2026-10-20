@@ -1,5 +1,6 @@
 import React from 'react';
 import { SessionProvider } from './lib/session';
+import { ThemeProvider } from './lib/theme';
 import { ToastProvider } from './components/ui';
 import { usePath } from './lib/router';
 import { MarketingApp } from './marketing/MarketingApp';
@@ -48,15 +49,21 @@ function RoutedApp() {
     );
   }
 
-  return <MarketingApp />;
+  return (
+    <div data-theme="light" className="min-h-screen bg-canvas">
+      <MarketingApp />
+    </div>
+  );
 }
 
 export default function App() {
   return (
-    <ToastProvider>
-      <SessionProvider>
-        <RoutedApp />
-      </SessionProvider>
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <SessionProvider>
+          <RoutedApp />
+        </SessionProvider>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }

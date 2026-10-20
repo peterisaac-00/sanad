@@ -65,11 +65,11 @@ export function StorefrontHomePage() {
             <div
               className="h-full w-full"
               style={{
-                background: `radial-gradient(circle at 18% 18%, ${theme.primary}55, transparent 50%), radial-gradient(circle at 85% 80%, ${theme.primary}25, transparent 42%), linear-gradient(135deg, #0b1220, #060a13)`,
+                background: `radial-gradient(circle at 18% 18%, color-mix(in srgb, ${theme.primary} 33%, transparent), transparent 50%), radial-gradient(circle at 85% 80%, color-mix(in srgb, ${theme.primary} 15%, transparent), transparent 42%), linear-gradient(135deg, var(--color-secondary), var(--color-canvas))`,
               }}
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-l from-slate-950/95 via-slate-950/75 to-slate-950/35" />
+          <div className="absolute inset-0 bg-gradient-to-l from-secondary via-secondary/75 to-secondary/35" />
         </div>
 
         <div className="relative mx-auto flex min-h-[420px] max-w-6xl flex-col justify-center gap-5 px-4 py-14 sm:px-6 lg:min-h-[500px] lg:py-20">
@@ -78,11 +78,11 @@ export function StorefrontHomePage() {
               <img
                 src={mediaUrl(logo)}
                 alt={name}
-                className="h-12 w-12 rounded-2xl border border-white/20 bg-white/10 object-cover"
+                className="h-12 w-12 rounded-brand border border-white/20 bg-white/10 object-cover"
               />
             ) : (
               <div
-                className="flex h-12 w-12 items-center justify-center rounded-2xl text-lg font-bold text-white shadow-lg"
+                className="flex h-12 w-12 items-center justify-center rounded-brand text-lg font-bold text-on-brand shadow-lg"
                 style={{ background: theme.primary }}
               >
                 {name.trim().charAt(0) || "س"}
@@ -95,7 +95,7 @@ export function StorefrontHomePage() {
 
           <div className="max-w-2xl">
             <h1 className="font-heading text-3xl font-extrabold leading-tight text-white sm:text-5xl">{name}</h1>
-            <p className="mt-3 max-w-xl text-sm leading-7 text-slate-200 sm:text-base">
+            <p className="mt-3 max-w-xl text-sm leading-7 text-white/80 sm:text-base">
               {store.description || "تسوّق منتجات مختارة بعناية، مع توصيل منظم ودفع آمن عند الاستلام."}
             </p>
           </div>
@@ -103,7 +103,7 @@ export function StorefrontHomePage() {
           <div className="flex flex-wrap items-center gap-2.5">
             <Link
               href={`${base}/products`}
-              className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:opacity-90"
+              className="inline-flex items-center gap-2 rounded-brand px-5 py-3 text-sm font-bold text-on-brand shadow-lg transition hover:opacity-90"
               style={{ background: theme.primary }}
             >
               <ShoppingBag className="h-4 w-4" />
@@ -111,7 +111,7 @@ export function StorefrontHomePage() {
             </Link>
             <Link
               href={`${base}/categories`}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/15"
+              className="inline-flex items-center gap-2 rounded-brand border border-white/25 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20"
             >
               <Layers className="h-4 w-4" />
               تصفح الأقسام
@@ -121,7 +121,7 @@ export function StorefrontHomePage() {
                 href={whatsapp}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-5 py-3 text-sm font-bold text-emerald-100 transition hover:bg-emerald-500/25"
+                className="inline-flex items-center gap-2 rounded-brand border border-brand-on-dark/40 bg-brand-on-dark/15 px-5 py-3 text-sm font-bold text-brand-on-dark transition hover:bg-brand-on-dark/25"
               >
                 <MessageCircle className="h-4 w-4" />
                 تواصل واتساب
@@ -129,7 +129,7 @@ export function StorefrontHomePage() {
             ) : null}
           </div>
 
-          <div className="flex flex-wrap gap-x-5 gap-y-2 text-[11px] text-slate-300">
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-[11px] text-white/70">
             {store.cod_enabled ? <span className="inline-flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> الدفع عند الاستلام متاح</span> : null}
             {store.support_email ? <span>الدعم: {store.support_email}</span> : null}
             {store.return_policy ? <span>سياسة استرجاع واضحة</span> : null}
@@ -158,7 +158,7 @@ export function StorefrontHomePage() {
                   <Link
                     key={category.id}
                     href={`${base}/categories/${encodeURIComponent(category.slug)}`}
-                    className={cn("group overflow-hidden rounded-2xl border transition", theme.panel, theme.panelHover)}
+                    className={cn("group overflow-hidden rounded-brand border transition", theme.panel, theme.panelHover)}
                   >
                     <div className="relative aspect-[4/3] overflow-hidden">
                       {category.imageUrl ? (
@@ -166,15 +166,15 @@ export function StorefrontHomePage() {
                       ) : (
                         <div
                           className="flex h-full w-full items-center justify-center"
-                          style={{ background: `linear-gradient(135deg, ${theme.primary}22, transparent)` }}
+                          style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${theme.primary} 13%, transparent), transparent)` }}
                         >
                           <Layers className="h-7 w-7" style={{ color: theme.primary }} />
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-secondary/75 to-transparent" />
                       <div className="absolute inset-x-3 bottom-2.5 flex items-end justify-between gap-2">
                         <span className="text-sm font-bold text-white">{category.nameAr || category.name}</span>
-                        <span className="rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-semibold text-white">
+                        <span className="rounded-full bg-overlay px-2 py-0.5 text-[10px] font-semibold text-white">
                           {count} منتج
                         </span>
                       </div>
@@ -238,7 +238,7 @@ export function StorefrontHomePage() {
                   href={whatsapp}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white"
+                  className="inline-flex items-center gap-2 rounded-brand px-4 py-2.5 text-xs font-bold text-on-brand"
                   style={{ background: theme.primary }}
                 >
                   <MessageCircle className="h-4 w-4" /> تواصل مع المتجر
@@ -250,10 +250,10 @@ export function StorefrontHomePage() {
 
         {whatsapp ? (
           <section
-            className="overflow-hidden rounded-3xl border p-6 sm:p-8"
+            className="overflow-hidden rounded-brand-lg border p-6 sm:p-8"
             style={{
-              borderColor: `${theme.primary}33`,
-              background: `linear-gradient(120deg, ${theme.primary}18, transparent 55%)`,
+              borderColor: `color-mix(in srgb, ${theme.primary} 20%, transparent)`,
+              background: `linear-gradient(120deg, color-mix(in srgb, ${theme.primary} 9%, transparent), transparent 55%)`,
             }}
           >
             <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -267,7 +267,7 @@ export function StorefrontHomePage() {
                 href={whatsapp}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex shrink-0 items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white"
+                className="inline-flex shrink-0 items-center gap-2 rounded-brand px-5 py-3 text-sm font-bold text-on-brand"
                 style={{ background: theme.primary }}
               >
                 <MessageCircle className="h-4 w-4" /> راسلنا على واتساب

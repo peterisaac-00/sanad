@@ -120,7 +120,7 @@ export function AssistantPage() {
 
           <div className="grid gap-5 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
             <Card className="p-4">
-              <div className="mb-3 flex items-center gap-1.5 text-xs font-bold text-white"><Wand2 className="h-3.5 w-3.5 text-blue-400" /> اختر نوع المحتوى</div>
+              <div className="mb-3 flex items-center gap-1.5 text-xs font-bold text-ink"><Wand2 className="h-3.5 w-3.5 text-brand" /> اختر نوع المحتوى</div>
               <div className="grid gap-2">
                 {Object.entries(capabilities).map(([key, label]) => (
                   <button
@@ -128,8 +128,8 @@ export function AssistantPage() {
                     type="button"
                     onClick={() => { setTask(key); setInputs({}); setResult(null); }}
                     className={cn(
-                      "flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-start text-xs font-semibold transition",
-                      task === key ? "border-blue-500/50 bg-blue-500/10 text-blue-100" : "border-slate-800 bg-slate-950/40 text-slate-300 hover:border-slate-600"
+                      "flex items-center gap-2.5 rounded-brand border px-3 py-2.5 text-start text-xs font-semibold transition",
+                      task === key ? "border-brand-line bg-brand/10 text-brand" : "border-line bg-surface text-ink-soft hover:border-line"
                     )}
                   >
                     <span>{TASK_ICONS[key] ?? "✨"}</span>
@@ -138,7 +138,7 @@ export function AssistantPage() {
                 ))}
               </div>
 
-              <div className="mt-4 space-y-3 border-t border-slate-800 pt-4">
+              <div className="mt-4 space-y-3 border-t border-line pt-4">
                 {fields.map((field) => (
                   <Field key={field.key} label={field.label} required={field.required}>
                     <Input
@@ -151,13 +151,13 @@ export function AssistantPage() {
                 <Button className="w-full" loading={busy} disabled={!configured} onClick={generate}>
                   <Sparkles className="h-4 w-4" /> توليد المحتوى
                 </Button>
-                {!configured ? <div className="text-center text-[10px] text-slate-500">يتاح التوليد بعد تهيئة مزود الذكاء الاصطناعي في بيئة الخادم.</div> : null}
+                {!configured ? <div className="text-center text-[10px] text-subtle">يتاح التوليد بعد تهيئة مزود الذكاء الاصطناعي في بيئة الخادم.</div> : null}
               </div>
             </Card>
 
             <Card className="flex min-h-[320px] flex-col p-4">
               <div className="mb-3 flex items-center justify-between">
-                <div className="text-xs font-bold text-white">النتيجة</div>
+                <div className="text-xs font-bold text-ink">النتيجة</div>
                 {result ? <CopyButton value={result.text} label="نسخ النص" /> : null}
               </div>
               {result ? (
@@ -168,18 +168,18 @@ export function AssistantPage() {
                     onChange={(e) => setResult({ ...result, text: e.target.value })}
                     className="flex-1"
                   />
-                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500">
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[10px] text-subtle">
                     <span>يمكنك تعديل النص قبل نسخه — التوليد نقطة بداية وليس نصاً نهائياً.</span>
                     <span className="font-mono" dir="ltr">{result.provider} · {result.model}</span>
                   </div>
                 </>
               ) : (
                 <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700 bg-slate-800/70 text-blue-400">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-brand-lg border border-line bg-surface text-brand">
                     <Sparkles className="h-5 w-5" />
                   </div>
-                  <div className="text-sm font-semibold text-white">النص سيظهر هنا</div>
-                  <p className="max-w-sm text-xs leading-6 text-slate-500">
+                  <div className="text-sm font-semibold text-ink">النص سيظهر هنا</div>
+                  <p className="max-w-sm text-xs leading-6 text-subtle">
                     اختر نوع المحتوى، املأ التفاصيل، ثم اضغط «توليد المحتوى». يمكنك أيضاً نسخ النص أو تعديله مباشرة.
                   </p>
                 </div>

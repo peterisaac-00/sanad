@@ -15,30 +15,30 @@ export function StatusBadge({ status }: { status: string }) {
 
 export function PaymentBadge({ status }: { status: string }) {
   const meta = PAYMENT_STATUS[status];
-  return <Badge tone={meta?.tone ?? "bg-slate-800 text-slate-300 border-slate-700"}>{paymentLabel(status)}</Badge>;
+  return <Badge tone={meta?.tone ?? "bg-surface text-ink-soft border-line"}>{paymentLabel(status)}</Badge>;
 }
 
 export function Money({ value, currency }: { value: number | null | undefined; currency: string }) {
-  return <span className="font-semibold text-slate-100">{money(value, currency)}</span>;
+  return <span className="font-semibold text-ink">{money(value, currency)}</span>;
 }
 
 export function Th({ children, className, dir }: { children?: React.ReactNode; className?: string; dir?: "ltr" | "rtl" }) {
   return (
-    <th dir={dir} className={cn("whitespace-nowrap px-4 py-2.5 text-start text-[10px] font-semibold uppercase tracking-wide text-slate-500", className)}>
+    <th dir={dir} className={cn("whitespace-nowrap px-4 py-2.5 text-start text-[10px] font-semibold uppercase tracking-wide text-subtle", className)}>
       {children}
     </th>
   );
 }
 
 export function Td({ children, className, dir }: { children?: React.ReactNode; className?: string; dir?: "ltr" | "rtl" }) {
-  return <td dir={dir} className={cn("px-4 py-3 align-middle text-slate-300", className)}>{children}</td>;
+  return <td dir={dir} className={cn("px-4 py-3 align-middle text-ink-soft", className)}>{children}</td>;
 }
 
 export function ActivePill({ active }: { active: boolean }) {
   return active ? (
-    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5" /> مفعّل</span>
+    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-success"><CheckCircle2 className="h-3.5 w-3.5" /> مفعّل</span>
   ) : (
-    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500"><XCircle className="h-3.5 w-3.5" /> متوقف</span>
+    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-subtle"><XCircle className="h-3.5 w-3.5" /> متوقف</span>
   );
 }
 
@@ -46,7 +46,7 @@ export function Stars({ rating, className }: { rating: number; className?: strin
   return (
     <span className={cn("inline-flex items-center gap-0.5", className)} aria-label={`${rating} من 5`} dir="ltr">
       {[1, 2, 3, 4, 5].map((value) => (
-        <span key={value} className={value <= rating ? "text-amber-400" : "text-slate-700"}>★</span>
+        <span key={value} className={value <= rating ? "text-warning" : "text-ink-soft"}>★</span>
       ))}
     </span>
   );

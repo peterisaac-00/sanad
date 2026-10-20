@@ -170,7 +170,7 @@ export function PagesPage() {
         ) : (
           <TableShell minWidth={820}>
             <thead>
-              <tr className="border-b border-slate-800/70">
+              <tr className="border-b border-line">
                 <Th>الصفحة</Th>
                 <Th>النوع</Th>
                 <Th>آخر تحديث</Th>
@@ -180,13 +180,13 @@ export function PagesPage() {
             </thead>
             <tbody>
               {pages.map((page: any) => (
-                <tr key={page.id} className="border-b border-slate-800/40 transition hover:bg-slate-800/20">
+                <tr key={page.id} className="border-b border-line transition hover:bg-surface">
                   <Td>
-                    <div className="font-semibold text-slate-100">{page.title}</div>
-                    <div className="mt-0.5 font-mono text-[10px] text-slate-500" dir="ltr">/store/{subdomain}/page/{page.slug}</div>
+                    <div className="font-semibold text-ink">{page.title}</div>
+                    <div className="mt-0.5 font-mono text-[10px] text-subtle" dir="ltr">/store/{subdomain}/page/{page.slug}</div>
                   </Td>
-                  <Td><Badge tone="bg-slate-800 text-slate-300 border-slate-700">{PAGE_TYPES[page.type] ?? page.type}</Badge></Td>
-                  <Td><span className="text-[11px] text-slate-400">{dateTime(page.updatedAt)}</span></Td>
+                  <Td><Badge tone="bg-surface text-ink-soft border-line">{PAGE_TYPES[page.type] ?? page.type}</Badge></Td>
+                  <Td><span className="text-[11px] text-subtle">{dateTime(page.updatedAt)}</span></Td>
                   <Td>
                     <button onClick={() => togglePublish(page)} aria-label="تبديل النشر">
                       <ActivePill active={page.status === "published"} />
@@ -195,12 +195,12 @@ export function PagesPage() {
                   <Td>
                     <div className="flex items-center justify-end gap-1">
                       {page.status === "published" ? (
-                        <Link href={`/store/${subdomain}/page/${page.slug}`} target="_blank" className="rounded-lg p-2 text-slate-500 hover:bg-slate-800 hover:text-blue-300" title="عرض">
+                        <Link href={`/store/${subdomain}/page/${page.slug}`} target="_blank" className="rounded-brand-sm p-2 text-subtle hover:bg-surface hover:text-brand" title="عرض">
                           <ExternalLink className="h-3.5 w-3.5" />
                         </Link>
                       ) : null}
                       <Button variant="ghost" size="sm" onClick={() => openEditor(page)}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <button onClick={() => setDeleting(page)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-500/10 hover:text-rose-300" title="حذف">
+                      <button onClick={() => setDeleting(page)} className="rounded-brand-sm p-2 text-subtle hover:bg-danger-soft hover:text-danger" title="حذف">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -268,9 +268,9 @@ export function PagesPage() {
 /* --------------------------------- blog --------------------------------- */
 
 const POST_STATUS: Record<string, { label: string; tone: string }> = {
-  draft: { label: "مسودة", tone: "bg-slate-500/10 text-slate-300 border-slate-500/25" },
-  published: { label: "منشور", tone: "bg-emerald-500/10 text-emerald-300 border-emerald-500/25" },
-  scheduled: { label: "مجدول", tone: "bg-blue-500/10 text-blue-300 border-blue-500/25" },
+  draft: { label: "مسودة", tone: "bg-surface text-ink-soft border-line" },
+  published: { label: "منشور", tone: "bg-success-soft text-success border-success-line" },
+  scheduled: { label: "مجدول", tone: "bg-brand/10 text-brand border-brand-line" },
 };
 
 interface PostDraft {
@@ -419,7 +419,7 @@ export function BlogPage() {
         ) : (
           <TableShell minWidth={880}>
             <thead>
-              <tr className="border-b border-slate-800/70">
+              <tr className="border-b border-line">
                 <Th>المقال</Th>
                 <Th>الكاتب</Th>
                 <Th>النشر</Th>
@@ -431,35 +431,35 @@ export function BlogPage() {
               {posts.map((post: any) => {
                 const meta = POST_STATUS[post.status] ?? POST_STATUS.draft;
                 return (
-                  <tr key={post.id} className="border-b border-slate-800/40 transition hover:bg-slate-800/20">
+                  <tr key={post.id} className="border-b border-line transition hover:bg-surface">
                     <Td>
                       <div className="flex items-center gap-3">
                         {post.featuredImage ? (
-                          <img src={mediaUrl(post.featuredImage)} alt="" className="h-10 w-14 shrink-0 rounded-lg border border-slate-800 object-cover" />
+                          <img src={mediaUrl(post.featuredImage)} alt="" className="h-10 w-14 shrink-0 rounded-brand-sm border border-line object-cover" />
                         ) : (
-                          <div className="flex h-10 w-14 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-950 text-slate-600"><Newspaper className="h-4 w-4" /></div>
+                          <div className="flex h-10 w-14 shrink-0 items-center justify-center rounded-brand-sm border border-line bg-canvas text-subtle"><Newspaper className="h-4 w-4" /></div>
                         )}
                         <div className="min-w-0">
-                          <div className="truncate font-semibold text-slate-100">{post.title}</div>
-                          <div className="mt-0.5 max-w-[320px] truncate text-[10px] text-slate-500">{post.excerpt || "بدون مقتطف"}</div>
+                          <div className="truncate font-semibold text-ink">{post.title}</div>
+                          <div className="mt-0.5 max-w-[320px] truncate text-[10px] text-subtle">{post.excerpt || "بدون مقتطف"}</div>
                         </div>
                       </div>
                     </Td>
-                    <Td><span className="text-[11px] text-slate-400">{post.author || "—"}</span></Td>
+                    <Td><span className="text-[11px] text-subtle">{post.author || "—"}</span></Td>
                     <Td>
-                      <div className="text-[11px] text-slate-400">{date(post.publishedAt)}</div>
-                      {post.status === "scheduled" ? <div className="text-[10px] text-blue-400">مجدول: {dateTime(post.scheduledAt)}</div> : null}
+                      <div className="text-[11px] text-subtle">{date(post.publishedAt)}</div>
+                      {post.status === "scheduled" ? <div className="text-[10px] text-brand">مجدول: {dateTime(post.scheduledAt)}</div> : null}
                     </Td>
                     <Td><Badge tone={meta.tone}>{meta.label}</Badge></Td>
                     <Td>
                       <div className="flex items-center justify-end gap-1">
                         {post.status === "published" ? (
-                          <Link href={`/store/${subdomain}/blog/${post.slug}`} target="_blank" className="rounded-lg p-2 text-slate-500 hover:bg-slate-800 hover:text-blue-300" title="عرض">
+                          <Link href={`/store/${subdomain}/blog/${post.slug}`} target="_blank" className="rounded-brand-sm p-2 text-subtle hover:bg-surface hover:text-brand" title="عرض">
                             <ExternalLink className="h-3.5 w-3.5" />
                           </Link>
                         ) : null}
                         <Button variant="ghost" size="sm" onClick={() => openEditor(post)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <button onClick={() => setDeleting(post)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-500/10 hover:text-rose-300" title="حذف">
+                        <button onClick={() => setDeleting(post)} className="rounded-brand-sm p-2 text-subtle hover:bg-danger-soft hover:text-danger" title="حذف">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
@@ -667,7 +667,7 @@ export function AffiliatesPage() {
         ) : (
           <TableShell minWidth={980}>
             <thead>
-              <tr className="border-b border-slate-800/70">
+              <tr className="border-b border-line">
                 <Th>المسوّق</Th>
                 <Th>كود الإحالة</Th>
                 <Th>نسبة العمولة</Th>
@@ -679,22 +679,22 @@ export function AffiliatesPage() {
             </thead>
             <tbody>
               {affiliates.map((affiliate: any) => (
-                <tr key={affiliate.id} className="border-b border-slate-800/40 transition hover:bg-slate-800/20">
+                <tr key={affiliate.id} className="border-b border-line transition hover:bg-surface">
                   <Td>
-                    <div className="font-semibold text-slate-100">{affiliate.name}</div>
-                    <div className="mt-0.5 font-mono text-[10px] text-slate-500" dir="ltr">{affiliate.phone || affiliate.email || "—"}</div>
+                    <div className="font-semibold text-ink">{affiliate.name}</div>
+                    <div className="mt-0.5 font-mono text-[10px] text-subtle" dir="ltr">{affiliate.phone || affiliate.email || "—"}</div>
                   </Td>
                   <Td>
                     <div className="flex items-center gap-1.5">
-                      <span className="rounded-lg border border-violet-500/25 bg-violet-500/10 px-2 py-1 font-mono text-[11px] font-bold text-violet-200" dir="ltr">{affiliate.referralCode}</span>
+                      <span className="rounded-brand-sm border border-info-line bg-info-soft px-2 py-1 font-mono text-[11px] font-bold text-info" dir="ltr">{affiliate.referralCode}</span>
                       <CopyButton value={referralLink(affiliate.referralCode)} label="نسخ الرابط" />
                     </div>
                   </Td>
-                  <Td><span className="font-semibold text-slate-100">{percent(affiliate.commissionRate)}</span></Td>
-                  <Td><span className="text-[11px] text-slate-300">{number(affiliate.ordersCount ?? 0)}</span></Td>
+                  <Td><span className="font-semibold text-ink">{percent(affiliate.commissionRate)}</span></Td>
+                  <Td><span className="text-[11px] text-ink-soft">{number(affiliate.ordersCount ?? 0)}</span></Td>
                   <Td>
-                    <div className="text-[11px] text-slate-300">إجمالي {money(affiliate.commissionTotal ?? 0, currency)}</div>
-                    <div className="text-[10px] text-amber-300">معلّق {money(affiliate.commissionPending ?? 0, currency)}</div>
+                    <div className="text-[11px] text-ink-soft">إجمالي {money(affiliate.commissionTotal ?? 0, currency)}</div>
+                    <div className="text-[10px] text-warning">معلّق {money(affiliate.commissionPending ?? 0, currency)}</div>
                   </Td>
                   <Td>
                     <button onClick={() => toggleActive(affiliate)} aria-label="تبديل التفعيل">
@@ -704,7 +704,7 @@ export function AffiliatesPage() {
                   <Td>
                     <div className="flex items-center justify-end gap-1">
                       <Button variant="ghost" size="sm" onClick={() => openEditor(affiliate)}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <button onClick={() => setDeleting(affiliate)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-500/10 hover:text-rose-300" title="حذف">
+                      <button onClick={() => setDeleting(affiliate)} className="rounded-brand-sm p-2 text-subtle hover:bg-danger-soft hover:text-danger" title="حذف">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -789,11 +789,11 @@ export function DesignPage() {
     if (!data?.store || draft) return;
     const branding = data.branding ?? {};
     setDraft({
-      primaryColor: branding.primaryColor || "#2563EB",
-      secondaryColor: branding.secondaryColor || "#1E293B",
-      textColor: branding.textColor || "#F8FAFC",
-      themeMode: branding.themeMode === "light" ? "light" : branding.themeMode === "system" ? "system" : "dark",
-      arabicFont: branding.arabicFont || "Cairo",
+      primaryColor: branding.primaryColor || "#047857",
+      secondaryColor: branding.secondaryColor || "#0F2A24",
+      textColor: branding.textColor || "#0F172A",
+      themeMode: branding.themeMode === "dark" ? "dark" : branding.themeMode === "system" ? "system" : "light",
+      arabicFont: branding.arabicFont || "IBM Plex Sans Arabic",
       templateKey: branding.templateKey || data.store.templateKey || "general",
       logoUrl: data.store.logoUrl || "",
       coverUrl: data.store.coverUrl || "",
@@ -858,10 +858,10 @@ export function DesignPage() {
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
           <div className="space-y-4">
             <Card className="p-4">
-              <div className="mb-3 flex items-center gap-1.5 text-xs font-bold text-white"><Palette className="h-3.5 w-3.5 text-blue-400" /> القالب</div>
+              <div className="mb-3 flex items-center gap-1.5 text-xs font-bold text-ink"><Palette className="h-3.5 w-3.5 text-brand" /> القالب</div>
               <div className="grid gap-2 sm:grid-cols-3">
                 {templates.map((key) => {
-                  const template = TEMPLATES[key] ?? { label: key, description: "", emoji: "🛍️", accent: "#2563EB" };
+                  const template = TEMPLATES[key] ?? { label: key, description: "", emoji: "🛍️", accent: "#047857" };
                   const active = draft.templateKey === key;
                   return (
                     <button
@@ -869,13 +869,13 @@ export function DesignPage() {
                       type="button"
                       onClick={() => setDraft({ ...draft, templateKey: key, primaryColor: key === "general" ? draft.primaryColor : template.accent })}
                       className={cn(
-                        "rounded-xl border p-3 text-start transition",
-                        active ? "border-blue-500/50 bg-blue-500/10" : "border-slate-800 bg-slate-950/40 hover:border-slate-600"
+                        "rounded-brand border p-3 text-start transition",
+                        active ? "border-brand-line bg-brand/10" : "border-line bg-surface hover:border-line"
                       )}
                     >
                       <div className="text-lg">{template.emoji}</div>
-                      <div className="mt-1 text-xs font-bold text-white">{template.label}</div>
-                      <div className="mt-0.5 line-clamp-2 text-[10px] leading-4 text-slate-500">{template.description}</div>
+                      <div className="mt-1 text-xs font-bold text-ink">{template.label}</div>
+                      <div className="mt-0.5 line-clamp-2 text-[10px] leading-4 text-subtle">{template.description}</div>
                     </button>
                   );
                 })}
@@ -883,17 +883,17 @@ export function DesignPage() {
             </Card>
 
             <Card className="p-4">
-              <div className="mb-3 text-xs font-bold text-white">الألوان والوضع</div>
+              <div className="mb-3 text-xs font-bold text-ink">الألوان والوضع</div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="اللون الأساسي">
                   <div className="flex items-center gap-2">
-                    <input type="color" value={draft.primaryColor} onChange={(e) => setDraft({ ...draft, primaryColor: e.target.value })} className="h-10 w-14 cursor-pointer rounded-lg border border-slate-700 bg-slate-950" />
+                    <input type="color" value={draft.primaryColor} onChange={(e) => setDraft({ ...draft, primaryColor: e.target.value })} className="h-10 w-14 cursor-pointer rounded-brand-sm border border-line bg-canvas" />
                     <Input value={draft.primaryColor} onChange={(e) => setDraft({ ...draft, primaryColor: e.target.value })} dir="ltr" className="font-mono" />
                   </div>
                 </Field>
                 <Field label="اللون الثانوي">
                   <div className="flex items-center gap-2">
-                    <input type="color" value={draft.secondaryColor} onChange={(e) => setDraft({ ...draft, secondaryColor: e.target.value })} className="h-10 w-14 cursor-pointer rounded-lg border border-slate-700 bg-slate-950" />
+                    <input type="color" value={draft.secondaryColor} onChange={(e) => setDraft({ ...draft, secondaryColor: e.target.value })} className="h-10 w-14 cursor-pointer rounded-brand-sm border border-line bg-canvas" />
                     <Input value={draft.secondaryColor} onChange={(e) => setDraft({ ...draft, secondaryColor: e.target.value })} dir="ltr" className="font-mono" />
                   </div>
                 </Field>
@@ -913,7 +913,7 @@ export function DesignPage() {
             </Card>
 
             <Card className="p-4">
-              <div className="mb-3 text-xs font-bold text-white">الشعار والغلاف</div>
+              <div className="mb-3 text-xs font-bold text-ink">الشعار والغلاف</div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <ImageUploader value={draft.logoUrl} onChange={(url) => setDraft({ ...draft, logoUrl: url })} label="شعار المتجر" />
                 <ImageUploader value={draft.coverUrl} onChange={(url) => setDraft({ ...draft, coverUrl: url })} label="صورة الغلاف" aspect="aspect-square" />
@@ -924,25 +924,25 @@ export function DesignPage() {
           <div className="space-y-3">
             <Card className="p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-white"><Eye className="h-3.5 w-3.5 text-blue-400" /> معاينة مباشرة</div>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-ink"><Eye className="h-3.5 w-3.5 text-brand" /> معاينة مباشرة</div>
                 <div className="flex items-center gap-2">
-                  <div className="flex rounded-lg border border-slate-800 p-0.5">
-                    <button onClick={() => setDevice("desktop")} className={cn("rounded-md px-3 py-1.5 text-[11px] font-semibold transition", device === "desktop" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white")}>سطح المكتب</button>
-                    <button onClick={() => setDevice("mobile")} className={cn("rounded-md px-3 py-1.5 text-[11px] font-semibold transition", device === "mobile" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white")}>الجوال</button>
+                  <div className="flex rounded-brand-sm border border-line p-0.5">
+                    <button onClick={() => setDevice("desktop")} className={cn("rounded-brand-sm px-3 py-1.5 text-[11px] font-semibold transition", device === "desktop" ? "bg-brand text-on-brand" : "text-subtle hover:text-ink")}>سطح المكتب</button>
+                    <button onClick={() => setDevice("mobile")} className={cn("rounded-brand-sm px-3 py-1.5 text-[11px] font-semibold transition", device === "mobile" ? "bg-brand text-on-brand" : "text-subtle hover:text-ink")}>الجوال</button>
                   </div>
-                  <Link href={`/store/${subdomain}`} target="_blank" className="rounded-lg border border-slate-800 px-2.5 py-1.5 text-[11px] font-semibold text-slate-300 hover:border-blue-500/40">
+                  <Link href={`/store/${subdomain}`} target="_blank" className="rounded-brand-sm border border-line px-2.5 py-1.5 text-[11px] font-semibold text-ink-soft hover:border-brand-line">
                     فتح المتجر
                   </Link>
                 </div>
               </div>
               <StorePreview store={previewStore} branding={previewBranding} device={device} />
-              <div className="mt-3 text-[10px] leading-5 text-slate-500">
+              <div className="mt-3 text-[10px] leading-5 text-subtle">
                 المعاينة تعرض الهوية والقالب. المنتجات الفعلية تظهر من بيانات متجرك عند فتح الرابط.
               </div>
             </Card>
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-[11px] text-slate-400">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-brand border border-line bg-card px-4 py-3 text-[11px] text-subtle">
               <span>«حفظ كمسودة» يحفظ التغييرات دون نشرها للعملاء.</span>
-              <span className="font-mono text-slate-500" dir="ltr">{data?.preview_url ?? `/store/${subdomain}`}</span>
+              <span className="font-mono text-subtle" dir="ltr">{data?.preview_url ?? `/store/${subdomain}`}</span>
             </div>
           </div>
         </div>

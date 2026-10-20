@@ -69,15 +69,15 @@ export const MigrationCenterView: React.FC<MigrationCenterViewProps> = ({
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
       {/* Header */}
       <div className="text-center max-w-3xl mx-auto space-y-3">
-        <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-md border border-emerald-200">
+        <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand-soft px-3 py-1 rounded-brand-sm border border-brand-line">
           {currentLang === 'ar' ? 'مركز الترحيل السريع' : 'Fast Migration Center'}
         </span>
-        <h1 className="text-3xl sm:text-5xl font-extrabold font-heading text-slate-900 tracking-tight">
+        <h1 className="text-3xl sm:text-5xl font-extrabold font-heading text-ink tracking-tight">
           {currentLang === 'ar'
             ? 'انقل متجرك إلى سند بدون فقدان دقيقة واحدة أو منتج واحد'
             : 'Migrate to Sanad in Minutes Without Losing a Single Product'}
         </h1>
-        <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+        <p className="text-sm sm:text-base text-ink-soft leading-relaxed">
           {currentLang === 'ar'
             ? 'انقل منتجاتك، أسعارك، مقاساتك، وصورك من أي منصة سابقة عبر ملفات Excel و CSV المنظمة، وتخلص من العمولات المقتطعة للأبد.'
             : 'Import products, variants, and inventory from legacy systems via standardized CSV/Excel files and escape percentage commission cuts.'}
@@ -95,35 +95,35 @@ export const MigrationCenterView: React.FC<MigrationCenterViewProps> = ({
           <button
             key={platform.id}
             onClick={() => setSelectedSource(platform.id)}
-            className={`p-4 rounded-2xl border text-center transition-all cursor-pointer space-y-1 ${
+            className={`p-4 rounded-brand-lg border text-center transition-all cursor-pointer space-y-1 ${
               selectedSource === platform.id
-                ? 'border-emerald-600 bg-emerald-50 text-emerald-950 font-bold ring-1 ring-emerald-500'
-                : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
+                ? 'border-brand bg-brand-soft text-brand-active font-bold ring-1 ring-brand/30'
+                : 'border-line bg-card hover:border-line text-ink-soft'
             }`}
           >
             <div className="font-heading text-sm">{platform.name_ar}</div>
-            <div className="text-[11px] text-slate-500 font-normal">{platform.desc_ar}</div>
+            <div className="text-[11px] text-subtle font-normal">{platform.desc_ar}</div>
           </button>
         ))}
       </div>
 
       {/* Interactive Spreadsheet Uploader Simulator */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-10 max-w-4xl mx-auto space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+      <div className="bg-card rounded-brand-lg border border-line shadow-sm p-6 sm:p-10 max-w-4xl mx-auto space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-line">
           <div>
-            <h3 className="text-lg sm:text-xl font-bold font-heading text-slate-900">
+            <h3 className="text-lg sm:text-xl font-bold font-heading text-ink">
               {currentLang === 'ar' ? 'نموذج مطابقة البيانات الذكي (Data Mapper)' : 'Smart Spreadsheet Data Mapper'}
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-subtle mt-0.5">
               {currentLang === 'ar' ? 'يدعم قراءة الأعمدة بالعربية والإنجليزية تلقائياً.' : 'Reads Arabic & English column headers seamlessly.'}
             </p>
           </div>
 
           <button
             onClick={downloadTemplate}
-            className="px-4 py-2 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 flex items-center gap-1.5 cursor-pointer bg-slate-50"
+            className="px-4 py-2 border border-line hover:border-line rounded-brand text-xs font-semibold text-ink-soft flex items-center gap-1.5 cursor-pointer bg-surface"
           >
-            <Download className="w-4 h-4 text-emerald-600" />
+            <Download className="w-4 h-4 text-brand" />
             <span>{currentLang === 'ar' ? 'تحميل قالب Excel النموذجي' : 'Download Sample CSV'}</span>
           </button>
         </div>
@@ -142,39 +142,39 @@ export const MigrationCenterView: React.FC<MigrationCenterViewProps> = ({
         />
         <div
           onClick={() => fileRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all space-y-3 ${
+          className={`border-2 border-dashed rounded-brand-lg p-8 text-center cursor-pointer transition-all space-y-3 ${
             parsed
-              ? 'border-emerald-500 bg-emerald-50/50'
-              : 'border-slate-300 hover:border-emerald-500 bg-slate-50/50'
+              ? 'border-brand bg-brand-soft/50'
+              : 'border-line hover:border-brand bg-surface/50'
           }`}
         >
           {parsed ? (
             <div className="space-y-2 py-2">
-              <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-              <div className="font-bold text-slate-900 text-sm">
+              <CheckCircle2 className="w-10 h-10 text-brand mx-auto" />
+              <div className="font-bold text-ink text-sm">
                 {currentLang === 'ar'
                   ? `تمت قراءة ${parsed.rows} منتجاً من ${parsed.fileName}`
                   : `${parsed.rows} products parsed from ${parsed.fileName}`}
               </div>
-              <div className="text-xs text-slate-500" dir="ltr">
+              <div className="text-xs text-subtle" dir="ltr">
                 {parsed.columns.join(' · ')}
               </div>
               {isRecording && (
-                <div className="text-[11px] text-slate-400">
+                <div className="text-[11px] text-subtle">
                   {currentLang === 'ar' ? 'جاري تسجيل طلب الترحيل...' : 'Recording migration request...'}
                 </div>
               )}
             </div>
           ) : (
             <>
-              <div className="w-12 h-12 bg-white rounded-2xl border border-slate-200 flex items-center justify-center text-emerald-600 mx-auto shadow-2xs">
+              <div className="w-12 h-12 bg-card rounded-brand-lg border border-line flex items-center justify-center text-brand mx-auto shadow-2xs">
                 <Upload className="w-6 h-6" />
               </div>
               <div className="space-y-1">
-                <div className="font-bold text-slate-900 text-xs sm:text-sm">
+                <div className="font-bold text-ink text-xs sm:text-sm">
                   {currentLang === 'ar' ? 'انقر لاختيار ملف المنتجات (CSV) من جهازك' : 'Click to choose your product CSV file'}
                 </div>
-                <div className="text-[11px] text-slate-500">
+                <div className="text-[11px] text-subtle">
                   {currentLang === 'ar' ? 'يُقرأ الملف محلياً في متصفحك، ويُرسل ملخص الأعمدة فقط' : 'Parsed locally in your browser; only the column summary is sent'}
                 </div>
               </div>
@@ -182,17 +182,17 @@ export const MigrationCenterView: React.FC<MigrationCenterViewProps> = ({
           )}
         </div>
         {parseError && (
-          <div className="text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 flex items-center gap-2">
+          <div className="text-xs font-semibold text-danger bg-danger-soft border border-danger-line rounded-brand px-3 py-2 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{parseError}</span>
           </div>
         )}
 
         {/* Data Ownership Principles */}
-        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs text-slate-700 flex items-center gap-3">
-          <ShieldCheck className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+        <div className="bg-surface p-4 rounded-brand-lg border border-line text-xs text-ink-soft flex items-center gap-3">
+          <ShieldCheck className="w-6 h-6 text-brand flex-shrink-0" />
           <div>
-            <span className="font-bold text-slate-900 block">
+            <span className="font-bold text-ink block">
               {currentLang === 'ar' ? 'مبدأ ملكية بيانات التاجر:' : 'Absolute Merchant Data Ownership:'}
             </span>
             <span>
@@ -207,7 +207,7 @@ export const MigrationCenterView: React.FC<MigrationCenterViewProps> = ({
         <div className="text-center pt-2">
           <button
             onClick={onOpenStoreModal}
-            className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer shadow-xs inline-flex items-center gap-2"
+            className="px-8 py-3.5 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-brand transition-colors cursor-pointer shadow-xs inline-flex items-center gap-2"
           >
             <span>{currentLang === 'ar' ? 'ابدأ ترحيل متجرك الآن بـ 100 ج.م/شهر' : 'Start Your Migration Now'}</span>
             {currentLang === 'ar' ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}

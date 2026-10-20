@@ -225,7 +225,7 @@ export function CouponsPage() {
         ) : (
           <TableShell minWidth={960}>
             <thead>
-              <tr className="border-b border-slate-800/70">
+              <tr className="border-b border-line">
                 <Th>الكود</Th>
                 <Th>الخصم</Th>
                 <Th>النطاق</Th>
@@ -237,35 +237,35 @@ export function CouponsPage() {
             </thead>
             <tbody>
               {coupons.map((coupon: any) => (
-                <tr key={coupon.id} className="border-b border-slate-800/40 transition hover:bg-slate-800/20">
+                <tr key={coupon.id} className="border-b border-line transition hover:bg-surface">
                   <Td>
                     <div className="flex items-center gap-2">
-                      <span className="rounded-lg border border-blue-500/25 bg-blue-500/10 px-2 py-1 font-mono text-[11px] font-bold text-blue-200" dir="ltr">{coupon.code}</span>
+                      <span className="rounded-brand-sm border border-brand-line bg-brand/10 px-2 py-1 font-mono text-[11px] font-bold text-brand" dir="ltr">{coupon.code}</span>
                       <CopyButton value={coupon.code} label="" />
                     </div>
                     <div className="mt-1 flex flex-wrap gap-1">
-                      {coupon.firstOrderOnly ? <Badge tone="bg-violet-500/10 text-violet-300 border-violet-500/25">أول طلب فقط</Badge> : null}
-                      {coupon.freeShipping ? <Badge tone="bg-emerald-500/10 text-emerald-300 border-emerald-500/25">شحن مجاني</Badge> : null}
+                      {coupon.firstOrderOnly ? <Badge tone="bg-info-soft text-info border-info-line">أول طلب فقط</Badge> : null}
+                      {coupon.freeShipping ? <Badge tone="bg-success-soft text-success border-success-line">شحن مجاني</Badge> : null}
                     </div>
                   </Td>
                   <Td>
-                    <span className="font-semibold text-slate-100">
+                    <span className="font-semibold text-ink">
                       {coupon.type === "percentage"
                         ? `${number(coupon.value)}%`
                         : coupon.type === "fixed"
                           ? money(coupon.value, currency)
                           : "شحن مجاني"}
                     </span>
-                    {coupon.minOrderValue > 0 ? <div className="mt-0.5 text-[10px] text-slate-500">حد أدنى {money(coupon.minOrderValue, currency)}</div> : null}
+                    {coupon.minOrderValue > 0 ? <div className="mt-0.5 text-[10px] text-subtle">حد أدنى {money(coupon.minOrderValue, currency)}</div> : null}
                   </Td>
-                  <Td><span className="text-[11px] text-slate-400">{scopeLabel(coupon)}</span></Td>
+                  <Td><span className="text-[11px] text-subtle">{scopeLabel(coupon)}</span></Td>
                   <Td>
-                    <div className="text-[11px] text-slate-300">{number(coupon.usageCount ?? 0)}{coupon.maxUses ? ` / ${number(coupon.maxUses)}` : ""}</div>
-                    <div className="text-[10px] text-slate-500">خصومات {money(coupon.totalDiscount ?? 0, currency)}</div>
+                    <div className="text-[11px] text-ink-soft">{number(coupon.usageCount ?? 0)}{coupon.maxUses ? ` / ${number(coupon.maxUses)}` : ""}</div>
+                    <div className="text-[10px] text-subtle">خصومات {money(coupon.totalDiscount ?? 0, currency)}</div>
                   </Td>
                   <Td>
-                    <div className="text-[11px] text-slate-400">{date(coupon.startsAt)} ← {date(coupon.endsAt)}</div>
-                    {coupon.perCustomerLimit ? <div className="mt-0.5 text-[10px] text-slate-500">الحد لكل عميل: {number(coupon.perCustomerLimit)}</div> : null}
+                    <div className="text-[11px] text-subtle">{date(coupon.startsAt)} ← {date(coupon.endsAt)}</div>
+                    {coupon.perCustomerLimit ? <div className="mt-0.5 text-[10px] text-subtle">الحد لكل عميل: {number(coupon.perCustomerLimit)}</div> : null}
                   </Td>
                   <Td>
                     <button onClick={() => toggleActive(coupon)} aria-label="تبديل التفعيل">
@@ -275,7 +275,7 @@ export function CouponsPage() {
                   <Td>
                     <div className="flex items-center justify-end gap-1">
                       <Button variant="ghost" size="sm" onClick={() => openEditor(coupon)}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <button onClick={() => setDeleting(coupon)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-500/10 hover:text-rose-300" title="حذف">
+                      <button onClick={() => setDeleting(coupon)} className="rounded-brand-sm p-2 text-subtle hover:bg-danger-soft hover:text-danger" title="حذف">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -338,35 +338,35 @@ export function CouponsPage() {
           </div>
 
           <Field label="يقتصر على منتجات" hint="اتركه فارغاً لتشمل كل المنتجات">
-            <div className="max-h-44 space-y-1 overflow-y-auto rounded-xl border border-slate-800 p-2">
+            <div className="max-h-44 space-y-1 overflow-y-auto rounded-brand border border-line p-2">
               {products.map((product: any) => (
-                <label key={product.id} className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-[11px] text-slate-300 transition hover:bg-slate-800/50">
+                <label key={product.id} className="flex cursor-pointer items-center gap-2.5 rounded-brand-sm px-2 py-1.5 text-[11px] text-ink-soft transition hover:bg-surface">
                   <input
                     type="checkbox"
                     checked={draft.productIds.includes(product.id)}
                     onChange={() => toggleId("productIds", product.id)}
-                    className="h-3.5 w-3.5 rounded border-slate-600 bg-slate-900 accent-blue-600"
+                    className="h-3.5 w-3.5 rounded border-line bg-card accent-brand"
                   />
                   <span className="truncate">{product.nameAr || product.nameEn || product.sku}</span>
                 </label>
               ))}
-              {products.length === 0 ? <div className="px-2 py-4 text-center text-[10px] text-slate-500">لا توجد منتجات بعد.</div> : null}
+              {products.length === 0 ? <div className="px-2 py-4 text-center text-[10px] text-subtle">لا توجد منتجات بعد.</div> : null}
             </div>
           </Field>
           <Field label="يقتصر على فئات" hint="اتركه فارغاً لتشمل كل الفئات">
-            <div className="max-h-44 space-y-1 overflow-y-auto rounded-xl border border-slate-800 p-2">
+            <div className="max-h-44 space-y-1 overflow-y-auto rounded-brand border border-line p-2">
               {categories.map((category: any) => (
-                <label key={category.id} className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-[11px] text-slate-300 transition hover:bg-slate-800/50">
+                <label key={category.id} className="flex cursor-pointer items-center gap-2.5 rounded-brand-sm px-2 py-1.5 text-[11px] text-ink-soft transition hover:bg-surface">
                   <input
                     type="checkbox"
                     checked={draft.categoryIds.includes(category.id)}
                     onChange={() => toggleId("categoryIds", category.id)}
-                    className="h-3.5 w-3.5 rounded border-slate-600 bg-slate-900 accent-blue-600"
+                    className="h-3.5 w-3.5 rounded border-line bg-card accent-brand"
                   />
                   <span className="truncate">{category.nameAr || category.nameEn || category.name}</span>
                 </label>
               ))}
-              {categories.length === 0 ? <div className="px-2 py-4 text-center text-[10px] text-slate-500">لا توجد فئات بعد.</div> : null}
+              {categories.length === 0 ? <div className="px-2 py-4 text-center text-[10px] text-subtle">لا توجد فئات بعد.</div> : null}
             </div>
           </Field>
 

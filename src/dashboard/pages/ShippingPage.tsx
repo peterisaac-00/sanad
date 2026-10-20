@@ -124,11 +124,11 @@ export function ShippingPage() {
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <div className="flex items-center gap-2">
-                    <Truck className="h-4 w-4 text-blue-400" />
-                    <span className="font-bold text-white">{zone.name}</span>
-                    {zone.isFallback ? <Badge tone="border-blue-500/25 bg-blue-500/10 text-blue-300">افتراضية</Badge> : null}
+                    <Truck className="h-4 w-4 text-brand" />
+                    <span className="font-bold text-ink">{zone.name}</span>
+                    {zone.isFallback ? <Badge tone="border-brand-line bg-brand/10 text-brand">افتراضية</Badge> : null}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-slate-400">
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-subtle">
                     <ActivePill active={zone.isActive} />
                     <span>{num(zone.estimatedDaysMin) === num(zone.estimatedDaysMax) ? `${zone.estimatedDaysMin} يوم` : `${zone.estimatedDaysMin}–${zone.estimatedDaysMax} يوم`}</span>
                     {zone.carrier ? <span>{zone.carrier}</span> : null}
@@ -137,22 +137,22 @@ export function ShippingPage() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Button size="sm" variant="ghost" onClick={() => { setEditing(zone); setEditorOpen(true); }} aria-label="تعديل"><Pencil className="h-3.5 w-3.5" /></Button>
-                  <Button size="sm" variant="ghost" onClick={() => setDeleting(zone)} aria-label="حذف"><Trash2 className="h-3.5 w-3.5 text-rose-400" /></Button>
+                  <Button size="sm" variant="ghost" onClick={() => setDeleting(zone)} aria-label="حذف"><Trash2 className="h-3.5 w-3.5 text-danger" /></Button>
                 </div>
               </div>
 
               <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-2.5">
-                  <div className="text-[10px] text-slate-500">الشحن</div>
-                  <div className="mt-0.5 text-xs font-bold text-slate-100">{money(zone.fee, store.currency)}</div>
+                <div className="rounded-brand border border-line bg-surface p-2.5">
+                  <div className="text-[10px] text-subtle">الشحن</div>
+                  <div className="mt-0.5 text-xs font-bold text-ink">{money(zone.fee, store.currency)}</div>
                 </div>
-                <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-2.5">
-                  <div className="text-[10px] text-slate-500">رسوم COD</div>
-                  <div className="mt-0.5 text-xs font-bold text-slate-100">{money(zone.codFee, store.currency)}</div>
+                <div className="rounded-brand border border-line bg-surface p-2.5">
+                  <div className="text-[10px] text-subtle">رسوم COD</div>
+                  <div className="mt-0.5 text-xs font-bold text-ink">{money(zone.codFee, store.currency)}</div>
                 </div>
-                <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-2.5">
-                  <div className="text-[10px] text-slate-500">شحن مجاني</div>
-                  <div className="mt-0.5 text-xs font-bold text-slate-100">
+                <div className="rounded-brand border border-line bg-surface p-2.5">
+                  <div className="text-[10px] text-subtle">شحن مجاني</div>
+                  <div className="mt-0.5 text-xs font-bold text-ink">
                     {zone.freeShippingThreshold != null ? money(zone.freeShippingThreshold, store.currency) : "—"}
                   </div>
                 </div>
@@ -160,25 +160,25 @@ export function ShippingPage() {
 
               <div className="mt-3 space-y-1.5 text-[11px]">
                 <div className="flex items-start gap-2">
-                  <span className="mt-0.5 text-slate-500"><MapPin className="h-3.5 w-3.5" /></span>
-                  <span className="text-slate-300">
+                  <span className="mt-0.5 text-subtle"><MapPin className="h-3.5 w-3.5" /></span>
+                  <span className="text-ink-soft">
                     {((zone.governorates ?? []) as string[]).length ? (zone.governorates as string[]).join("، ") : "تشمل كل المحافظات (منطقة افتراضية)"}
                   </span>
                 </div>
-                {((zone.cities ?? []) as string[]).length ? <div className="text-[10px] text-slate-500">مدن: {(zone.cities as string[]).join("، ")}</div> : null}
+                {((zone.cities ?? []) as string[]).length ? <div className="text-[10px] text-subtle">مدن: {(zone.cities as string[]).join("، ")}</div> : null}
               </div>
 
               {((zone.rates ?? []) as any[]).length ? (
-                <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950/40 p-2">
-                  <div className="px-1 text-[10px] font-bold text-slate-500">أسعار مخصّصة ({zone.rates.length})</div>
+                <div className="mt-3 rounded-brand border border-line bg-surface p-2">
+                  <div className="px-1 text-[10px] font-bold text-subtle">أسعار مخصّصة ({zone.rates.length})</div>
                   <div className="mt-1.5 space-y-1">
                     {zone.rates.slice(0, 4).map((rate: any) => (
-                      <div key={rate.id} className="flex items-center justify-between px-1 text-[10px] text-slate-400">
+                      <div key={rate.id} className="flex items-center justify-between px-1 text-[10px] text-subtle">
                         <span>{[rate.governorate, rate.city, rate.district].filter(Boolean).join(" / ") || "عام"}</span>
-                        <span className="font-semibold text-slate-200">{money(rate.fee, store.currency)}</span>
+                        <span className="font-semibold text-ink">{money(rate.fee, store.currency)}</span>
                       </div>
                     ))}
-                    {zone.rates.length > 4 ? <div className="px-1 text-[10px] text-slate-600">+ {zone.rates.length - 4} أخرى…</div> : null}
+                    {zone.rates.length > 4 ? <div className="px-1 text-[10px] text-subtle">+ {zone.rates.length - 4} أخرى…</div> : null}
                   </div>
                 </div>
               ) : null}
@@ -336,24 +336,24 @@ function ZoneEditor({
 
         <div className="sm:col-span-2">
           <div className="flex items-center justify-between">
-            <div className="text-xs font-bold text-slate-300">أسعار مخصّصة لكل محافظة/مدينة</div>
+            <div className="text-xs font-bold text-ink-soft">أسعار مخصّصة لكل محافظة/مدينة</div>
             <Button size="sm" variant="outline" onClick={() => setRates((current) => [...current, { governorate: "", city: "", fee: draft.fee, codFee: draft.codFee, estimatedDays: draft.estimatedDaysMin, isActive: true }])}>
               <Plus className="h-3.5 w-3.5" /> سعر
             </Button>
           </div>
           {rates.length === 0 ? (
-            <div className="mt-2 rounded-xl border border-dashed border-slate-700 p-3 text-center text-[11px] text-slate-500">لا توجد أسعار مخصّصة — يُستخدم سعر المنطقة الأساسي.</div>
+            <div className="mt-2 rounded-brand border border-dashed border-line p-3 text-center text-[11px] text-subtle">لا توجد أسعار مخصّصة — يُستخدم سعر المنطقة الأساسي.</div>
           ) : (
             <div className="mt-2 space-y-2">
               {rates.map((rate, index) => (
-                <div key={index} className="grid grid-cols-2 items-end gap-2 rounded-xl border border-slate-800 bg-slate-950/40 p-3 sm:grid-cols-5">
+                <div key={index} className="grid grid-cols-2 items-end gap-2 rounded-brand border border-line bg-surface p-3 sm:grid-cols-5">
                   <Field label="المحافظة"><Input value={rate.governorate} onChange={(e) => setRates((current) => current.map((r, i) => (i === index ? { ...r, governorate: e.target.value } : r)))} /></Field>
                   <Field label="المدينة"><Input value={rate.city} onChange={(e) => setRates((current) => current.map((r, i) => (i === index ? { ...r, city: e.target.value } : r)))} /></Field>
                   <Field label="السعر"><Input type="number" min={0} value={rate.fee} onChange={(e) => setRates((current) => current.map((r, i) => (i === index ? { ...r, fee: e.target.value } : r)))} dir="ltr" /></Field>
                   <Field label="COD"><Input type="number" min={0} value={rate.codFee} onChange={(e) => setRates((current) => current.map((r, i) => (i === index ? { ...r, codFee: e.target.value } : r)))} dir="ltr" /></Field>
                   <div className="flex items-end gap-2">
                     <Field label="أيام"><Input type="number" min={0} value={rate.estimatedDays} onChange={(e) => setRates((current) => current.map((r, i) => (i === index ? { ...r, estimatedDays: e.target.value } : r)))} dir="ltr" /></Field>
-                    <Button size="sm" variant="ghost" onClick={() => setRates((current) => current.filter((_, i) => i !== index))}><Trash2 className="h-3.5 w-3.5 text-rose-400" /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => setRates((current) => current.filter((_, i) => i !== index))}><Trash2 className="h-3.5 w-3.5 text-danger" /></Button>
                   </div>
                 </div>
               ))}

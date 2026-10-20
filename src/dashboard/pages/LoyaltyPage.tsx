@@ -188,17 +188,17 @@ export function LoyaltyPage() {
       />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatCard label="أعضاء البرنامج" value={number(data?.totals?.members ?? 0)} icon={<Users className="h-5 w-5" />} accent="blue" />
-        <StatCard label="النقاط المتاحة حالياً" value={number(data?.totals?.pointsIssued ?? 0)} icon={<Gift className="h-5 w-5" />} accent="violet" />
-        <StatCard label="قواعد مفعّلة" value={number(rules.filter((rule: any) => rule.isActive).length)} accent="emerald" />
+        <StatCard label="أعضاء البرنامج" value={number(data?.totals?.members ?? 0)} icon={<Users className="h-5 w-5" />} accent="brand" />
+        <StatCard label="النقاط المتاحة حالياً" value={number(data?.totals?.pointsIssued ?? 0)} icon={<Gift className="h-5 w-5" />} accent="info" />
+        <StatCard label="قواعد مفعّلة" value={number(rules.filter((rule: any) => rule.isActive).length)} accent="success" />
       </div>
 
       {error ? <Alert tone="error" title="تعذر تحميل برنامج الولاء">{safeError(error)}</Alert> : null}
 
       <div className="grid gap-5 xl:grid-cols-2">
         <Card className="overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-800/70 px-4 py-3">
-            <div className="text-xs font-bold text-white">قواعد النقاط</div>
+          <div className="flex items-center justify-between border-b border-line px-4 py-3">
+            <div className="text-xs font-bold text-ink">قواعد النقاط</div>
             <Button variant="ghost" size="sm" onClick={reload} aria-label="تحديث"><RefreshCw className="h-3.5 w-3.5" /></Button>
           </div>
           {loading && !data ? (
@@ -213,7 +213,7 @@ export function LoyaltyPage() {
           ) : (
             <TableShell minWidth={560}>
               <thead>
-                <tr className="border-b border-slate-800/70">
+                <tr className="border-b border-line">
                   <Th>القاعدة</Th>
                   <Th>النقاط</Th>
                   <Th>الحالة</Th>
@@ -222,16 +222,16 @@ export function LoyaltyPage() {
               </thead>
               <tbody>
                 {rules.map((rule: any) => (
-                  <tr key={rule.id} className="border-b border-slate-800/40 transition hover:bg-slate-800/20">
+                  <tr key={rule.id} className="border-b border-line transition hover:bg-surface">
                     <Td>
-                      <div className="font-semibold text-slate-100">{rule.name}</div>
-                      <div className="mt-0.5 text-[10px] text-slate-500">
+                      <div className="font-semibold text-ink">{rule.name}</div>
+                      <div className="mt-0.5 text-[10px] text-subtle">
                         {rule.type === "earn" ? "اكتساب" : "استبدال"}
                         {rule.type === "earn" ? ` — ${number(rule.points)} نقطة لكل ${money(rule.perAmount, currency)}` : ""}
                         {rule.minOrderValue > 0 ? ` — حد أدنى ${money(rule.minOrderValue, currency)}` : ""}
                       </div>
                     </Td>
-                    <Td><Badge tone={rule.type === "earn" ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/25" : "bg-amber-500/10 text-amber-300 border-amber-500/25"}>{rule.type === "earn" ? "+" : "−"}{number(rule.points)}</Badge></Td>
+                    <Td><Badge tone={rule.type === "earn" ? "bg-success-soft text-success border-success-line" : "bg-warning-soft text-warning border-warning-line"}>{rule.type === "earn" ? "+" : "−"}{number(rule.points)}</Badge></Td>
                     <Td>
                       <button onClick={() => toggleRule(rule)} aria-label="تبديل التفعيل">
                         <ActivePill active={rule.isActive} />
@@ -240,7 +240,7 @@ export function LoyaltyPage() {
                     <Td>
                       <div className="flex items-center justify-end gap-1">
                         <Button variant="ghost" size="sm" onClick={() => openEditor(rule)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <button onClick={() => setDeleting(rule)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-500/10 hover:text-rose-300" title="حذف">
+                        <button onClick={() => setDeleting(rule)} className="rounded-brand-sm p-2 text-subtle hover:bg-danger-soft hover:text-danger" title="حذف">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
@@ -253,13 +253,13 @@ export function LoyaltyPage() {
         </Card>
 
         <Card className="overflow-hidden">
-          <div className="border-b border-slate-800/70 px-4 py-3 text-xs font-bold text-white">أرصدة العملاء (أعلى 100)</div>
+          <div className="border-b border-line px-4 py-3 text-xs font-bold text-ink">أرصدة العملاء (أعلى 100)</div>
           {accounts.length === 0 ? (
             <EmptyState title="لا توجد أرصدة بعد" description="ستظهر أرصدة العملاء هنا بمجرد منحهم نقاطاً." icon={<Users className="h-5 w-5" />} />
           ) : (
             <TableShell minWidth={520}>
               <thead>
-                <tr className="border-b border-slate-800/70">
+                <tr className="border-b border-line">
                   <Th>العميل</Th>
                   <Th>النقاط</Th>
                   <Th />
@@ -267,13 +267,13 @@ export function LoyaltyPage() {
               </thead>
               <tbody>
                 {accounts.map((account: any) => (
-                  <tr key={account.id} className="border-b border-slate-800/40 transition hover:bg-slate-800/20">
+                  <tr key={account.id} className="border-b border-line transition hover:bg-surface">
                     <Td>
-                      <div className="font-semibold text-slate-100">{account.customer?.name || "عميل"}</div>
-                      <div className="mt-0.5 font-mono text-[10px] text-slate-500" dir="ltr">{account.customer?.phone || account.customer?.email || "—"}</div>
+                      <div className="font-semibold text-ink">{account.customer?.name || "عميل"}</div>
+                      <div className="mt-0.5 font-mono text-[10px] text-subtle" dir="ltr">{account.customer?.phone || account.customer?.email || "—"}</div>
                     </Td>
                     <Td>
-                      <span className="rounded-lg border border-violet-500/25 bg-violet-500/10 px-2.5 py-1 text-[11px] font-bold text-violet-200">{number(account.points)} نقطة</span>
+                      <span className="rounded-brand-sm border border-info-line bg-info-soft px-2.5 py-1 text-[11px] font-bold text-info">{number(account.points)} نقطة</span>
                     </Td>
                     <Td>
                       <div className="flex justify-end">
@@ -289,13 +289,13 @@ export function LoyaltyPage() {
       </div>
 
       <Card className="overflow-hidden">
-        <div className="border-b border-slate-800/70 px-4 py-3 text-xs font-bold text-white">آخر حركات النقاط</div>
+        <div className="border-b border-line px-4 py-3 text-xs font-bold text-ink">آخر حركات النقاط</div>
         {transactions.length === 0 ? (
           <EmptyState title="لا توجد حركات" description="ستظهر هنا كل إضافة أو خصم للنقاط مع السبب." />
         ) : (
           <TableShell minWidth={640}>
             <thead>
-              <tr className="border-b border-slate-800/70">
+              <tr className="border-b border-line">
                 <Th>التاريخ</Th>
                 <Th>النوع</Th>
                 <Th>النقاط</Th>
@@ -304,15 +304,15 @@ export function LoyaltyPage() {
             </thead>
             <tbody>
               {transactions.map((transaction: any) => (
-                <tr key={transaction.id} className="border-b border-slate-800/40">
-                  <Td><span className="text-[11px] text-slate-400">{dateTime(transaction.createdAt)}</span></Td>
-                  <Td><Badge tone="bg-slate-800 text-slate-300 border-slate-700">{transaction.type}</Badge></Td>
+                <tr key={transaction.id} className="border-b border-line">
+                  <Td><span className="text-[11px] text-subtle">{dateTime(transaction.createdAt)}</span></Td>
+                  <Td><Badge tone="bg-surface text-ink-soft border-line">{transaction.type}</Badge></Td>
                   <Td>
-                    <span className={transaction.points >= 0 ? "font-semibold text-emerald-300" : "font-semibold text-rose-300"}>
+                    <span className={transaction.points >= 0 ? "font-semibold text-success" : "font-semibold text-danger"}>
                       {transaction.points >= 0 ? "+" : ""}{number(transaction.points)}
                     </span>
                   </Td>
-                  <Td><span className="text-[11px] text-slate-400">{transaction.note || "—"}</span></Td>
+                  <Td><span className="text-[11px] text-subtle">{transaction.note || "—"}</span></Td>
                 </tr>
               ))}
             </tbody>
@@ -376,7 +376,7 @@ export function LoyaltyPage() {
           {!adjusting ? (
             <>
               <SearchInput value={adjustSearch} onChange={(v) => { setAdjustSearch(v); setAdjustSearchCustomerId(""); }} placeholder="ابحث عن عميل بالاسم أو الهاتف…" />
-              <div className="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-slate-800 p-2">
+              <div className="max-h-56 space-y-1 overflow-y-auto rounded-brand border border-line p-2">
                 {customers.map((customer: any) => (
                   <button
                     key={customer.id}
@@ -384,20 +384,20 @@ export function LoyaltyPage() {
                     onClick={() => setAdjustSearchCustomerId(customer.id)}
                     className={
                       adjustSearchCustomerId === customer.id
-                        ? "flex w-full items-center justify-between rounded-lg bg-blue-500/10 px-3 py-2 text-xs font-semibold text-blue-100 ring-1 ring-inset ring-blue-500/30"
-                        : "flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs text-slate-300 hover:bg-slate-800/50"
+                        ? "flex w-full items-center justify-between rounded-brand-sm bg-brand/10 px-3 py-2 text-xs font-semibold text-brand ring-1 ring-inset ring-brand/30"
+                        : "flex w-full items-center justify-between rounded-brand-sm px-3 py-2 text-xs text-ink-soft hover:bg-surface"
                     }
                   >
                     <span>{customer.name || "عميل"}</span>
-                    <span className="font-mono text-[10px] text-slate-500" dir="ltr">{customer.phone || customer.email || ""}</span>
+                    <span className="font-mono text-[10px] text-subtle" dir="ltr">{customer.phone || customer.email || ""}</span>
                   </button>
                 ))}
-                {customers.length === 0 ? <div className="px-3 py-6 text-center text-[11px] text-slate-500">لا يوجد عملاء مطابقون.</div> : null}
+                {customers.length === 0 ? <div className="px-3 py-6 text-center text-[11px] text-subtle">لا يوجد عملاء مطابقون.</div> : null}
               </div>
             </>
           ) : (
-            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3 text-xs text-slate-300">
-              الرصيد الحالي: <span className="font-bold text-white">{number(adjusting.points)} نقطة</span>
+            <div className="rounded-brand border border-line bg-surface p-3 text-xs text-ink-soft">
+              الرصيد الحالي: <span className="font-bold text-ink">{number(adjusting.points)} نقطة</span>
             </div>
           )}
           <div className="grid gap-4 sm:grid-cols-2">

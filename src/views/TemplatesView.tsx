@@ -51,7 +51,7 @@ const TEMPLATES: TemplateStore[] = [
     hero_title_en: 'Summer Collection 2026: Pure Linen & Arabic Craft',
     hero_subtitle_ar: 'شحن سريع لكافة المحافظات وخيار الدفع عند الاستلام مع إمكانية المعاينة.',
     hero_subtitle_en: 'Fast nationwide shipping with Cash on Delivery and inspection options.',
-    primary_color: 'bg-stone-900',
+    primary_color: 'bg-secondary',
     sample_products: [
       { title_ar: 'قميص كتان طبيعي فاخر', title_en: 'Natural Linen Shirt', price_egp: 750, price_sar: 57, badge_ar: 'الأكثر طلباً', image_accent: 'bg-stone-200' },
       { title_ar: 'عباية حرير مطرزة يدوياً', title_en: 'Embroidered Silk Abaya', price_egp: 1850, price_sar: 140, badge_ar: 'كمية محدودة', image_accent: 'bg-stone-300' },
@@ -69,12 +69,12 @@ const TEMPLATES: TemplateStore[] = [
     hero_title_en: 'Pure Skincare Essentials with 100% Organic Botanicals',
     hero_subtitle_ar: 'باقات توفيرية مع شحن مجاني للطلبات فوق 500 ج.م في مصر و 200 ر.س بالخليج.',
     hero_subtitle_en: 'Bundle savings with free shipping over 500 EGP or 200 SAR.',
-    primary_color: 'bg-rose-950',
+    primary_color: 'bg-danger',
     sample_products: [
-      { title_ar: 'مجموعة الترطيب العميق اليومية', title_en: 'Daily Hydration Kit', price_egp: 620, price_sar: 47, badge_ar: 'عرض باقة', image_accent: 'bg-rose-100' },
-      { title_ar: 'سيروم فيتامين C النقي المركز', title_en: 'Vitamin C Pure Serum', price_egp: 450, price_sar: 34, image_accent: 'bg-rose-50' },
-      { title_ar: 'زيت الأرجان العضوي المعصور بارداً', title_en: 'Cold-Pressed Argan Oil', price_egp: 380, price_sar: 29, image_accent: 'bg-rose-100' },
-      { title_ar: 'عطر مسك الليل الفاخر 50ml', title_en: 'Night Musk Perfume 50ml', price_egp: 950, price_sar: 72, badge_ar: 'فاخر', image_accent: 'bg-rose-200' }
+      { title_ar: 'مجموعة الترطيب العميق اليومية', title_en: 'Daily Hydration Kit', price_egp: 620, price_sar: 47, badge_ar: 'عرض باقة', image_accent: 'bg-danger-soft' },
+      { title_ar: 'سيروم فيتامين C النقي المركز', title_en: 'Vitamin C Pure Serum', price_egp: 450, price_sar: 34, image_accent: 'bg-danger-soft' },
+      { title_ar: 'زيت الأرجان العضوي المعصور بارداً', title_en: 'Cold-Pressed Argan Oil', price_egp: 380, price_sar: 29, image_accent: 'bg-danger-soft' },
+      { title_ar: 'عطر مسك الليل الفاخر 50ml', title_en: 'Night Musk Perfume 50ml', price_egp: 950, price_sar: 72, badge_ar: 'فاخر', image_accent: 'bg-danger-soft' }
     ]
   },
   {
@@ -87,12 +87,12 @@ const TEMPLATES: TemplateStore[] = [
     hero_title_en: 'Premium Smartphone Accessories with 1-Year Warranty',
     hero_subtitle_ar: 'مواصفات قياسية وتأكيد فوري للطلب عبر واتساب مع رقم بوليصة الشحن.',
     hero_subtitle_en: 'Full technical specs and instant WhatsApp order tracking numbers.',
-    primary_color: 'bg-slate-900',
+    primary_color: 'bg-secondary',
     sample_products: [
-      { title_ar: 'شاحن GaN فائق السرعة 65W', title_en: '65W Fast GaN Charger', price_egp: 550, price_sar: 42, badge_ar: 'ضمان سنة', image_accent: 'bg-slate-200' },
-      { title_ar: 'سماعة رأس لاسلكية بخاصية عزل الضجيج', title_en: 'ANC Wireless Headphones', price_egp: 1400, price_sar: 106, image_accent: 'bg-slate-300' },
-      { title_ar: 'باور بانك مغناطيسي 10000mAh', title_en: 'Magnetic Powerbank 10k', price_egp: 720, price_sar: 55, image_accent: 'bg-slate-200' },
-      { title_ar: 'حامل هاتف للسيارة لاسلكي ذكي', title_en: 'Smart Wireless Car Mount', price_egp: 390, price_sar: 30, image_accent: 'bg-slate-100' }
+      { title_ar: 'شاحن GaN فائق السرعة 65W', title_en: '65W Fast GaN Charger', price_egp: 550, price_sar: 42, badge_ar: 'ضمان سنة', image_accent: 'bg-line' },
+      { title_ar: 'سماعة رأس لاسلكية بخاصية عزل الضجيج', title_en: 'ANC Wireless Headphones', price_egp: 1400, price_sar: 106, image_accent: 'bg-line' },
+      { title_ar: 'باور بانك مغناطيسي 10000mAh', title_en: 'Magnetic Powerbank 10k', price_egp: 720, price_sar: 55, image_accent: 'bg-line' },
+      { title_ar: 'حامل هاتف للسيارة لاسلكي ذكي', title_en: 'Smart Wireless Car Mount', price_egp: 390, price_sar: 30, image_accent: 'bg-surface' }
     ]
   }
 ];
@@ -109,15 +109,15 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ currentLang, onOpe
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
       {/* Header */}
       <div className="text-center max-w-3xl mx-auto space-y-3">
-        <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-md border border-emerald-200">
+        <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand-soft px-3 py-1 rounded-brand-sm border border-brand-line">
           {currentLang === 'ar' ? 'معرض المتاجر العربية' : 'Arabic Storefronts Showcase'}
         </span>
-        <h1 className="text-3xl sm:text-5xl font-extrabold font-heading text-slate-900 tracking-tight">
+        <h1 className="text-3xl sm:text-5xl font-extrabold font-heading text-ink tracking-tight">
           {currentLang === 'ar'
             ? 'تصاميم عربية مصممة هندسياً لرفع معدل الشراء'
             : 'Arabic Storefronts Engineered for High Conversion'}
         </h1>
-        <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+        <p className="text-sm sm:text-base text-ink-soft leading-relaxed">
           {currentLang === 'ar'
             ? 'ليست مجرد قوالب مترجمة؛ إنها واجهات تسوق تحترم خطوط القراءة العربية وسرعة التصفح وتجربة الشراء بالهاتف المحمول.'
             : 'Native RTL shopping experiences crafted for mobile buyers with instant WhatsApp checkout and clear COD workflows.'}
@@ -125,15 +125,15 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ currentLang, onOpe
 
         {/* Template Selector & Device Controls */}
         <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
-          <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+          <div className="inline-flex p-1 bg-surface rounded-brand border border-line">
             {TEMPLATES.map((tmpl) => (
               <button
                 key={tmpl.id}
                 onClick={() => setSelectedTemplateId(tmpl.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-brand-sm text-xs font-bold transition-all cursor-pointer ${
                   selectedTemplateId === tmpl.id
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-card text-ink shadow-xs'
+                    : 'text-ink-soft hover:text-ink'
                 }`}
               >
                 {currentLang === 'ar' ? tmpl.name_ar : tmpl.name_en}
@@ -142,44 +142,44 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ currentLang, onOpe
           </div>
 
           {/* Device toggle */}
-          <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+          <div className="inline-flex p-1 bg-surface rounded-brand border border-line">
             <button
               onClick={() => setDeviceMode('mobile')}
-              className={`p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                deviceMode === 'mobile' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
+              className={`p-1.5 rounded-brand-sm text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                deviceMode === 'mobile' ? 'bg-card text-ink shadow-xs' : 'text-ink-soft'
               }`}
               title="معاينة الهاتف المحمول"
             >
-              <Smartphone className="w-4 h-4 text-emerald-600" />
+              <Smartphone className="w-4 h-4 text-brand" />
               <span className="hidden sm:inline">{currentLang === 'ar' ? 'شاشة الهاتف' : 'Mobile'}</span>
             </button>
 
             <button
               onClick={() => setDeviceMode('desktop')}
-              className={`p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                deviceMode === 'desktop' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
+              className={`p-1.5 rounded-brand-sm text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                deviceMode === 'desktop' ? 'bg-card text-ink shadow-xs' : 'text-ink-soft'
               }`}
               title="معاينة الحاسوب"
             >
-              <Monitor className="w-4 h-4 text-emerald-600" />
+              <Monitor className="w-4 h-4 text-brand" />
               <span className="hidden sm:inline">{currentLang === 'ar' ? 'شاشة الحاسوب' : 'Desktop'}</span>
             </button>
           </div>
 
           {/* Currency Toggle inside preview */}
-          <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs">
+          <div className="inline-flex p-1 bg-surface rounded-brand border border-line text-xs">
             <button
               onClick={() => setSelectedCurrency('EGP')}
-              className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                selectedCurrency === 'EGP' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
+              className={`px-2.5 py-1 rounded-brand-sm font-bold transition-all cursor-pointer ${
+                selectedCurrency === 'EGP' ? 'bg-card text-ink shadow-xs' : 'text-ink-soft'
               }`}
             >
               EGP 🇪🇬
             </button>
             <button
               onClick={() => setSelectedCurrency('SAR')}
-              className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                selectedCurrency === 'SAR' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
+              className={`px-2.5 py-1 rounded-brand-sm font-bold transition-all cursor-pointer ${
+                selectedCurrency === 'SAR' ? 'bg-card text-ink shadow-xs' : 'text-ink-soft'
               }`}
             >
               SAR 🇸🇦
@@ -191,60 +191,60 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ currentLang, onOpe
       {/* Interactive Store Preview Frame */}
       <div className="flex justify-center">
         <div
-          className={`bg-white border border-slate-300 rounded-3xl shadow-xl overflow-hidden transition-all duration-300 ${
-            deviceMode === 'mobile' ? 'w-full max-w-sm ring-8 ring-slate-900/10' : 'w-full max-w-5xl'
+          className={`bg-card border border-line rounded-brand-lg shadow-xl overflow-hidden transition-all duration-300 ${
+            deviceMode === 'mobile' ? 'w-full max-w-sm ring-8 ring-secondary/10' : 'w-full max-w-5xl'
           }`}
         >
           {/* Mock Browser/App Bar */}
-          <div className="bg-slate-900 text-slate-300 px-4 py-2 flex items-center justify-between text-xs border-b border-slate-800">
+          <div className="bg-secondary text-white/70 px-4 py-2 flex items-center justify-between text-xs border-b border-white/10">
             <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-              <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-              <span className="text-[10px] text-slate-400 font-mono ms-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-danger" />
+              <div className="w-2.5 h-2.5 rounded-full bg-warning" />
+              <div className="w-2.5 h-2.5 rounded-full bg-brand" />
+              <span className="ms-2 font-mono text-[10px] text-white/50">
                 https://demo.{selectedTemplateId}.sanad.app
               </span>
             </div>
-            <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800">
+            <span className="rounded border border-brand-on-dark/30 bg-brand-on-dark/10 px-1.5 py-0.5 text-[10px] font-semibold text-brand-on-dark">
               0% عمولة
             </span>
           </div>
 
           {/* Storefront Mock Content */}
-          <div className="p-4 sm:p-6 space-y-6 bg-slate-50 min-h-[500px]">
+          <div className="p-4 sm:p-6 space-y-6 bg-surface min-h-[500px]">
             {/* Storefront Nav */}
-            <div className="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between">
-              <div className="font-heading font-extrabold text-slate-900 text-sm">
+            <div className="bg-card p-3 rounded-brand border border-line flex items-center justify-between">
+              <div className="font-heading font-extrabold text-ink text-sm">
                 {currentLang === 'ar' ? currentTemplate.name_ar.split('(')[0] : currentTemplate.name_en}
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                <span className="text-[11px] font-bold text-brand bg-brand-soft px-2 py-0.5 rounded">
                   {selectedCurrency === 'EGP' ? 'الجنيه 🇪🇬' : 'الريال 🇸🇦'}
                 </span>
-                <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700">
+                <div className="w-7 h-7 rounded-brand-sm bg-surface flex items-center justify-center text-ink-soft">
                   <ShoppingBag className="w-3.5 h-3.5" />
                 </div>
               </div>
             </div>
 
             {/* Storefront Hero Banner */}
-            <div className={`${currentTemplate.primary_color} text-white p-5 sm:p-7 rounded-2xl space-y-2`}>
-              <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400">
+            <div className={`${currentTemplate.primary_color} text-white p-5 sm:p-7 rounded-brand-lg space-y-2`}>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-white/80">
                 {currentLang === 'ar' ? 'تشكيلة حصرية' : 'Exclusive Arrivals'}
               </span>
               <h3 className="font-heading font-bold text-base sm:text-xl text-white">
                 {currentLang === 'ar' ? currentTemplate.hero_title_ar : currentTemplate.hero_title_en}
               </h3>
-              <p className="text-xs text-slate-300">
+              <p className="text-xs text-white/70">
                 {currentLang === 'ar' ? currentTemplate.hero_subtitle_ar : currentTemplate.hero_subtitle_en}
               </p>
             </div>
 
             {/* Product Grid */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-900">
+              <div className="flex items-center justify-between text-xs font-bold text-ink">
                 <span>{currentLang === 'ar' ? 'المنتجات المختارة' : 'Featured Products'}</span>
-                <span className="text-slate-500 font-normal">{currentLang === 'ar' ? 'الدفع عند الاستلام متاح' : 'COD Available'}</span>
+                <span className="text-subtle font-normal">{currentLang === 'ar' ? 'الدفع عند الاستلام متاح' : 'COD Available'}</span>
               </div>
 
               <div className={`grid gap-3 ${deviceMode === 'mobile' ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'}`}>
@@ -253,30 +253,30 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ currentLang, onOpe
                   const currSymbol = selectedCurrency === 'EGP' ? (currentLang === 'ar' ? 'ج.م' : 'EGP') : (currentLang === 'ar' ? 'ر.س' : 'SAR');
 
                   return (
-                    <div key={idx} className="bg-white rounded-xl border border-slate-200 overflow-hidden p-2.5 flex flex-col justify-between space-y-2 shadow-2xs">
-                      <div className={`w-full aspect-square rounded-lg ${prod.image_accent} flex items-center justify-center text-slate-400 relative`}>
-                        <ShoppingBag className="w-6 h-6 text-slate-400/70" />
+                    <div key={idx} className="bg-card rounded-brand border border-line overflow-hidden p-2.5 flex flex-col justify-between space-y-2 shadow-2xs">
+                      <div className={`w-full aspect-square rounded-brand-sm ${prod.image_accent} flex items-center justify-center text-subtle relative`}>
+                        <ShoppingBag className="w-6 h-6 text-subtle/70" />
                         {prod.badge_ar && (
-                          <span className="absolute top-1.5 end-1.5 bg-slate-900 text-white text-[9px] font-bold px-1.5 py-0.2 rounded">
+                          <span className="absolute end-1.5 top-1.5 rounded bg-secondary px-1.5 py-0.2 text-[9px] font-bold text-on-secondary">
                             {prod.badge_ar}
                           </span>
                         )}
                       </div>
 
                       <div>
-                        <div className="font-bold text-slate-900 text-xs truncate">
+                        <div className="font-bold text-ink text-xs truncate">
                           {currentLang === 'ar' ? prod.title_ar : prod.title_en}
                         </div>
-                        <div className="text-xs font-bold text-emerald-800 mt-1">
-                          {price.toLocaleString()} <span className="text-[10px] font-normal text-slate-500">{currSymbol}</span>
+                        <div className="text-xs font-bold text-brand mt-1">
+                          {price.toLocaleString()} <span className="text-[10px] font-normal text-subtle">{currSymbol}</span>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-1.5 pt-1">
-                        <button className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold rounded-lg transition-colors cursor-pointer">
+                        <button className="flex-1 rounded-brand-sm bg-secondary py-1.5 text-[10px] font-bold text-on-secondary transition hover:brightness-110 cursor-pointer">
                           {currentLang === 'ar' ? 'طلب سريع' : 'Quick Buy'}
                         </button>
-                        <button className="p-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg cursor-pointer" title="استفسار واتساب">
+                        <button className="rounded-brand-sm bg-brand-soft p-1.5 text-brand transition hover:bg-brand/15 cursor-pointer" title="استفسار واتساب">
                           <MessageCircle className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -287,7 +287,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ currentLang, onOpe
             </div>
 
             {/* Storefront Footer note */}
-            <div className="text-center text-[11px] text-slate-400 pt-3 border-t border-slate-200">
+            <div className="text-center text-[11px] text-subtle pt-3 border-t border-line">
               {currentLang === 'ar'
                 ? 'مدعوم بمنصة سند للتجارة · 0% عمولة على المبيعات'
                 : 'Powered by Sanad Commerce · 0% Commission on Orders'}
@@ -298,17 +298,17 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ currentLang, onOpe
 
       {/* CTA section */}
       <div className="text-center space-y-3 pt-6">
-        <h3 className="text-xl font-bold font-heading text-slate-900">
+        <h3 className="text-xl font-bold font-heading text-ink">
           {currentLang === 'ar' ? 'أعجبك التصميم؟ أطلق متجرك المماثل في دقائق' : 'Ready to Launch a Similar Store?'}
         </h3>
-        <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
+        <p className="text-xs sm:text-sm text-subtle max-w-md mx-auto">
           {currentLang === 'ar'
             ? 'احصل على متجرك بنطاقك المخصص و 0% عمولة واشتراك شهري ثابت 100 ج.م فقط.'
             : 'Get your storefront with custom domain, 0% cut, and flat 100 EGP/mo.'}
         </p>
         <button
           onClick={onOpenStoreModal}
-          className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+          className="px-6 py-3 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-brand shadow-xs transition-colors cursor-pointer"
         >
           {currentLang === 'ar' ? 'ابدأ متجرك الآن' : 'Start Your Store Now'}
         </button>

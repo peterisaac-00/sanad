@@ -118,7 +118,7 @@ export function Stars({ rating, className }: { rating: number; className?: strin
           key={index}
           className={cn(
             "h-3.5 w-3.5",
-            index <= Math.round(value) ? "fill-amber-400 text-amber-400" : "text-slate-500/50"
+            index <= Math.round(value) ? "fill-warning text-warning" : "text-line"
           )}
         />
       ))}
@@ -144,7 +144,7 @@ export function Price({
     <span className="flex flex-wrap items-baseline gap-2">
       <span className={cn("font-bold tabular-nums", sizes[size])}>{money(value, currency)}</span>
       {hasDiscount ? (
-        <span className={cn("text-slate-500 line-through", size === "lg" ? "text-sm" : "text-[11px]")}>
+        <span className={cn("text-subtle line-through", size === "lg" ? "text-sm" : "text-[11px]")}>
           {money(compare, currency)}
         </span>
       ) : null}
@@ -157,7 +157,7 @@ export function ProductImage({ src, alt, className }: { src?: string | null; alt
   useEffect(() => setFailed(false), [src]);
   if (!src || failed) {
     return (
-      <div className={cn("flex h-full w-full items-center justify-center bg-slate-500/10 text-slate-500", className)}>
+      <div className={cn("flex h-full w-full items-center justify-center bg-surface text-subtle", className)}>
         <ImageOff className="h-8 w-8" />
       </div>
     );
@@ -187,12 +187,12 @@ export function QuantityStepper({
   const { theme } = useStorefront();
   const limit = Math.max(1, max || 1);
   return (
-    <div className={cn("inline-flex items-center gap-1 rounded-xl border p-1", theme.border, theme.soft)}>
+    <div className={cn("inline-flex items-center gap-1 rounded-brand border p-1", theme.border, theme.soft)}>
       <button
         type="button"
         onClick={() => onChange(Math.max(1, qty - 1))}
         disabled={qty <= 1}
-        className="rounded-lg p-1.5 transition hover:bg-black/10 disabled:opacity-40"
+        className="rounded-brand-sm p-1.5 transition hover:bg-line/60 disabled:opacity-40"
         aria-label="تقليل الكمية"
       >
         <Minus className="h-3.5 w-3.5" />
@@ -202,7 +202,7 @@ export function QuantityStepper({
         type="button"
         onClick={() => onChange(Math.min(limit, qty + 1))}
         disabled={qty >= limit}
-        className="rounded-lg p-1.5 transition hover:bg-black/10 disabled:opacity-40"
+        className="rounded-brand-sm p-1.5 transition hover:bg-line/60 disabled:opacity-40"
         aria-label="زيادة الكمية"
       >
         <Plus className="h-3.5 w-3.5" />
@@ -217,7 +217,7 @@ export function DiscountBadge({ price, compareAt }: { price: number; compareAt?:
   const percent = Math.round((1 - price / compare) * 100);
   if (percent <= 0) return null;
   return (
-    <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">وفّر {percent}%</span>
+    <span className="rounded-full bg-danger px-2 py-0.5 text-[10px] font-bold text-on-danger">وفّر {percent}%</span>
   );
 }
 
@@ -235,7 +235,7 @@ export function ProductCard({ product }: { product: any }) {
   const href = `${base}/products/${encodeURIComponent(product.slug || product.id)}`;
 
   return (
-    <article className={cn("group overflow-hidden rounded-2xl border transition", theme.panel, theme.panelHover)}>
+    <article className={cn("group overflow-hidden rounded-brand border transition", theme.panel, theme.panelHover)}>
       <Link href={href} className="relative block aspect-square overflow-hidden">
         <ProductImage
           src={image}
@@ -246,13 +246,13 @@ export function ProductCard({ product }: { product: any }) {
           <div className="flex flex-col gap-1">
             <DiscountBadge price={price} compareAt={compare} />
             {product.isFeatured ? (
-              <span className="rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur">
+              <span className="rounded-full bg-overlay px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur">
                 مميز
               </span>
             ) : null}
           </div>
           {!inStock ? (
-            <span className="rounded-full bg-slate-900/80 px-2 py-0.5 text-[10px] font-semibold text-white">نفدت الكمية</span>
+            <span className="rounded-full bg-overlay px-2 py-0.5 text-[10px] font-semibold text-white">نفدت الكمية</span>
           ) : null}
         </div>
       </Link>
@@ -287,7 +287,7 @@ export function ProductCard({ product }: { product: any }) {
                   1
                 )
               }
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-brand text-on-brand shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
               style={{ background: theme.primary }}
               aria-label={`أضف ${name} إلى السلة`}
             >
@@ -296,7 +296,7 @@ export function ProductCard({ product }: { product: any }) {
           ) : (
             <Link
               href={href}
-              className="rounded-xl border px-2.5 py-2 text-[10px] font-bold transition hover:opacity-80"
+              className="rounded-brand border px-2.5 py-2 text-[10px] font-bold transition hover:opacity-80"
               style={{ borderColor: theme.primary, color: theme.primary }}
             >
               الخيارات
@@ -313,11 +313,11 @@ export function ProductGridSkeleton({ count = 8 }: { count?: number }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {Array.from({ length: count }).map((_, index) => (
-        <div key={index} className={cn("overflow-hidden rounded-2xl border", theme.panel)}>
+        <div key={index} className={cn("overflow-hidden rounded-brand border", theme.panel)}>
           <div className={cn("aspect-square animate-pulse", theme.soft)} />
           <div className="space-y-2 p-3">
-            <div className={cn("h-3 w-4/5 animate-pulse rounded", theme.soft)} />
-            <div className={cn("h-3 w-1/2 animate-pulse rounded", theme.soft)} />
+            <div className={cn("h-3 w-4/5 animate-pulse rounded-brand-sm", theme.soft)} />
+            <div className={cn("h-3 w-1/2 animate-pulse rounded-brand-sm", theme.soft)} />
           </div>
         </div>
       ))}
@@ -368,8 +368,8 @@ export function StorefrontEmpty({
 }) {
   const { theme } = useStorefront();
   return (
-    <div className={cn("flex flex-col items-center justify-center gap-3 rounded-2xl border px-6 py-16 text-center", theme.panel)}>
-      <div className={cn("flex h-14 w-14 items-center justify-center rounded-2xl", theme.soft)} style={{ color: theme.primary }}>
+    <div className={cn("flex flex-col items-center justify-center gap-3 rounded-brand border px-6 py-16 text-center", theme.panel)}>
+      <div className={cn("flex h-14 w-14 items-center justify-center rounded-brand", theme.soft)} style={{ color: theme.primary }}>
         {icon}
       </div>
       <div>
@@ -394,8 +394,8 @@ export function LoadingBlock({ label = "جارٍ التحميل…" }: { label?:
 export function ErrorBlock({ message, onRetry }: { message: string; onRetry?: () => void }) {
   const { theme } = useStorefront();
   return (
-    <div className={cn("mx-auto max-w-lg rounded-2xl border p-6 text-center", theme.panel)}>
-      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500">
+    <div className={cn("mx-auto max-w-lg rounded-brand border p-6 text-center", theme.panel)}>
+      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-brand bg-danger-soft text-danger">
         <X className="h-5 w-5" />
       </div>
       <div className={cn("font-semibold", theme.heading)}>تعذر إكمال الطلب</div>
@@ -404,7 +404,7 @@ export function ErrorBlock({ message, onRetry }: { message: string; onRetry?: ()
         <button
           type="button"
           onClick={onRetry}
-          className="mt-4 rounded-xl px-4 py-2 text-xs font-bold text-white"
+          className="mt-4 rounded-brand px-4 py-2 text-xs font-bold text-on-brand"
           style={{ background: theme.primary }}
         >
           إعادة المحاولة
@@ -441,9 +441,9 @@ export function CouponBox({ compact = false }: { compact?: boolean }) {
 
   if (coupon) {
     return (
-      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+      <div className="rounded-brand border border-success-line bg-success-soft p-3">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-xs font-bold text-emerald-500">
+          <div className="flex items-center gap-2 text-xs font-bold text-success">
             <BadgePercent className="h-4 w-4" />
             <span>{coupon.code}</span>
             <Check className="h-3.5 w-3.5" />
@@ -451,12 +451,12 @@ export function CouponBox({ compact = false }: { compact?: boolean }) {
           <button
             type="button"
             onClick={clearCoupon}
-            className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-500 hover:text-rose-400"
+            className="inline-flex items-center gap-1 text-[10px] font-semibold text-danger hover:opacity-75"
           >
             <X className="h-3 w-3" /> إزالة
           </button>
         </div>
-        <div className="mt-1 text-[11px] text-emerald-500">
+        <div className="mt-1 text-[11px] text-success">
           {coupon.freeShipping ? "شحن مجاني على هذا الطلب." : `خصم ${money(coupon.discount, currency)}.`}
         </div>
       </div>
@@ -479,13 +479,13 @@ export function CouponBox({ compact = false }: { compact?: boolean }) {
         <button
           type="submit"
           disabled={busy || couponLoading || !code.trim()}
-          className="shrink-0 rounded-xl border px-3 text-xs font-bold transition hover:opacity-80 disabled:opacity-40"
+          className="shrink-0 rounded-brand border px-3 text-xs font-bold transition hover:opacity-80 disabled:opacity-40"
           style={{ borderColor: theme.primary, color: theme.primary }}
         >
           {busy || couponLoading ? "…" : "تطبيق"}
         </button>
       </div>
-      {error ? <p className="text-[11px] text-rose-500">{error}</p> : null}
+      {error ? <p className="text-[11px] text-danger">{error}</p> : null}
     </form>
   );
 }
@@ -528,10 +528,9 @@ export function TrustStrip() {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((item) => (
-        <div key={item.title} className={cn("flex items-start gap-3 rounded-2xl border p-3.5", theme.panel)}>
+        <div key={item.title} className={cn("flex items-start gap-3 rounded-brand border p-3.5", theme.panel)}>
           <span
-            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: `${theme.primary}18`, color: theme.primary }}
+            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-brand bg-brand-soft text-brand"
           >
             {item.icon}
           </span>
@@ -577,7 +576,7 @@ export function SearchBar({
       />
       <button
         type="submit"
-        className="absolute end-1.5 top-1/2 -translate-y-1/2 rounded-lg px-3 py-1.5 text-[11px] font-bold text-white"
+        className="absolute end-1.5 top-1/2 -translate-y-1/2 rounded-brand-sm px-3 py-1.5 text-[11px] font-bold text-on-brand"
         style={{ background: theme.primary }}
       >
         بحث
@@ -604,7 +603,7 @@ export function RemoveLineButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-500 transition hover:text-rose-400"
+      className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger transition hover:opacity-75"
     >
       <Trash2 className="h-3.5 w-3.5" /> إزالة
     </button>

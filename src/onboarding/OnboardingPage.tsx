@@ -24,6 +24,7 @@ import { api, mediaUrl } from "../lib/api";
 import { BUSINESS_TYPES, CURRENCIES, EGYPT_GOVERNORATES, TEMPLATES, safeError } from "../lib/format";
 import { Link, navigate } from "../lib/router";
 import { useSession } from "../lib/session";
+import { ThemeToggle } from "../lib/theme";
 import { Alert, Button, Field, Input, Select, Spinner, Switch, Textarea, useToast } from "../components/ui";
 import { BrandLogo } from "../components/Brand";
 import { ImageUploader } from "../components/ImageUploader";
@@ -78,11 +79,11 @@ function fromData(data: any): FormState {
     primaryLanguage: store.primaryLanguage ?? "ar",
     logoUrl: store.logoUrl ?? "",
     coverUrl: store.coverUrl ?? "",
-    primaryColor: branding.primaryColor ?? "#2563EB",
-    secondaryColor: branding.secondaryColor ?? "#0F172A",
-    textColor: branding.textColor ?? "#F8FAFC",
-    themeMode: branding.themeMode ?? "dark",
-    arabicFont: branding.arabicFont ?? "Cairo",
+    primaryColor: branding.primaryColor ?? "#047857",
+    secondaryColor: branding.secondaryColor ?? "#0F2A24",
+    textColor: branding.textColor ?? "#0F172A",
+    themeMode: branding.themeMode ?? "light",
+    arabicFont: branding.arabicFont ?? "IBM Plex Sans Arabic",
     templateKey: store.templateKey ?? branding.templateKey ?? "general",
     whatsapp: store.whatsapp ?? "",
     returnPolicy: store.returnPolicy ?? "",
@@ -272,7 +273,7 @@ export function OnboardingPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#060a13]">
+      <div className="flex min-h-screen items-center justify-center bg-canvas">
         <Spinner label="جارٍ تحميل الجلسة…" />
       </div>
     );
@@ -280,8 +281,8 @@ export function OnboardingPage() {
 
   if (loadError) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#060a13] p-6">
-        <div className="w-full max-w-md rounded-2xl border border-rose-500/20 bg-slate-900 p-6">
+      <div className="flex min-h-screen items-center justify-center bg-canvas p-6">
+        <div className="w-full max-w-md rounded-brand-lg border border-danger-line bg-card p-6">
           <Alert tone="error" title="تعذر تحميل بيانات المتجر">{loadError}</Alert>
           <div className="mt-4 flex gap-2">
             <Button onClick={() => window.location.reload()}>إعادة المحاولة</Button>
@@ -294,7 +295,7 @@ export function OnboardingPage() {
 
   if (!form) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#060a13]">
+      <div className="flex min-h-screen items-center justify-center bg-canvas">
         <Spinner />
       </div>
     );
@@ -315,16 +316,16 @@ export function OnboardingPage() {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#060a13] font-arabic text-slate-100">
-      <div className="pointer-events-none fixed inset-0 opacity-[0.03]" style={{ backgroundImage: "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)", backgroundSize: "56px 56px" }} />
+    <div dir="rtl" className="min-h-screen bg-canvas font-arabic text-ink">
       <div className="relative z-10 mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:py-8">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <Link href="/dashboard"><BrandLogo /></Link>
           <div className="flex items-center gap-2">
-            <span className="hidden items-center gap-1.5 text-[11px] text-slate-500 sm:flex">
-              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />}
+            <span className="hidden items-center gap-1.5 text-[11px] text-subtle sm:flex">
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 text-success" />}
               {saving ? "جارٍ حفظ المسودة…" : savedAt ? "تم حفظ المسودة تلقائياً" : "الحفظ التلقائي مفعّل"}
             </span>
+            <ThemeToggle compact />
             <Button variant="outline" size="sm" onClick={saveAndExit} loading={saving}>
               <Save className="h-3.5 w-3.5" />
               حفظ ومتابعة لاحقاً
@@ -334,13 +335,13 @@ export function OnboardingPage() {
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[280px_1fr]">
           <aside className="space-y-3">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+            <div className="rounded-brand-lg border border-line bg-card p-4">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-white">تهيئة المتجر</span>
-                <span className="font-bold text-blue-400">{progress}%</span>
+                <span className="font-semibold text-ink">تهيئة المتجر</span>
+                <span className="font-bold text-brand">{progress}%</span>
               </div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800">
-                <div className="h-full rounded-full bg-gradient-to-l from-blue-500 to-cyan-400 transition-all duration-500" style={{ width: `${progress}%` }} />
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface">
+                <div className="h-full rounded-full bg-gradient-to-l from-brand to-brand-on-dark transition-all duration-500" style={{ width: `${progress}%` }} />
               </div>
               <div className="mt-4 space-y-1.5">
                 {STEPS.map((item, index) => {
@@ -358,31 +359,31 @@ export function OnboardingPage() {
                           dirtyRef.current = true;
                         }
                       }}
-                      className={`flex w-full items-start gap-3 rounded-xl p-2.5 text-start transition ${active ? "bg-blue-500/10 ring-1 ring-blue-500/25" : done ? "hover:bg-slate-800/60" : "opacity-60"}`}
+                      className={`flex w-full items-start gap-3 rounded-brand p-2.5 text-start transition ${active ? "bg-brand/10 ring-1 ring-brand/30" : done ? "hover:bg-surface" : "opacity-60"}`}
                     >
-                      <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${done ? "bg-emerald-500 text-white" : active ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-500"}`}>
+                      <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${done ? "bg-success text-on-success" : active ? "bg-brand text-on-brand" : "bg-surface text-subtle"}`}>
                         {done ? <Check className="h-3 w-3" /> : number}
                       </span>
                       <span>
-                        <span className={`block text-xs font-bold ${active ? "text-white" : "text-slate-300"}`}>{item.title}</span>
-                        <span className="mt-0.5 block text-[10px] leading-4 text-slate-500">{item.subtitle}</span>
+                        <span className={`block text-xs font-bold ${active ? "text-ink" : "text-ink-soft"}`}>{item.title}</span>
+                        <span className="mt-0.5 block text-[10px] leading-4 text-subtle">{item.subtitle}</span>
                       </span>
-                      <Icon className={`ms-auto mt-1 h-3.5 w-3.5 ${active ? "text-blue-400" : "text-slate-600"}`} />
+                      <Icon className={`ms-auto mt-1 h-3.5 w-3.5 ${active ? "text-brand" : "text-subtle"}`} />
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 text-[11px] leading-6 text-slate-500">
-              <div className="mb-1.5 flex items-center gap-1.5 font-semibold text-slate-300"><Globe2 className="h-3.5 w-3.5 text-blue-400" /> رابط متجرك</div>
-              <div className="break-all rounded-lg bg-slate-950/70 px-2 py-1.5 font-mono text-[10px] text-blue-300" dir="ltr">/store/{form.subdomain || "your-store"}</div>
+            <div className="rounded-brand-lg border border-line bg-card p-4 text-[11px] leading-6 text-subtle">
+              <div className="mb-1.5 flex items-center gap-1.5 font-semibold text-ink-soft"><Globe2 className="h-3.5 w-3.5 text-brand" /> رابط متجرك</div>
+              <div className="break-all rounded-brand-sm bg-surface px-2 py-1.5 font-mono text-[10px] text-brand" dir="ltr">/store/{form.subdomain || "your-store"}</div>
               <p className="mt-2">لن يظهر المتجر لعملائك بشكل كامل قبل الضغط على «نشر المتجر».</p>
             </div>
           </aside>
 
           <main className="min-w-0">
-            <div className="mb-4 flex items-center gap-2 text-[11px] text-slate-500">
+            <div className="mb-4 flex items-center gap-2 text-[11px] text-subtle">
               <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> 5 خطوات قصيرة</span>
               <span>·</span>
               <span>يمكنك الرجوع والتعديل في أي وقت</span>
@@ -390,7 +391,7 @@ export function OnboardingPage() {
 
             {formError ? <Alert tone="error" className="mb-4">{formError}</Alert> : null}
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-7">
+            <div className="rounded-brand-lg border border-line bg-card p-5 sm:p-7">
               {step === 1 ? (
                 <div className="space-y-5">
                   <StepTitle icon={Store} title="خلّينا نتعرف على متجرك" subtitle="هذه البيانات تظهر في واجهة المتجر وصفحات التواصل." />
@@ -399,12 +400,12 @@ export function OnboardingPage() {
                       <Input value={form.storeName} onChange={(e) => update("storeName", e.target.value)} placeholder="مثال: متجر نور" maxLength={120} />
                     </Field>
                     <Field label="رابط المتجر" required hint="أحرف إنجليزية صغيرة وأرقام وشرطات فقط">
-                      <div className="flex overflow-hidden rounded-xl border border-slate-700/80 bg-slate-950/60 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20">
-                        <span className="flex items-center border-e border-slate-800 px-2.5 text-[10px] text-slate-500" dir="ltr">/store/</span>
+                      <div className="flex overflow-hidden rounded-brand border border-line bg-surface focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/30">
+                        <span className="flex items-center border-e border-line px-2.5 text-[10px] text-subtle" dir="ltr">/store/</span>
                         <input
                           value={form.subdomain}
                           onChange={(e) => update("subdomain", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                          className="h-10 w-full bg-transparent px-2 text-sm text-slate-100 outline-none placeholder:text-slate-600"
+                          className="h-10 w-full bg-transparent px-2 text-sm text-ink outline-none placeholder:text-subtle"
                           placeholder="nour-store"
                           dir="ltr"
                           maxLength={40}
@@ -420,7 +421,7 @@ export function OnboardingPage() {
                           key={key}
                           type="button"
                           onClick={() => update("businessType", key)}
-                          className={`rounded-xl border px-2 py-2.5 text-center text-[11px] font-semibold transition ${form.businessType === key ? "border-blue-500 bg-blue-500/10 text-blue-200" : "border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700"}`}
+                          className={`rounded-brand border px-2 py-2.5 text-center text-[11px] font-semibold transition ${form.businessType === key ? "border-brand bg-brand/10 text-brand" : "border-line bg-surface text-subtle hover:border-line"}`}
                         >
                           {label}
                         </button>
@@ -464,7 +465,7 @@ export function OnboardingPage() {
                           key={option.value}
                           type="button"
                           onClick={() => update("primaryLanguage", option.value)}
-                          className={`rounded-xl border px-4 py-2 text-xs font-semibold ${form.primaryLanguage === option.value ? "border-blue-500 bg-blue-500/10 text-blue-200" : "border-slate-800 text-slate-400"}`}
+                          className={`rounded-brand border px-4 py-2 text-xs font-semibold ${form.primaryLanguage === option.value ? "border-brand bg-brand/10 text-brand" : "border-line text-subtle"}`}
                         >
                           {option.label}
                         </button>
@@ -484,15 +485,15 @@ export function OnboardingPage() {
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="اللون الأساسي">
-                      <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/60 p-1.5">
+                      <div className="flex items-center gap-2 rounded-brand border border-line bg-surface p-1.5">
                         <input type="color" value={form.primaryColor} onChange={(e) => update("primaryColor", e.target.value)} className="h-8 w-10 cursor-pointer rounded border-0 bg-transparent" />
-                        <input value={form.primaryColor} onChange={(e) => update("primaryColor", e.target.value)} dir="ltr" className="w-full bg-transparent font-mono text-xs text-slate-200 outline-none" maxLength={7} />
+                        <input value={form.primaryColor} onChange={(e) => update("primaryColor", e.target.value)} dir="ltr" className="w-full bg-transparent font-mono text-xs text-ink outline-none" maxLength={7} />
                       </div>
                     </Field>
                     <Field label="لون التمييز">
-                      <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/60 p-1.5">
+                      <div className="flex items-center gap-2 rounded-brand border border-line bg-surface p-1.5">
                         <input type="color" value={form.secondaryColor} onChange={(e) => update("secondaryColor", e.target.value)} className="h-8 w-10 cursor-pointer rounded border-0 bg-transparent" />
-                        <input value={form.secondaryColor} onChange={(e) => update("secondaryColor", e.target.value)} dir="ltr" className="w-full bg-transparent font-mono text-xs text-slate-200 outline-none" maxLength={7} />
+                        <input value={form.secondaryColor} onChange={(e) => update("secondaryColor", e.target.value)} dir="ltr" className="w-full bg-transparent font-mono text-xs text-ink outline-none" maxLength={7} />
                       </div>
                     </Field>
                   </div>
@@ -510,7 +511,7 @@ export function OnboardingPage() {
                             key={option.value}
                             type="button"
                             onClick={() => update("themeMode", option.value)}
-                            className={`flex-1 rounded-xl border px-2 py-2 text-[11px] font-semibold ${form.themeMode === option.value ? "border-blue-500 bg-blue-500/10 text-blue-200" : "border-slate-800 text-slate-400"}`}
+                            className={`flex-1 rounded-brand border px-2 py-2 text-[11px] font-semibold ${form.themeMode === option.value ? "border-brand bg-brand/10 text-brand" : "border-line text-subtle"}`}
                           >
                             {option.label}
                           </button>
@@ -519,8 +520,8 @@ export function OnboardingPage() {
                     </Field>
                   </div>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                    <div className="mb-2 text-[11px] font-semibold text-slate-300">معاينة سريعة للهوية</div>
+                  <div className="rounded-brand border border-line bg-surface p-4">
+                    <div className="mb-2 text-[11px] font-semibold text-ink-soft">معاينة سريعة للهوية</div>
                     <StorePreview store={previewStore} branding={previewBranding} device="desktop" />
                   </div>
                 </div>
@@ -535,20 +536,20 @@ export function OnboardingPage() {
                         key={key}
                         type="button"
                         onClick={() => update("templateKey", key)}
-                        className={`group overflow-hidden rounded-2xl border text-start transition ${form.templateKey === key ? "border-blue-500 ring-2 ring-blue-500/20" : "border-slate-800 hover:border-slate-600"}`}
+                        className={`group overflow-hidden rounded-brand-lg border text-start transition ${form.templateKey === key ? "border-brand ring-2 ring-brand/30" : "border-line hover:border-line"}`}
                       >
                         <div
                           className="relative flex h-28 items-end p-3"
-                          style={{ background: `radial-gradient(circle at 20% 10%, ${template.accent}55, transparent 55%), linear-gradient(135deg, ${template.accent}22, #0b1220)` }}
+                          style={{ background: `radial-gradient(circle at 20% 10%, ${template.accent}55, transparent 55%), linear-gradient(135deg, ${template.accent}22, var(--color-secondary))` }}
                         >
                           <span className="text-2xl">{template.emoji}</span>
                           {form.templateKey === key ? (
-                            <span className="absolute end-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white"><Check className="h-3.5 w-3.5" /></span>
+                            <span className="absolute end-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-brand text-on-brand"><Check className="h-3.5 w-3.5" /></span>
                           ) : null}
                         </div>
-                        <div className="bg-slate-900/70 p-3">
-                          <div className="text-xs font-bold text-white">{template.label}</div>
-                          <div className="mt-0.5 text-[10px] leading-5 text-slate-500">{template.description}</div>
+                        <div className="bg-card p-3">
+                          <div className="text-xs font-bold text-ink">{template.label}</div>
+                          <div className="mt-0.5 text-[10px] leading-5 text-subtle">{template.description}</div>
                         </div>
                       </button>
                     ))}
@@ -591,8 +592,8 @@ export function OnboardingPage() {
                     </Alert>
                   ) : null}
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                    <div className="mb-3 flex items-center gap-2 text-xs font-bold text-white"><Truck className="h-4 w-4 text-blue-400" /> منطقة الشحن الافتراضية</div>
+                  <div className="rounded-brand border border-line bg-surface p-4">
+                    <div className="mb-3 flex items-center gap-2 text-xs font-bold text-ink"><Truck className="h-4 w-4 text-brand" /> منطقة الشحن الافتراضية</div>
                     <div className="grid gap-4 sm:grid-cols-3">
                       <Field label="المحافظات المشمولة" hint="اكتب أسماء المحافظات مفصولة بفاصلة. اتركها فارغة لتغطية كل الطلبات." className="sm:col-span-3">
                         <Input value={form.shippingGovernorates} onChange={(e) => update("shippingGovernorates", e.target.value)} placeholder="القاهرة, الجيزة, الإسكندرية" />
@@ -604,7 +605,7 @@ export function OnboardingPage() {
                         <Input type="number" min={0} step="0.01" value={form.shippingThreshold} onChange={(e) => update("shippingThreshold", e.target.value)} placeholder="مثال: 500" />
                       </Field>
                     </div>
-                    <div className="mt-3 text-[10px] leading-5 text-slate-500">لا يوجد ربط آلي بشركات الشحن. يمكنك إدارة الشحن والتتبع يدوياً من لوحة التحكم، ولن تُنشأ حالات شحن وهمية.</div>
+                    <div className="mt-3 text-[10px] leading-5 text-subtle">لا يوجد ربط آلي بشركات الشحن. يمكنك إدارة الشحن والتتبع يدوياً من لوحة التحكم، ولن تُنشأ حالات شحن وهمية.</div>
                   </div>
                 </div>
               ) : null}
@@ -613,13 +614,13 @@ export function OnboardingPage() {
                 <div className="space-y-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <StepTitle icon={Rocket} title="راجع متجرك قبل النشر" subtitle="هذه معاينة مباشرة لبياناتك الحقيقية. تأكد من الاسم والوصف والصور ثم انشر." />
-                    <div className="flex rounded-xl border border-slate-800 bg-slate-950/50 p-1">
-                      <button type="button" onClick={() => setDevice("desktop")} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold ${device === "desktop" ? "bg-slate-800 text-white" : "text-slate-500"}`}><Monitor className="h-3.5 w-3.5" /> سطح المكتب</button>
-                      <button type="button" onClick={() => setDevice("mobile")} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold ${device === "mobile" ? "bg-slate-800 text-white" : "text-slate-500"}`}><Smartphone className="h-3.5 w-3.5" /> الجوال</button>
+                    <div className="flex rounded-brand border border-line bg-surface p-1">
+                      <button type="button" onClick={() => setDevice("desktop")} className={`flex items-center gap-1.5 rounded-brand-sm px-3 py-1.5 text-[11px] font-semibold ${device === "desktop" ? "bg-surface text-ink" : "text-subtle"}`}><Monitor className="h-3.5 w-3.5" /> سطح المكتب</button>
+                      <button type="button" onClick={() => setDevice("mobile")} className={`flex items-center gap-1.5 rounded-brand-sm px-3 py-1.5 text-[11px] font-semibold ${device === "mobile" ? "bg-surface text-ink" : "text-subtle"}`}><Smartphone className="h-3.5 w-3.5" /> الجوال</button>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+                  <div className="rounded-brand-lg border border-line bg-surface p-4">
                     <StorePreview store={previewStore} branding={previewBranding} device={device} />
                   </div>
 
@@ -632,19 +633,19 @@ export function OnboardingPage() {
                     <ReviewItem icon={CheckCircle2} label="الحالة" value="مسودة جاهزة للنشر" />
                   </div>
 
-                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] p-4 text-[11px] leading-6 text-emerald-100">
+                  <div className="rounded-brand border border-success-line bg-success-soft p-4 text-[11px] leading-6 text-success">
                     عند النشر سيتم تفعيل رابط المتجر، وستستطيع إضافة المنتجات واستقبال الطلبات. يمكنك إيقاف التعديل على الرابط بعد النشر.
                   </div>
                 </div>
               ) : null}
 
-              <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 pt-5">
+              <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
                 <Button variant="ghost" onClick={back} disabled={step === 1}>
                   <ChevronLeft className="h-4 w-4" />
                   السابق
                 </Button>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="hidden text-[11px] text-slate-500 sm:inline">{saving ? "جارٍ الحفظ…" : savedAt ? "تم الحفظ" : ""}</span>
+                  <span className="hidden text-[11px] text-subtle sm:inline">{saving ? "جارٍ الحفظ…" : savedAt ? "تم الحفظ" : ""}</span>
                   {step < 5 ? (
                     <Button onClick={next} loading={saving}>
                       التالي
@@ -660,23 +661,23 @@ export function OnboardingPage() {
               </div>
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-[10px] text-slate-600">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-[10px] text-subtle">
               <span>بياناتك محفوظة داخل حسابك ولا تظهر لأي متجر آخر.</span>
-              <Link href="/dashboard" className="hover:text-slate-400">تخطي إلى لوحة التحكم مؤقتاً</Link>
+              <Link href="/dashboard" className="hover:text-ink-soft">تخطي إلى لوحة التحكم مؤقتاً</Link>
             </div>
           </main>
         </div>
       </div>
 
       {published ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur">
-          <div className="w-full max-w-md rounded-3xl border border-emerald-500/25 bg-slate-900 p-7 text-center shadow-2xl">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4 backdrop-blur">
+          <div className="w-full max-w-md rounded-brand-lg border border-success-line bg-card p-7 text-center shadow-2xl">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-brand-lg bg-success-soft text-success">
               <Rocket className="h-7 w-7" />
             </div>
-            <h2 className="mt-4 font-heading text-2xl font-bold text-white">متجرك أصبح جاهزاً 🎉</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-400">تم نشر متجرك. ابدأ بإضافة منتجاتك لمشاركة الرابط مع عملائك.</p>
-            <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-xs text-blue-300" dir="ltr">
+            <h2 className="mt-4 font-heading text-2xl font-bold text-ink">متجرك أصبح جاهزاً 🎉</h2>
+            <p className="mt-2 text-sm leading-6 text-subtle">تم نشر متجرك. ابدأ بإضافة منتجاتك لمشاركة الرابط مع عملائك.</p>
+            <div className="mt-4 rounded-brand border border-line bg-surface p-3 text-xs text-brand" dir="ltr">
               {window.location.origin}/store/{published.store?.subdomain}
             </div>
             <div className="mt-5 grid gap-2">
@@ -684,10 +685,10 @@ export function OnboardingPage() {
                 <ArrowLeft className="h-4 w-4" />
                 أضف أول منتج
               </Button>
-              <Link href={`/store/${published.store?.subdomain}`} className="rounded-xl border border-slate-700 px-4 py-2.5 text-xs font-semibold text-slate-200 hover:bg-slate-800">
+              <Link href={`/store/${published.store?.subdomain}`} className="rounded-brand border border-line px-4 py-2.5 text-xs font-semibold text-ink hover:bg-surface">
                 زيارة المتجر
               </Link>
-              <button type="button" onClick={() => navigate("/dashboard")} className="text-[11px] text-slate-500 hover:text-slate-300">الذهاب إلى لوحة التحكم</button>
+              <button type="button" onClick={() => navigate("/dashboard")} className="text-[11px] text-subtle hover:text-ink-soft">الذهاب إلى لوحة التحكم</button>
             </div>
           </div>
         </div>
@@ -699,12 +700,12 @@ export function OnboardingPage() {
 function StepTitle({ icon: Icon, title, subtitle }: { icon: React.ElementType; title: string; subtitle: string }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-2.5 text-blue-400">
+      <div className="rounded-brand border border-brand-line bg-brand/10 p-2.5 text-brand">
         <Icon className="h-5 w-5" />
       </div>
       <div>
-        <h2 className="font-heading text-lg font-bold text-white">{title}</h2>
-        <p className="mt-0.5 text-xs leading-5 text-slate-400">{subtitle}</p>
+        <h2 className="font-heading text-lg font-bold text-ink">{title}</h2>
+        <p className="mt-0.5 text-xs leading-5 text-subtle">{subtitle}</p>
       </div>
     </div>
   );
@@ -712,9 +713,9 @@ function StepTitle({ icon: Icon, title, subtitle }: { icon: React.ElementType; t
 
 function ReviewItem({ icon: Icon, label, value, ltr }: { icon: React.ElementType; label: string; value: string; ltr?: boolean }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
-      <div className="flex items-center gap-1.5 text-[10px] text-slate-500"><Icon className="h-3 w-3" /> {label}</div>
-      <div className={`mt-1 truncate text-xs font-semibold text-slate-200 ${ltr ? "font-mono" : ""}`} dir={ltr ? "ltr" : undefined}>{value || "—"}</div>
+    <div className="rounded-brand border border-line bg-surface p-3">
+      <div className="flex items-center gap-1.5 text-[10px] text-subtle"><Icon className="h-3 w-3" /> {label}</div>
+      <div className={`mt-1 truncate text-xs font-semibold text-ink ${ltr ? "font-mono" : ""}`} dir={ltr ? "ltr" : undefined}>{value || "—"}</div>
     </div>
   );
 }

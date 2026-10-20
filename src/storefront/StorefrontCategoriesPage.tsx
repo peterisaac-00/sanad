@@ -34,7 +34,7 @@ export function StorefrontCategoriesPage() {
               <Link
                 key={category.id}
                 href={`${base}/categories/${encodeURIComponent(category.slug)}`}
-                className={cn("group overflow-hidden rounded-2xl border transition", theme.panel, theme.panelHover)}
+                className={cn("group overflow-hidden rounded-brand border transition", theme.panel, theme.panelHover)}
               >
                 <div className="relative aspect-[16/9] overflow-hidden">
                   {category.imageUrl ? (
@@ -46,13 +46,13 @@ export function StorefrontCategoriesPage() {
                   ) : (
                     <div
                       className="flex h-full w-full items-center justify-center"
-                      style={{ background: `linear-gradient(135deg, ${theme.primary}22, transparent)` }}
+                      style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${theme.primary} 13%, transparent), transparent)` }}
                     >
                       <Layers className="h-9 w-9" style={{ color: theme.primary }} />
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-transparent to-transparent" />
-                  <span className="absolute end-3 top-3 rounded-full bg-black/50 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur">
+                  <div className="absolute inset-0 bg-gradient-to-t from-secondary/75 via-transparent to-transparent" />
+                  <span className="absolute end-3 top-3 rounded-full bg-overlay px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur">
                     {count} منتج
                   </span>
                 </div>
@@ -79,7 +79,7 @@ export function StorefrontCategoriesPage() {
           action={
             <Link
               href={`${base}/products`}
-              className="rounded-xl px-4 py-2.5 text-xs font-bold text-white"
+              className="rounded-brand px-4 py-2.5 text-xs font-bold text-on-brand"
               style={{ background: theme.primary }}
             >
               تصفح المنتجات

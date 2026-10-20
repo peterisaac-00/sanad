@@ -128,7 +128,7 @@ export function StorefrontProductsPage({ categorySlug }: { categorySlug?: string
         }
       />
 
-      <div className={cn("flex flex-col gap-3 rounded-2xl border p-3 sm:flex-row sm:items-center", theme.panel)}>
+      <div className={cn("flex flex-col gap-3 rounded-brand border p-3 sm:flex-row sm:items-center", theme.panel)}>
         <div className="flex-1">
           <SearchBar
             initial={search}
@@ -155,9 +155,9 @@ export function StorefrontProductsPage({ categorySlug }: { categorySlug?: string
           href={buildUrl("/products", { sort })}
           className={cn(
             "rounded-full border px-3 py-1.5 text-[11px] font-semibold transition",
-            !category ? "text-white" : theme.muted
+            !category ? "text-on-brand" : theme.muted
           )}
-          style={!category ? { background: theme.primary, borderColor: theme.primary } : { borderColor: theme.dark ? "rgba(255,255,255,.1)" : "#e2e8f0" }}
+          style={!category ? { background: theme.primary, borderColor: theme.primary } : { borderColor: "var(--color-border)" }}
         >
           الكل
         </Link>
@@ -167,8 +167,8 @@ export function StorefrontProductsPage({ categorySlug }: { categorySlug?: string
             <Link
               key={item.id}
               href={buildUrl(`/categories/${encodeURIComponent(item.slug)}`, { sort })}
-              className={cn("rounded-full border px-3 py-1.5 text-[11px] font-semibold transition", active ? "text-white" : theme.muted)}
-              style={active ? { background: theme.primary, borderColor: theme.primary } : { borderColor: theme.dark ? "rgba(255,255,255,.1)" : "#e2e8f0" }}
+              className={cn("rounded-full border px-3 py-1.5 text-[11px] font-semibold transition", active ? "text-on-brand" : theme.muted)}
+              style={active ? { background: theme.primary, borderColor: theme.primary } : { borderColor: "var(--color-border)" }}
             >
               {item.nameAr || item.name}
             </Link>
@@ -179,7 +179,7 @@ export function StorefrontProductsPage({ categorySlug }: { categorySlug?: string
       {search ? (
         <div className={cn("flex flex-wrap items-center gap-2 text-xs", theme.muted)}>
           نتائج البحث عن <strong className={theme.heading}>«{search}»</strong>
-          <Link href={buildUrl(routePath, { category: categorySlug ? undefined : category, sort })} className="text-rose-500 hover:underline">
+          <Link href={buildUrl(routePath, { category: categorySlug ? undefined : category, sort })} className="text-danger hover:underline">
             مسح البحث
           </Link>
         </div>
@@ -200,7 +200,7 @@ export function StorefrontProductsPage({ categorySlug }: { categorySlug?: string
             ))}
           </div>
           {pagination && pagination.totalPages > 1 ? (
-            <div className={cn("flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-xs", theme.panel, theme.muted)}>
+            <div className={cn("flex items-center justify-between gap-3 rounded-brand border px-4 py-3 text-xs", theme.panel, theme.muted)}>
               <span>
                 صفحة {pagination.page} من {pagination.totalPages} · {pagination.total} منتج
               </span>
@@ -209,7 +209,7 @@ export function StorefrontProductsPage({ categorySlug }: { categorySlug?: string
                   type="button"
                   disabled={page <= 1}
                   onClick={() => go({ page: page - 1 })}
-                  className={cn("inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 font-semibold disabled:opacity-40", theme.border)}
+                  className={cn("inline-flex items-center gap-1 rounded-brand-sm border px-3 py-1.5 font-semibold disabled:opacity-40", theme.border)}
                 >
                   <ChevronRight className="h-3.5 w-3.5" /> السابق
                 </button>
@@ -217,7 +217,7 @@ export function StorefrontProductsPage({ categorySlug }: { categorySlug?: string
                   type="button"
                   disabled={page >= pagination.totalPages}
                   onClick={() => go({ page: page + 1 })}
-                  className={cn("inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 font-semibold disabled:opacity-40", theme.border)}
+                  className={cn("inline-flex items-center gap-1 rounded-brand-sm border px-3 py-1.5 font-semibold disabled:opacity-40", theme.border)}
                 >
                   التالي <ChevronLeft className="h-3.5 w-3.5" />
                 </button>
@@ -239,7 +239,7 @@ export function StorefrontProductsPage({ categorySlug }: { categorySlug?: string
           action={
             <Link
               href={buildUrl("/products", { sort: "newest" })}
-              className="rounded-xl px-4 py-2.5 text-xs font-bold text-white"
+              className="rounded-brand px-4 py-2.5 text-xs font-bold text-on-brand"
               style={{ background: theme.primary }}
             >
               عرض كل المنتجات
@@ -507,7 +507,7 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
 
       <div className="grid gap-7 lg:grid-cols-2">
         <div className="space-y-3">
-          <div className={cn("relative aspect-square overflow-hidden rounded-3xl border", theme.panel)}>
+          <div className={cn("relative aspect-square overflow-hidden rounded-brand-lg border", theme.panel)}>
             <ProductImage src={image} alt={name} />
             <div className="absolute start-3 top-3 flex flex-col gap-1.5">
               <DiscountBadge price={price} compareAt={compareAt} />
@@ -521,7 +521,7 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
                   type="button"
                   onClick={() => setImage(item.url)}
                   className={cn(
-                    "h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 transition",
+                    "h-16 w-16 shrink-0 overflow-hidden rounded-brand border-2 transition",
                     image === item.url ? "opacity-100" : "opacity-70 hover:opacity-100"
                   )}
                   style={{ borderColor: image === item.url ? theme.primary : "transparent" }}
@@ -540,7 +540,7 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
               <Link
                 href={`${base}/categories/${encodeURIComponent(category.slug)}`}
                 className="inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold"
-                style={{ background: `${theme.primary}18`, color: theme.primary }}
+                style={{ background: `color-mix(in srgb, ${theme.primary} 9%, transparent)`, color: theme.primary }}
               >
                 {category.nameAr || category.name}
               </Link>
@@ -562,11 +562,11 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
           <div className="flex flex-wrap items-end gap-3">
             <Price value={price} compareAt={compareAt} currency={currency} size="lg" />
             {inStock ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-500">
+              <span className="inline-flex items-center gap-1 rounded-full bg-success-soft px-2.5 py-1 text-[10px] font-bold text-success">
                 <Check className="h-3 w-3" /> متوفر
               </span>
             ) : (
-              <span className="rounded-full bg-rose-500/10 px-2.5 py-1 text-[10px] font-bold text-rose-500">نفدت الكمية</span>
+              <span className="rounded-full bg-danger-soft px-2.5 py-1 text-[10px] font-bold text-danger">نفدت الكمية</span>
             )}
           </div>
 
@@ -584,13 +584,13 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
                           type="button"
                           onClick={() => choose(definition.key, value.value)}
                           className={cn(
-                            "rounded-xl border px-3 py-2 text-xs font-semibold transition",
+                            "rounded-brand border px-3 py-2 text-xs font-semibold transition",
                             active ? "text-white" : theme.muted
                           )}
                           style={
                             active
                               ? { background: theme.primary, borderColor: theme.primary }
-                              : { borderColor: theme.dark ? "rgba(255,255,255,.12)" : "#e2e8f0" }
+                              : { borderColor: "var(--color-border)" }
                           }
                         >
                           {value.label}
@@ -601,13 +601,13 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
                 </div>
               ))}
               {!selectedVariant ? (
-                <p className="text-[11px] font-semibold text-rose-500">هذه التركيبة غير متاحة. اختر قيمة أخرى.</p>
+                <p className="text-[11px] font-semibold text-danger">هذه التركيبة غير متاحة. اختر قيمة أخرى.</p>
               ) : null}
             </div>
           ) : null}
 
           {inStock && stock <= 5 ? (
-            <p className="text-[11px] font-semibold text-amber-500">باقي {stock} قطع فقط في المخزون.</p>
+            <p className="text-[11px] font-semibold text-warning">باقي {stock} قطع فقط في المخزون.</p>
           ) : null}
 
           <div className="flex flex-wrap items-center gap-3">
@@ -616,7 +616,7 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
               type="button"
               onClick={() => add(false)}
               disabled={!inStock}
-              className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold text-white shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
+              className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-brand px-5 text-sm font-bold text-on-brand shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
               style={{ background: theme.primary }}
             >
               <ShoppingBag className="h-4 w-4" /> أضف إلى السلة
@@ -625,7 +625,7 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
               type="button"
               onClick={() => add(true)}
               disabled={!inStock}
-              className={cn("inline-flex h-12 items-center justify-center rounded-xl border px-4 text-sm font-bold transition hover:opacity-80 disabled:opacity-40", theme.border)}
+              className={cn("inline-flex h-12 items-center justify-center rounded-brand border px-4 text-sm font-bold transition hover:opacity-80 disabled:opacity-40", theme.border)}
             >
               اطلب الآن
             </button>
@@ -633,14 +633,14 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
 
           <div className="flex flex-wrap gap-3 text-[11px]">
             {store.cod_enabled ? (
-              <span className={cn("inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5", theme.border, theme.muted)}>
+              <span className={cn("inline-flex items-center gap-1.5 rounded-brand-sm border px-2.5 py-1.5", theme.border, theme.muted)}>
                 <PackageCheck className="h-3.5 w-3.5" /> الدفع عند الاستلام
               </span>
             ) : null}
-            <span className={cn("inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5", theme.border, theme.muted)}>
+            <span className={cn("inline-flex items-center gap-1.5 rounded-brand-sm border px-2.5 py-1.5", theme.border, theme.muted)}>
               <Truck className="h-3.5 w-3.5" /> شحن يُحسب حسب المحافظة
             </span>
-            <span className={cn("inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5", theme.border, theme.muted)}>
+            <span className={cn("inline-flex items-center gap-1.5 rounded-brand-sm border px-2.5 py-1.5", theme.border, theme.muted)}>
               <ShieldCheck className="h-3.5 w-3.5" /> أسعار ومخزون محدّثان
             </span>
           </div>
@@ -650,7 +650,7 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
               href={whatsapp}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-500 hover:opacity-80"
+              className="inline-flex items-center gap-2 text-xs font-semibold text-success hover:opacity-80"
             >
               <MessageCircle className="h-4 w-4" /> استفسر عن المنتج على واتساب
             </a>
@@ -662,7 +662,7 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <section className={cn("rounded-2xl border p-5", theme.panel)}>
+        <section className={cn("rounded-brand border p-5", theme.panel)}>
           <h2 className={cn("mb-3 font-heading text-lg font-bold", theme.heading)}>تفاصيل المنتج</h2>
           {description ? (
             <div className={cn("whitespace-pre-line text-sm leading-8", theme.muted)}>{description}</div>
@@ -670,7 +670,7 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
             <p className={cn("text-xs", theme.muted)}>لم يضف المتجر وصفاً تفصيلياً لهذا المنتج بعد.</p>
           )}
         </section>
-        <aside className={cn("space-y-3 rounded-2xl border p-5 text-xs", theme.panel, theme.muted)}>
+        <aside className={cn("space-y-3 rounded-brand border p-5 text-xs", theme.panel, theme.muted)}>
           <div className="flex items-center justify-between gap-2">
             <span>الدفع عند الاستلام</span>
             <span className={theme.heading}>{store.cod_enabled ? "متاح" : "غير متاح"}</span>
@@ -697,10 +697,10 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
           <div className="space-y-3">
             {reviews.length ? (
               reviews.map((review) => (
-                <article key={review.id} className={cn("rounded-2xl border p-4", theme.panel)}>
+                <article key={review.id} className={cn("rounded-brand border p-4", theme.panel)}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: theme.primary }}>
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-on-brand" style={{ background: theme.primary }}>
                         {String(review.customerName || "ع").trim().charAt(0)}
                       </span>
                       <span className={cn("text-xs font-bold", theme.heading)}>{review.customerName}</span>
@@ -709,7 +709,7 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
                   </div>
                   <p className={cn("mt-2 whitespace-pre-line text-xs leading-6", theme.muted)}>{review.content}</p>
                   {review.merchantReply ? (
-                    <div className={cn("mt-3 rounded-xl p-3 text-[11px] leading-6", theme.soft)}>
+                    <div className={cn("mt-3 rounded-brand p-3 text-[11px] leading-6", theme.soft)}>
                       <span className={cn("font-bold", theme.heading)}>رد المتجر: </span>
                       {review.merchantReply}
                     </div>
@@ -717,16 +717,16 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
                 </article>
               ))
             ) : (
-              <div className={cn("rounded-2xl border p-6 text-center text-xs", theme.panel, theme.muted)}>
+              <div className={cn("rounded-brand border p-6 text-center text-xs", theme.panel, theme.muted)}>
                 لا توجد تقييمات منشورة بعد. تقييمات العملاء تظهر بعد مراجعة المتجر.
               </div>
             )}
           </div>
 
-          <form onSubmit={submitReview} className={cn("h-fit space-y-3 rounded-2xl border p-4", theme.panel)}>
+          <form onSubmit={submitReview} className={cn("h-fit space-y-3 rounded-brand border p-4", theme.panel)}>
             <div className={cn("text-sm font-bold", theme.heading)}>أضف تقييمك</div>
             {reviewNote ? (
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-[11px] leading-5 text-emerald-500">
+              <div className="rounded-brand border border-success-line bg-success-soft p-2.5 text-[11px] leading-5 text-success">
                 {reviewNote}
               </div>
             ) : null}
@@ -735,7 +735,7 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((value) => (
                   <button key={value} type="button" onClick={() => setReviewRating(value)} aria-label={`${value} نجوم`}>
-                    <Star className={cn("h-5 w-5", value <= reviewRating ? "fill-amber-400 text-amber-400" : "text-slate-500/50")} />
+                    <Star className={cn("h-5 w-5", value <= reviewRating ? "fill-warning text-warning" : "text-line")} />
                   </button>
                 ))}
               </div>
@@ -759,7 +759,7 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
             <button
               type="submit"
               disabled={reviewBusy}
-              className="w-full rounded-xl px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50"
+              className="w-full rounded-brand px-4 py-2.5 text-xs font-bold text-on-brand disabled:opacity-50"
               style={{ background: theme.primary }}
             >
               {reviewBusy ? "جارٍ الإرسال…" : "إرسال التقييم"}

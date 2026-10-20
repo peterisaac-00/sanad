@@ -71,24 +71,24 @@ export function timeAgo(value: string | Date | null | undefined): string {
 }
 
 export const ORDER_STATUS: Record<string, { label: string; tone: string; dot: string }> = {
-  pending: { label: "قيد الانتظار", tone: "bg-amber-500/10 text-amber-300 border-amber-500/25", dot: "bg-amber-400" },
-  needs_confirmation: { label: "بانتظار التأكيد", tone: "bg-orange-500/10 text-orange-300 border-orange-500/25", dot: "bg-orange-400" },
-  confirmed: { label: "مؤكد", tone: "bg-sky-500/10 text-sky-300 border-sky-500/25", dot: "bg-sky-400" },
-  preparing: { label: "قيد التجهيز", tone: "bg-indigo-500/10 text-indigo-300 border-indigo-500/25", dot: "bg-indigo-400" },
-  ready_to_ship: { label: "جاهز للشحن", tone: "bg-violet-500/10 text-violet-300 border-violet-500/25", dot: "bg-violet-400" },
-  shipped: { label: "تم الشحن", tone: "bg-blue-500/10 text-blue-300 border-blue-500/25", dot: "bg-blue-400" },
-  out_for_delivery: { label: "خرج للتوصيل", tone: "bg-cyan-500/10 text-cyan-300 border-cyan-500/25", dot: "bg-cyan-400" },
-  delivered: { label: "تم التوصيل", tone: "bg-emerald-500/10 text-emerald-300 border-emerald-500/25", dot: "bg-emerald-400" },
-  cancelled: { label: "ملغي", tone: "bg-rose-500/10 text-rose-300 border-rose-500/25", dot: "bg-rose-400" },
-  returned: { label: "مرتجع", tone: "bg-slate-500/10 text-slate-300 border-slate-500/25", dot: "bg-slate-400" },
+  pending: { label: "قيد الانتظار", tone: "bg-warning-soft text-warning border-warning-line", dot: "bg-warning" },
+  needs_confirmation: { label: "بانتظار التأكيد", tone: "bg-warning-soft text-warning border-warning-line", dot: "bg-warning" },
+  confirmed: { label: "مؤكد", tone: "bg-info-soft text-info border-info-line", dot: "bg-info" },
+  preparing: { label: "قيد التجهيز", tone: "bg-info-soft text-info border-info-line", dot: "bg-info" },
+  ready_to_ship: { label: "جاهز للشحن", tone: "bg-info-soft text-info border-info-line", dot: "bg-info" },
+  shipped: { label: "تم الشحن", tone: "bg-brand-soft text-brand border-brand-line", dot: "bg-brand" },
+  out_for_delivery: { label: "خرج للتوصيل", tone: "bg-brand-soft text-brand border-brand-line", dot: "bg-brand" },
+  delivered: { label: "تم التوصيل", tone: "bg-success-soft text-success border-success-line", dot: "bg-success" },
+  cancelled: { label: "ملغي", tone: "bg-danger-soft text-danger border-danger-line", dot: "bg-danger" },
+  returned: { label: "مرتجع", tone: "border-line bg-surface text-subtle", dot: "bg-subtle" },
 };
 
 export const PAYMENT_STATUS: Record<string, { label: string; tone: string }> = {
-  unpaid: { label: "غير مدفوع", tone: "bg-amber-500/10 text-amber-300 border-amber-500/25" },
-  paid: { label: "مدفوع", tone: "bg-emerald-500/10 text-emerald-300 border-emerald-500/25" },
-  partially_refunded: { label: "مسترد جزئياً", tone: "bg-violet-500/10 text-violet-300 border-violet-500/25" },
-  refunded: { label: "مسترد", tone: "bg-slate-500/10 text-slate-300 border-slate-500/25" },
-  failed: { label: "فشل الدفع", tone: "bg-rose-500/10 text-rose-300 border-rose-500/25" },
+  unpaid: { label: "غير مدفوع", tone: "bg-warning-soft text-warning border-warning-line" },
+  paid: { label: "مدفوع", tone: "bg-success-soft text-success border-success-line" },
+  partially_refunded: { label: "مسترد جزئياً", tone: "bg-info-soft text-info border-info-line" },
+  refunded: { label: "مسترد", tone: "border-line bg-surface text-subtle" },
+  failed: { label: "فشل الدفع", tone: "bg-danger-soft text-danger border-danger-line" },
 };
 
 export const ORDER_TRANSITIONS: Record<string, string[]> = {
@@ -116,7 +116,7 @@ export const BUSINESS_TYPES: Record<string, string> = {
 };
 
 export const TEMPLATES: Record<string, { label: string; description: string; accent: string; emoji: string }> = {
-  general: { label: "متجر عام", description: "مرن لكل المنتجات والقطاعات", accent: "#2563EB", emoji: "🛍️" },
+  general: { label: "متجر عام", description: "مرن لكل المنتجات والقطاعات", accent: "#047857", emoji: "🛍️" },
   fashion: { label: "أزياء", description: "صور كبيرة وتجربة بصرية أنيقة", accent: "#DB2777", emoji: "👗" },
   electronics: { label: "إلكترونيات", description: "مواصفات تقنية ومقارنة سريعة", accent: "#0891B2", emoji: "💻" },
   restaurant: { label: "مطاعم", description: "قوائم طعام وطلبات سريعة", accent: "#EA580C", emoji: "🍽️" },

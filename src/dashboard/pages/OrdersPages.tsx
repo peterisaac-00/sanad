@@ -131,7 +131,7 @@ export function OrdersPage() {
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               onClick={() => { setStatus(""); setPage(1); }}
-              className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition ${!status ? "border-blue-500/40 bg-blue-500/15 text-blue-100" : "border-slate-700 text-slate-400 hover:text-slate-200"}`}
+              className={`rounded-brand-sm border px-2.5 py-1.5 text-[11px] font-semibold transition ${!status ? "border-brand-line bg-brand/15 text-brand" : "border-line text-subtle hover:text-ink"}`}
             >
               الكل · {number(Object.values(counts).reduce((s: number, v) => s + Number(v), 0))}
             </button>
@@ -142,7 +142,7 @@ export function OrdersPage() {
                 <button
                   key={key}
                   onClick={() => { setStatus(key); setPage(1); }}
-                  className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition ${status === key ? "border-blue-500/40 bg-blue-500/15 text-blue-100" : "border-slate-700 text-slate-400 hover:text-slate-200"}`}
+                  className={`rounded-brand-sm border px-2.5 py-1.5 text-[11px] font-semibold transition ${status === key ? "border-brand-line bg-brand/15 text-brand" : "border-line text-subtle hover:text-ink"}`}
                 >
                   <span className={`me-1 inline-block h-1.5 w-1.5 rounded-full ${meta.dot}`} />
                   {meta.label} · {number(count)}
@@ -165,7 +165,7 @@ export function OrdersPage() {
         </div>
 
         {selected.length > 0 ? (
-          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-blue-500/25 bg-blue-500/[0.07] px-3 py-2 text-[11px] text-blue-100">
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-brand border border-brand-line bg-brand/[0.07] px-3 py-2 text-[11px] text-brand">
             <span className="font-bold">{selected.length} طلب محدد</span>
             <Select value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)} className="h-8 w-44 py-0 text-xs">
               <option value="">اختر الحالة الجديدة…</option>
@@ -174,7 +174,7 @@ export function OrdersPage() {
               ))}
             </Select>
             <Button size="sm" loading={bulkBusy} disabled={!bulkStatus} onClick={runBulk}>تطبيق على المحدد</Button>
-            <button className="text-blue-300 hover:text-white" onClick={() => setSelected([])}>إلغاء التحديد</button>
+            <button className="text-brand hover:text-ink" onClick={() => setSelected([])}>إلغاء التحديد</button>
           </div>
         ) : null}
       </Card>
@@ -189,13 +189,13 @@ export function OrdersPage() {
             title="لا توجد طلبات مطابقة"
             description="جرّب تغيير الفلاتر، أو شارك رابط متجرك ليبدأ أول طلب حقيقي في الوصول."
             icon={<Package className="h-5 w-5" />}
-            action={<Link href={`/store/${subdomain}`} target="_blank" className="text-[11px] font-bold text-blue-400">فتح المتجر ←</Link>}
+            action={<Link href={`/store/${subdomain}`} target="_blank" className="text-[11px] font-bold text-brand">فتح المتجر ←</Link>}
           />
         ) : (
           <>
             <TableShell minWidth={900}>
               <thead>
-                <tr className="border-b border-slate-800/70">
+                <tr className="border-b border-line">
                   <Th className="w-10">
                     <input
                       type="checkbox"
@@ -217,7 +217,7 @@ export function OrdersPage() {
                 {orders.map((order: any) => (
                   <tr
                     key={order.id}
-                    className="cursor-pointer border-b border-slate-800/40 transition hover:bg-slate-800/20"
+                    className="cursor-pointer border-b border-line transition hover:bg-surface"
                     onClick={() => navigate(`/dashboard/orders/${order.id}`)}
                   >
                     <Td>
@@ -230,23 +230,23 @@ export function OrdersPage() {
                       />
                     </Td>
                     <Td>
-                      <span className="font-mono text-[11px] font-bold text-blue-300">SND-{order.orderNumber}</span>
-                      <div className="mt-0.5 max-w-56 truncate text-[10px] text-slate-500">{order.itemsSummary || `${order.items?.length ?? 0} منتج`}</div>
+                      <span className="font-mono text-[11px] font-bold text-brand">SND-{order.orderNumber}</span>
+                      <div className="mt-0.5 max-w-56 truncate text-[10px] text-subtle">{order.itemsSummary || `${order.items?.length ?? 0} منتج`}</div>
                     </Td>
                     <Td>
-                      <div className="font-semibold text-slate-200">{order.customerName || "بدون اسم"}</div>
-                      <div className="mt-0.5 font-mono text-[10px] text-slate-500" dir="ltr">{order.customerPhone || "—"}</div>
+                      <div className="font-semibold text-ink">{order.customerName || "بدون اسم"}</div>
+                      <div className="mt-0.5 font-mono text-[10px] text-subtle" dir="ltr">{order.customerPhone || "—"}</div>
                     </Td>
                     <Td><StatusBadge status={order.status} /></Td>
                     <Td><PaymentBadge status={order.paymentStatus} /></Td>
-                    <Td className="font-bold text-slate-100">{money(order.amountEgp, store.currency)}</Td>
-                    <Td className="whitespace-nowrap text-[10px] text-slate-500">{dateTime(order.createdAt)}</Td>
-                    <Td><ArrowRight className="h-3.5 w-3.5 text-slate-600" /></Td>
+                    <Td className="font-bold text-ink">{money(order.amountEgp, store.currency)}</Td>
+                    <Td className="whitespace-nowrap text-[10px] text-subtle">{dateTime(order.createdAt)}</Td>
+                    <Td><ArrowRight className="h-3.5 w-3.5 text-subtle" /></Td>
                   </tr>
                 ))}
               </tbody>
             </TableShell>
-            <div className="border-t border-slate-800/60 px-3">
+            <div className="border-t border-line px-3">
               <Pagination page={page} totalPages={pagination?.totalPages ?? 1} total={pagination?.total} onChange={setPage} />
             </div>
           </>
@@ -485,11 +485,11 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
         description={`${dateTime(order.createdAt)} · ${order.items?.length ?? 0} منتج · ${order.paymentMethod || "COD"}`}
         actions={
           <>
-            <Link href="/dashboard/orders" className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-700 px-4 text-xs font-semibold text-slate-200 hover:bg-slate-800">
+            <Link href="/dashboard/orders" className="inline-flex h-10 items-center gap-2 rounded-brand border border-line px-4 text-xs font-semibold text-ink hover:bg-surface">
               <ArrowRight className="h-4 w-4" /> كل الطلبات
             </Link>
             {whatsappUrl ? (
-              <a href={whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-xs font-semibold text-white hover:bg-emerald-500">
+              <a href={whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-brand bg-success px-4 text-xs font-semibold text-on-success hover:bg-success/90">
                 <MessageCircle className="h-4 w-4" /> مراسلة العميل
               </a>
             ) : null}
@@ -503,7 +503,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
             <div className="flex flex-wrap items-center gap-3">
               <StatusBadge status={order.status} />
               <PaymentBadge status={order.paymentStatus} />
-              {order.couponCode ? <Badge tone="border-violet-500/25 bg-violet-500/10 text-violet-300">كوبون {order.couponCode}</Badge> : null}
+              {order.couponCode ? <Badge tone="border-info-line bg-info-soft text-info">كوبون {order.couponCode}</Badge> : null}
               {order.courier ? <Badge>{order.courier}</Badge> : null}
             </div>
 
@@ -545,7 +545,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
                         setBusy(false);
                       }
                     }}
-                    className="rounded-lg border border-slate-700 px-2.5 py-1 text-[10px] font-semibold text-slate-300 transition hover:border-blue-500/40 hover:text-white"
+                    className="rounded-brand-sm border border-line px-2.5 py-1 text-[10px] font-semibold text-ink-soft transition hover:border-brand-line hover:text-ink"
                   >
                     → {ORDER_STATUS[value]?.label ?? value}
                   </button>
@@ -555,10 +555,10 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
           </Card>
 
           <Card className="overflow-hidden">
-            <div className="border-b border-slate-800 px-4 py-3 text-sm font-bold text-white">منتجات الطلب</div>
+            <div className="border-b border-line px-4 py-3 text-sm font-bold text-ink">منتجات الطلب</div>
             <TableShell minWidth={560}>
               <thead>
-                <tr className="border-b border-slate-800/70">
+                <tr className="border-b border-line">
                   <Th>المنتج</Th>
                   <Th>SKU</Th>
                   <Th>الكمية</Th>
@@ -568,22 +568,22 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
               </thead>
               <tbody>
                 {(order.items ?? []).map((item: any) => (
-                  <tr key={item.id} className="border-b border-slate-800/40">
+                  <tr key={item.id} className="border-b border-line">
                     <Td>
-                      <div className="font-semibold text-slate-200">{item.name}</div>
-                      {item.variantLabel ? <div className="mt-0.5 text-[10px] text-slate-500">{item.variantLabel}</div> : null}
+                      <div className="font-semibold text-ink">{item.name}</div>
+                      {item.variantLabel ? <div className="mt-0.5 text-[10px] text-subtle">{item.variantLabel}</div> : null}
                     </Td>
-                    <Td className="font-mono text-[10px] text-slate-500">{item.sku}</Td>
+                    <Td className="font-mono text-[10px] text-subtle">{item.sku}</Td>
                     <Td>{number(item.qty)}</Td>
                     <Td>{money(item.unitPriceEgp, store.currency)}</Td>
-                    <Td className="font-bold text-slate-100">{money(item.unitPriceEgp * item.qty, store.currency)}</Td>
+                    <Td className="font-bold text-ink">{money(item.unitPriceEgp * item.qty, store.currency)}</Td>
                   </tr>
                 ))}
               </tbody>
             </TableShell>
-            <div className="space-y-1.5 border-t border-slate-800/60 px-4 py-3 text-xs">
+            <div className="space-y-1.5 border-t border-line px-4 py-3 text-xs">
               <Row label="المجموع الفرعي" value={money(order.subtotal, store.currency)} />
-              {order.discount ? <Row label="الخصم" value={`- ${money(order.discount, store.currency)}`} tone="text-emerald-300" /> : null}
+              {order.discount ? <Row label="الخصم" value={`- ${money(order.discount, store.currency)}`} tone="text-success" /> : null}
               {order.shippingFee ? <Row label="الشحن" value={money(order.shippingFee, store.currency)} /> : null}
               <Row label="إجمالي الطلب" value={money(order.amountEgp, store.currency)} strong />
             </div>
@@ -591,23 +591,23 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
 
           <Card className="p-4">
             <div className="flex items-center justify-between">
-              <div className="text-sm font-bold text-white">المدفوعات والاسترداد</div>
+              <div className="text-sm font-bold text-ink">المدفوعات والاسترداد</div>
               <Button size="sm" variant="outline" onClick={() => setRefundOpen(true)}>
                 <RotateCcw className="h-3.5 w-3.5" /> طلب استرداد
               </Button>
             </div>
             {(order.payments ?? []).length === 0 ? (
-              <div className="mt-3 text-[11px] text-slate-500">لا توجد حركات دفع مسجّلة على هذا الطلب بعد.</div>
+              <div className="mt-3 text-[11px] text-subtle">لا توجد حركات دفع مسجّلة على هذا الطلب بعد.</div>
             ) : (
               <div className="mt-3 space-y-2">
                 {(order.payments ?? []).map((payment: any) => (
-                  <div key={payment.id} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-[11px]">
+                  <div key={payment.id} className="flex items-center justify-between rounded-brand border border-line bg-surface px-3 py-2 text-[11px]">
                     <div>
-                      <div className="font-semibold text-slate-200">{payment.provider} · {payment.method || "—"}</div>
-                      <div className="mt-0.5 text-[10px] text-slate-500">{dateTime(payment.createdAt)}</div>
+                      <div className="font-semibold text-ink">{payment.provider} · {payment.method || "—"}</div>
+                      <div className="mt-0.5 text-[10px] text-subtle">{dateTime(payment.createdAt)}</div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-100">{money(payment.amount, payment.currency || store.currency)}</span>
+                      <span className="font-bold text-ink">{money(payment.amount, payment.currency || store.currency)}</span>
                       <Badge>{payment.status}</Badge>
                     </div>
                   </div>
@@ -617,14 +617,14 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
             {refunds.length ? (
               <div className="mt-3 space-y-2">
                 {refunds.map((refund: any) => (
-                  <div key={refund.id} className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-[11px]">
+                  <div key={refund.id} className="rounded-brand border border-line bg-surface px-3 py-2 text-[11px]">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-100">{money(refund.amount, store.currency)}</span>
-                      <Badge tone={refund.status === "processed" ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300" : refund.status === "cancelled" ? "bg-slate-800 text-slate-400 border-slate-700" : "border-amber-500/25 bg-amber-500/10 text-amber-300"}>
+                      <span className="font-bold text-ink">{money(refund.amount, store.currency)}</span>
+                      <Badge tone={refund.status === "processed" ? "border-success-line bg-success-soft text-success" : refund.status === "cancelled" ? "bg-surface text-subtle border-line" : "border-warning-line bg-warning-soft text-warning"}>
                         {refund.status === "processed" ? "منفّذ" : refund.status === "cancelled" ? "ملغي" : "معلّق"}
                       </Badge>
                     </div>
-                    {refund.reason ? <div className="mt-1 text-[10px] text-slate-500">{refund.reason}</div> : null}
+                    {refund.reason ? <div className="mt-1 text-[10px] text-subtle">{refund.reason}</div> : null}
                     {refund.status === "pending" ? (
                       <div className="mt-2 flex gap-2">
                         <Button size="sm" variant="success" onClick={() => finaliseRefund(refund.id, "processed")}>تنفيذ</Button>
@@ -640,7 +640,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
 
         <div className="space-y-4">
           <Card className="p-4">
-            <div className="text-sm font-bold text-white">بيانات العميل والشحن</div>
+            <div className="text-sm font-bold text-ink">بيانات العميل والشحن</div>
             <div className="mt-3 space-y-2.5 text-[11px]">
               <Row label="الاسم" value={order.customerName || "—"} />
               <Row label="الهاتف" value={<span dir="ltr" className="font-mono">{order.customerPhone || "—"}</span>} />
@@ -651,43 +651,43 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
               <Row label="شركة الشحن" value={order.courier || "—"} />
             </div>
             {order.customer ? (
-              <Link href={`/dashboard/customers?open=${order.customer.id}`} className="mt-3 inline-block text-[11px] font-bold text-blue-400">عرض ملف العميل ←</Link>
+              <Link href={`/dashboard/customers?open=${order.customer.id}`} className="mt-3 inline-block text-[11px] font-bold text-brand">عرض ملف العميل ←</Link>
             ) : null}
             {order.notes ? (
-              <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950/40 p-3 text-[11px] leading-6 text-slate-300">
-                <div className="mb-1 font-bold text-slate-400">ملاحظات العميل</div>
+              <div className="mt-3 rounded-brand border border-line bg-surface p-3 text-[11px] leading-6 text-ink-soft">
+                <div className="mb-1 font-bold text-subtle">ملاحظات العميل</div>
                 {order.notes}
               </div>
             ) : null}
           </Card>
 
           <Card className="p-4">
-            <div className="text-sm font-bold text-white">ملاحظة داخلية</div>
+            <div className="text-sm font-bold text-ink">ملاحظة داخلية</div>
             <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="مثال: العميل طلب تغيير العنوان قبل الشحن…" className="mt-3 min-h-20" />
-            <label className="mt-2 flex items-center gap-2 text-[11px] text-slate-400">
+            <label className="mt-2 flex items-center gap-2 text-[11px] text-subtle">
               <input type="checkbox" checked={internalNote} onChange={(e) => setInternalNote(e.target.checked)} />
               داخلية فقط (لا تظهر للعميل)
             </label>
             <Button size="sm" className="mt-3" disabled={!note.trim()} onClick={addNote}>إضافة للملاحظات</Button>
             {order.internalNotes ? (
-              <div className="mt-3 space-y-1 rounded-xl border border-slate-800 bg-slate-950/40 p-3 text-[10px] leading-6 text-slate-400">
+              <div className="mt-3 space-y-1 rounded-brand border border-line bg-surface p-3 text-[10px] leading-6 text-subtle">
                 {order.internalNotes.split("\n").filter(Boolean).map((line: string, index: number) => <div key={index}>• {line}</div>)}
               </div>
             ) : null}
           </Card>
 
           <Card className="p-4">
-            <div className="text-sm font-bold text-white">سجل الطلب</div>
+            <div className="text-sm font-bold text-ink">سجل الطلب</div>
             {events.length === 0 ? (
-              <div className="mt-3 text-[11px] text-slate-500">لا توجد أحداث مسجلة.</div>
+              <div className="mt-3 text-[11px] text-subtle">لا توجد أحداث مسجلة.</div>
             ) : (
               <ol className="mt-3 space-y-3">
                 {events.map((event: any) => (
                   <li key={event.id} className="flex gap-3">
-                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-blue-400" />
+                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand" />
                     <div className="min-w-0">
-                      <div className="text-[11px] font-semibold text-slate-200">{event.message}</div>
-                      <div className="mt-0.5 text-[10px] text-slate-500">
+                      <div className="text-[11px] font-semibold text-ink">{event.message}</div>
+                      <div className="mt-0.5 text-[10px] text-subtle">
                         {timeAgo(event.createdAt)} · {event.actor || "النظام"} · {event.type}
                       </div>
                     </div>
@@ -728,8 +728,8 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
 function Row({ label, value, strong, tone }: { label: string; value: React.ReactNode; strong?: boolean; tone?: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="text-slate-500">{label}</span>
-      <span className={`${strong ? "text-sm font-bold text-white" : "font-semibold text-slate-200"} ${tone ?? ""}`}>{value}</span>
+      <span className="text-subtle">{label}</span>
+      <span className={`${strong ? "text-sm font-bold text-ink" : "font-semibold text-ink"} ${tone ?? ""}`}>{value}</span>
     </div>
   );
 }
@@ -740,7 +740,7 @@ export function OrderNotFound() {
     <EmptyState
       title="الطلب غير موجود"
       description="الرابط قد يكون قديماً أو الطلب لا ينتمي إلى متجرك."
-      action={<Link href="/dashboard/orders" className="text-[11px] font-bold text-blue-400">العودة للطلبات ←</Link>}
+      action={<Link href="/dashboard/orders" className="text-[11px] font-bold text-brand">العودة للطلبات ←</Link>}
     />
   );
 }

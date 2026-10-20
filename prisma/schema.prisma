@@ -5,6 +5,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output      = "../generated/prisma/client"
 }
 
 datasource db {
@@ -94,11 +95,11 @@ model StoreBranding {
   id             String   @id
   storeId        String   @unique @map("store_id")
   store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  primaryColor   String   @default("#2563EB") @map("primary_color")
-  secondaryColor String   @default("#0F172A") @map("secondary_color")
-  textColor      String   @default("#F8FAFC") @map("text_color")
-  themeMode      String   @default("dark") @map("theme_mode")
-  arabicFont     String   @default("Cairo") @map("arabic_font")
+  primaryColor   String   @default("#047857") @map("primary_color")
+  secondaryColor String   @default("#0F2A24") @map("secondary_color")
+  textColor      String   @default("#0F172A") @map("text_color")
+  themeMode      String   @default("light") @map("theme_mode")
+  arabicFont     String   @default("IBM Plex Sans Arabic") @map("arabic_font")
   templateKey    String   @default("general") @map("template_key")
   headerConfig   Json     @default("{}") @map("header_config")
   footerConfig   Json     @default("{}") @map("footer_config")

@@ -32,23 +32,23 @@ export const ExchangeRateSimulator: React.FC<ExchangeRateSimulatorProps> = ({ cu
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+    <div className="bg-card rounded-brand-lg border border-line shadow-sm p-6 sm:p-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-line">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 mb-1">
+          <div className="flex items-center gap-2 text-xs font-semibold text-brand mb-1">
             <Globe className="w-4 h-4" />
             <span>{currentLang === 'ar' ? 'معمارية العملات وأسعار الصرف' : 'Currency & Exchange Rate Architecture'}</span>
           </div>
-          <h3 className="text-lg sm:text-xl font-bold font-heading text-slate-900">
+          <h3 className="text-lg sm:text-xl font-bold font-heading text-ink">
             {currentLang === 'ar' ? 'نظام الصرف المزدوج: آلي ويدوي للتجارة الإقليمية' : 'Dual Exchange Rate System: Automatic & Manual Modes'}
           </h3>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-subtle mt-1">
             {currentLang === 'ar'
               ? 'تحديد أسعار منتجاتك في مصر، وعرضها تلقائياً للمتسوق السعودي والإماراتي والكويتي بعملته المحلية.'
               : 'Price items in EGP, and render them in SAR, AED, and KWD with complete FX control.'}
           </p>
-          <p className="text-[11px] text-slate-400 mt-1">
+          <p className="text-[11px] text-subtle mt-1">
             {currentLang === 'ar'
               ? 'أسعار مرجعية توضيحية للتجربة، وليست أسعار صرف حية.'
               : 'Illustrative reference rates for experimentation, not live FX feeds.'}
@@ -56,27 +56,27 @@ export const ExchangeRateSimulator: React.FC<ExchangeRateSimulatorProps> = ({ cu
         </div>
 
         {/* Mode Toggle Button */}
-        <div className="inline-flex p-1 bg-slate-100 rounded-lg self-start sm:self-auto">
+        <div className="inline-flex p-1 bg-surface rounded-brand-sm self-start sm:self-auto">
           <button
             onClick={() => setMode('automatic')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-brand-sm transition-colors cursor-pointer flex items-center gap-1.5 ${
               mode === 'automatic'
-                ? 'bg-white text-slate-900 shadow-xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-card text-ink shadow-xs font-bold'
+                : 'text-ink-soft hover:text-ink'
             }`}
           >
-            <RefreshCw className="w-3.5 h-3.5 text-emerald-600" />
+            <RefreshCw className="w-3.5 h-3.5 text-brand" />
             <span>{currentLang === 'ar' ? 'وضع آلي (محدّث لحظياً)' : 'Automatic (Live API)'}</span>
           </button>
           <button
             onClick={() => setMode('manual')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-brand-sm transition-colors cursor-pointer flex items-center gap-1.5 ${
               mode === 'manual'
-                ? 'bg-white text-slate-900 shadow-xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-card text-ink shadow-xs font-bold'
+                : 'text-ink-soft hover:text-ink'
             }`}
           >
-            <Sliders className="w-3.5 h-3.5 text-emerald-600" />
+            <Sliders className="w-3.5 h-3.5 text-brand" />
             <span>{currentLang === 'ar' ? 'وضع يدوي (مخصص مع هامش)' : 'Manual (With Buffer)'}</span>
           </button>
         </div>
@@ -87,7 +87,7 @@ export const ExchangeRateSimulator: React.FC<ExchangeRateSimulatorProps> = ({ cu
         {/* Left Inputs */}
         <div className="md:col-span-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-ink-soft mb-1.5">
               {currentLang === 'ar' ? 'سعر المنتج الأصلي بعملة متجرك (مثال: الجنيه المصري):' : 'Product Base Price in Merchant Currency (EGP):'}
             </label>
             <div className="relative">
@@ -95,9 +95,9 @@ export const ExchangeRateSimulator: React.FC<ExchangeRateSimulatorProps> = ({ cu
                 type="number"
                 value={basePriceEGP}
                 onChange={(e) => setBasePriceEGP(Math.max(1, Number(e.target.value)))}
-                className="w-full py-2.5 px-3 border border-slate-300 rounded-lg text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                className="input-control"
               />
-              <span className={`absolute top-2.5 text-xs font-semibold text-slate-400 ${currentLang === 'ar' ? 'left-3' : 'right-3'}`}>
+              <span className={`absolute top-2.5 text-xs font-semibold text-subtle ${currentLang === 'ar' ? 'left-3' : 'right-3'}`}>
                 {currentLang === 'ar' ? 'ج.م' : 'EGP'}
               </span>
             </div>
@@ -105,12 +105,12 @@ export const ExchangeRateSimulator: React.FC<ExchangeRateSimulatorProps> = ({ cu
 
           {/* If manual mode, show buffer markup */}
           {mode === 'manual' ? (
-            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 space-y-2">
+            <div className="p-3 bg-warning-soft rounded-brand border border-warning-line space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="font-semibold text-amber-900">
+                <span className="font-semibold text-warning">
                   {currentLang === 'ar' ? 'هامش أمان تقلبات الصرف والتحويل (FX Buffer):' : 'FX Volatility Safety Buffer:'}
                 </span>
-                <span className="font-bold text-amber-900">+{markupPercent}%</span>
+                <span className="font-bold text-warning">+{markupPercent}%</span>
               </div>
               <input
                 type="range"
@@ -119,21 +119,21 @@ export const ExchangeRateSimulator: React.FC<ExchangeRateSimulatorProps> = ({ cu
                 step="0.5"
                 value={markupPercent}
                 onChange={(e) => setMarkupPercent(Number(e.target.value))}
-                className="w-full h-1.5 bg-amber-200 rounded-lg appearance-none cursor-pointer accent-amber-600"
+                className="w-full h-1.5 bg-warning-soft rounded-brand-sm appearance-none cursor-pointer accent-warning"
               />
-              <div className="text-[11px] text-amber-800 leading-tight">
+              <div className="text-[11px] text-warning leading-tight">
                 {currentLang === 'ar'
                   ? 'يضمن لك عدم تأثر أرباحك الصافية بأي رسوم تحويل بطاقات ائتمانية أجنبية.'
                   : 'Protects your net profit against foreign card conversion surcharges.'}
               </div>
             </div>
           ) : (
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
-              <div className="flex items-center gap-1.5 font-semibold text-slate-800">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <div className="p-3 bg-surface rounded-brand border border-line text-xs text-ink-soft space-y-1">
+              <div className="flex items-center gap-1.5 font-semibold text-ink">
+                <CheckCircle2 className="w-3.5 h-3.5 text-brand" />
                 <span>{currentLang === 'ar' ? 'مصدر السعر: أسعار الصرف الرسمية المعتمدة' : 'Source: Official Live FX Feed'}</span>
               </div>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-subtle">
                 {currentLang === 'ar'
                   ? 'يتم تحديث أسعار الصرف دورياً مع الحفاظ على استقرار التسعير للمشتري أثناء جلسة الشراء.'
                   : 'Exchange rates refresh deterministically while locking shopper session price.'}
@@ -142,8 +142,8 @@ export const ExchangeRateSimulator: React.FC<ExchangeRateSimulatorProps> = ({ cu
           )}
 
           {/* Architecture principle note */}
-          <div className="text-[11px] text-slate-400 bg-slate-50 p-3 rounded-lg border border-slate-100">
-            <span className="font-bold text-slate-700 block mb-0.5">
+          <div className="text-[11px] text-subtle bg-surface p-3 rounded-brand-sm border border-line">
+            <span className="font-bold text-ink-soft block mb-0.5">
               {currentLang === 'ar' ? 'فصل عملة المنصة عن عملة المتجر:' : 'Platform vs Merchant Decoupling:'}
             </span>
             {currentLang === 'ar'
@@ -153,10 +153,10 @@ export const ExchangeRateSimulator: React.FC<ExchangeRateSimulatorProps> = ({ cu
         </div>
 
         {/* Right Output: Real-time Multi-market Storefront Prices */}
-        <div className="md:col-span-7 bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
-          <div className="text-xs font-semibold text-slate-700 flex items-center justify-between pb-2 border-b border-slate-200">
+        <div className="md:col-span-7 bg-surface rounded-brand p-4 border border-line space-y-3">
+          <div className="text-xs font-semibold text-ink-soft flex items-center justify-between pb-2 border-b border-line">
             <span>{currentLang === 'ar' ? 'معاينة سعر المنتج فورياً في متاجر العملاء:' : 'Live Shopper Storefront Price by Market:'}</span>
-            <span className="text-[10px] text-slate-500">
+            <span className="text-[10px] text-subtle">
               {mode === 'automatic' ? (currentLang === 'ar' ? 'تحديث آلي' : 'Auto Sync') : `يدوي (+${markupPercent}%)`}
             </span>
           </div>
@@ -169,26 +169,26 @@ export const ExchangeRateSimulator: React.FC<ExchangeRateSimulatorProps> = ({ cu
               return (
                 <div
                   key={c.code}
-                  className={`p-3 rounded-lg border transition-all ${
+                  className={`p-3 rounded-brand-sm border transition-all ${
                     isBase
-                      ? 'bg-emerald-50/70 border-emerald-300'
-                      : 'bg-white border-slate-200'
+                      ? 'bg-brand-soft/70 border-brand-line'
+                      : 'bg-card border-line'
                   }`}
                 >
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-                    <span className="flex items-center gap-1 font-medium text-slate-700">
+                  <div className="flex items-center justify-between text-xs text-subtle mb-1">
+                    <span className="flex items-center gap-1 font-medium text-ink-soft">
                       <span>{c.flag}</span>
                       <span>{c.code}</span>
                     </span>
                     {isBase && (
-                      <span className="text-[9px] bg-emerald-600 text-white px-1 rounded font-bold">
+                      <span className="text-[9px] bg-brand text-white px-1 rounded font-bold">
                         {currentLang === 'ar' ? 'الأساس' : 'Base'}
                       </span>
                     )}
                   </div>
-                  <div className="text-base sm:text-lg font-bold font-heading text-slate-900">
+                  <div className="text-base sm:text-lg font-bold font-heading text-ink">
                     {displayPrice.toLocaleString()}{' '}
-                    <span className="text-xs font-normal text-slate-500">
+                    <span className="text-xs font-normal text-subtle">
                       {currentLang === 'ar' ? c.symbol_ar : c.symbol_en}
                     </span>
                   </div>

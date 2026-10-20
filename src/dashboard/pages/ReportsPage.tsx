@@ -116,7 +116,7 @@ export function ReportsPage() {
               <option value="month">شهري</option>
             </Select>
           </Field>
-          <div className="ms-auto text-[11px] text-slate-500">
+          <div className="ms-auto text-[11px] text-subtle">
             {data ? `من ${dateTime(data.range.from)} إلى ${dateTime(data.range.to)}` : ""}
           </div>
         </div>
@@ -129,20 +129,20 @@ export function ReportsPage() {
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="الإيرادات" value={money(totals?.revenue ?? 0, currency)} icon={<TrendingUp className="h-5 w-5" />} accent="emerald" hint={`${number(totals?.validOrders ?? 0)} طلب فعّال`} />
-            <StatCard label="طلبات الفترة" value={number(totals?.orders ?? 0)} icon={<ShoppingCart className="h-5 w-5" />} accent="blue" hint={`${number(totals?.cancelled ?? 0)} ملغي · ${number(totals?.returned ?? 0)} مرتجع`} />
-            <StatCard label="متوسط قيمة الطلب" value={money(totals?.averageOrderValue ?? 0, currency)} accent="violet" />
-            <StatCard label="عملاء مسجّلون" value={number(totals?.customers ?? 0)} icon={<Users className="h-5 w-5" />} accent="amber" hint={`${number(totals?.products ?? 0)} منتج في المتجر`} />
-            <StatCard label="الخصومات" value={money(totals?.discounts ?? 0, currency)} accent="rose" hint={`كوبونات: ${money(totals?.couponDiscounts ?? 0, currency)}`} />
-            <StatCard label="الشحن المحصّل" value={money(totals?.shippingCollected ?? 0, currency)} accent="blue" />
-            <StatCard label="عمولات التسويق" value={money(totals?.affiliateCommission ?? 0, currency)} accent="violet" />
-            <StatCard label="صافي تقديري" value={money(totals?.estimatedNet ?? 0, currency)} icon={<Wallet className="h-5 w-5" />} accent="emerald" hint={`مصروفات محفظة: ${money(totals?.completedExpenses ?? 0, currency)}`} />
+            <StatCard label="الإيرادات" value={money(totals?.revenue ?? 0, currency)} icon={<TrendingUp className="h-5 w-5" />} accent="success" hint={`${number(totals?.validOrders ?? 0)} طلب فعّال`} />
+            <StatCard label="طلبات الفترة" value={number(totals?.orders ?? 0)} icon={<ShoppingCart className="h-5 w-5" />} accent="brand" hint={`${number(totals?.cancelled ?? 0)} ملغي · ${number(totals?.returned ?? 0)} مرتجع`} />
+            <StatCard label="متوسط قيمة الطلب" value={money(totals?.averageOrderValue ?? 0, currency)} accent="info" />
+            <StatCard label="عملاء مسجّلون" value={number(totals?.customers ?? 0)} icon={<Users className="h-5 w-5" />} accent="warning" hint={`${number(totals?.products ?? 0)} منتج في المتجر`} />
+            <StatCard label="الخصومات" value={money(totals?.discounts ?? 0, currency)} accent="danger" hint={`كوبونات: ${money(totals?.couponDiscounts ?? 0, currency)}`} />
+            <StatCard label="الشحن المحصّل" value={money(totals?.shippingCollected ?? 0, currency)} accent="brand" />
+            <StatCard label="عمولات التسويق" value={money(totals?.affiliateCommission ?? 0, currency)} accent="info" />
+            <StatCard label="صافي تقديري" value={money(totals?.estimatedNet ?? 0, currency)} icon={<Wallet className="h-5 w-5" />} accent="success" hint={`مصروفات محفظة: ${money(totals?.completedExpenses ?? 0, currency)}`} />
           </div>
 
           <Card className="p-4">
             <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-white"><BarChart3 className="h-3.5 w-3.5 text-blue-400" /> الإيرادات حسب الفترة</div>
-              <div className="text-[10px] text-slate-500">الأعمدة تمثل الإيرادات، والنقاط أسفلها عدد الطلبات</div>
+              <div className="flex items-center gap-1.5 text-xs font-bold text-ink"><BarChart3 className="h-3.5 w-3.5 text-brand" /> الإيرادات حسب الفترة</div>
+              <div className="text-[10px] text-subtle">الأعمدة تمثل الإيرادات، والنقاط أسفلها عدد الطلبات</div>
             </div>
             {series.length === 0 ? (
               <EmptyState title="لا توجد بيانات في هذه الفترة" description="جرّب توسيع الفترة الزمنية أو حدّث الصفحة." />
@@ -153,10 +153,10 @@ export function ReportsPage() {
                     const height = Math.max(4, Math.round(((Number(point.revenue) || 0) / maxRevenue) * 160));
                     return (
                       <div key={point.period} className="group flex w-14 shrink-0 flex-col items-center gap-1" title={`${point.period} — ${money(point.revenue, currency)} · ${point.orders} طلب`}>
-                        <div className="text-[9px] text-slate-500 opacity-0 transition group-hover:opacity-100">{money(point.revenue, currency)}</div>
-                        <div className="w-full rounded-t-md bg-gradient-to-t from-blue-600/70 to-blue-400/90 transition group-hover:from-blue-500 group-hover:to-blue-300" style={{ height }} />
-                        <div className="text-[9px] font-mono text-slate-500" dir="ltr">{point.period.slice(5)}</div>
-                        <div className="text-[9px] text-slate-600">{point.orders} طلب</div>
+                        <div className="text-[9px] text-subtle opacity-0 transition group-hover:opacity-100">{money(point.revenue, currency)}</div>
+                        <div className="w-full rounded-t-md bg-gradient-to-t from-brand/70 to-brand/90 transition group-hover:from-brand group-hover:to-brand-on-dark" style={{ height }} />
+                        <div className="text-[9px] font-mono text-subtle" dir="ltr">{point.period.slice(5)}</div>
+                        <div className="text-[9px] text-subtle">{point.orders} طلب</div>
                       </div>
                     );
                   })}
@@ -167,26 +167,26 @@ export function ReportsPage() {
 
           <div className="grid gap-3 lg:grid-cols-2">
             <Card className="p-4">
-              <div className="mb-3 text-xs font-bold text-white">الطلبات حسب الحالة</div>
+              <div className="mb-3 text-xs font-bold text-ink">الطلبات حسب الحالة</div>
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(data?.orders_by_status ?? {}).map(([status, count]) => (
-                  <Badge key={status} tone="bg-slate-800 text-slate-300 border-slate-700">{statusLabel(status)}: {number(count as number)}</Badge>
+                  <Badge key={status} tone="bg-surface text-ink-soft border-line">{statusLabel(status)}: {number(count as number)}</Badge>
                 ))}
-                {Object.keys(data?.orders_by_status ?? {}).length === 0 ? <span className="text-[11px] text-slate-500">لا توجد طلبات في الفترة.</span> : null}
+                {Object.keys(data?.orders_by_status ?? {}).length === 0 ? <span className="text-[11px] text-subtle">لا توجد طلبات في الفترة.</span> : null}
               </div>
-              <div className="mb-3 mt-5 text-xs font-bold text-white">الطلبات حسب حالة الدفع</div>
+              <div className="mb-3 mt-5 text-xs font-bold text-ink">الطلبات حسب حالة الدفع</div>
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(data?.orders_by_payment_status ?? {}).map(([status, count]) => (
-                  <Badge key={status} tone="bg-slate-800 text-slate-300 border-slate-700">{paymentLabel(status)}: {number(count as number)}</Badge>
+                  <Badge key={status} tone="bg-surface text-ink-soft border-line">{paymentLabel(status)}: {number(count as number)}</Badge>
                 ))}
-                {Object.keys(data?.orders_by_payment_status ?? {}).length === 0 ? <span className="text-[11px] text-slate-500">لا توجد بيانات دفع.</span> : null}
+                {Object.keys(data?.orders_by_payment_status ?? {}).length === 0 ? <span className="text-[11px] text-subtle">لا توجد بيانات دفع.</span> : null}
               </div>
-              <div className="mt-5 grid gap-2 text-[11px] text-slate-400">
-                <div className="flex items-center justify-between"><span>سلات متروكة في الفترة</span><span className="font-semibold text-slate-200">{number(totals?.abandonedCarts ?? 0)}</span></div>
-                <div className="flex items-center justify-between"><span>سلات مستعادة</span><span className="font-semibold text-emerald-300">{number(totals?.recoveredCarts ?? 0)}</span></div>
+              <div className="mt-5 grid gap-2 text-[11px] text-subtle">
+                <div className="flex items-center justify-between"><span>سلات متروكة في الفترة</span><span className="font-semibold text-ink">{number(totals?.abandonedCarts ?? 0)}</span></div>
+                <div className="flex items-center justify-between"><span>سلات مستعادة</span><span className="font-semibold text-success">{number(totals?.recoveredCarts ?? 0)}</span></div>
                 <div className="flex items-center justify-between">
                   <span>معدل الاسترجاع</span>
-                  <span className="font-semibold text-slate-200">
+                  <span className="font-semibold text-ink">
                     {percent(totals?.abandonedCarts ? ((totals?.recoveredCarts ?? 0) / totals.abandonedCarts) * 100 : 0)}
                   </span>
                 </div>
@@ -194,13 +194,13 @@ export function ReportsPage() {
             </Card>
 
             <Card className="overflow-hidden">
-              <div className="border-b border-slate-800/70 px-4 py-3 text-xs font-bold text-white">أفضل المنتجات</div>
+              <div className="border-b border-line px-4 py-3 text-xs font-bold text-ink">أفضل المنتجات</div>
               {(data?.top_products ?? []).length === 0 ? (
                 <EmptyState title="لا توجد مبيعات بعد" description="عند وصول أول طلب فعّال ستظهر هنا أفضل منتجاتك." />
               ) : (
                 <TableShell minWidth={480}>
                   <thead>
-                    <tr className="border-b border-slate-800/70">
+                    <tr className="border-b border-line">
                       <Th>#</Th>
                       <Th>المنتج</Th>
                       <Th>الكمية</Th>
@@ -209,11 +209,11 @@ export function ReportsPage() {
                   </thead>
                   <tbody>
                     {(data?.top_products ?? []).map((product: any, index: number) => (
-                      <tr key={`${product.name}-${index}`} className="border-b border-slate-800/40">
-                        <Td><span className="text-slate-500">{index + 1}</span></Td>
-                        <Td><span className="font-semibold text-slate-200">{product.name}</span></Td>
-                        <Td><span className="text-[11px] text-slate-300">{number(product.qty)}</span></Td>
-                        <Td><span className="text-[11px] font-semibold text-emerald-300">{money(product.revenue, currency)}</span></Td>
+                      <tr key={`${product.name}-${index}`} className="border-b border-line">
+                        <Td><span className="text-subtle">{index + 1}</span></Td>
+                        <Td><span className="font-semibold text-ink">{product.name}</span></Td>
+                        <Td><span className="text-[11px] text-ink-soft">{number(product.qty)}</span></Td>
+                        <Td><span className="text-[11px] font-semibold text-success">{money(product.revenue, currency)}</span></Td>
                       </tr>
                     ))}
                   </tbody>
@@ -223,13 +223,13 @@ export function ReportsPage() {
           </div>
 
           <Card className="overflow-hidden">
-            <div className="border-b border-slate-800/70 px-4 py-3 text-xs font-bold text-white">أفضل العملاء</div>
+            <div className="border-b border-line px-4 py-3 text-xs font-bold text-ink">أفضل العملاء</div>
             {(data?.top_customers ?? []).length === 0 ? (
               <EmptyState title="لا يوجد عملاء بعد" description="ستظهر هنا أعلى العملاء قيمة عند تسجيل الطلبات." />
             ) : (
               <TableShell minWidth={640}>
                 <thead>
-                  <tr className="border-b border-slate-800/70">
+                  <tr className="border-b border-line">
                     <Th>العميل</Th>
                     <Th>الهاتف</Th>
                     <Th>الطلبات</Th>
@@ -238,11 +238,11 @@ export function ReportsPage() {
                 </thead>
                 <tbody>
                   {(data?.top_customers ?? []).map((customer: any, index: number) => (
-                    <tr key={`${customer.name}-${index}`} className="border-b border-slate-800/40">
-                      <Td><span className="font-semibold text-slate-200">{customer.name || "—"}</span></Td>
-                      <Td><span className="font-mono text-[10px] text-slate-400" dir="ltr">{customer.phone || "—"}</span></Td>
-                      <Td><span className="text-[11px] text-slate-300">{number(customer.orders)}</span></Td>
-                      <Td><span className="text-[11px] font-semibold text-emerald-300">{money(customer.revenue, currency)}</span></Td>
+                    <tr key={`${customer.name}-${index}`} className="border-b border-line">
+                      <Td><span className="font-semibold text-ink">{customer.name || "—"}</span></Td>
+                      <Td><span className="font-mono text-[10px] text-subtle" dir="ltr">{customer.phone || "—"}</span></Td>
+                      <Td><span className="text-[11px] text-ink-soft">{number(customer.orders)}</span></Td>
+                      <Td><span className="text-[11px] font-semibold text-success">{money(customer.revenue, currency)}</span></Td>
                     </tr>
                   ))}
                 </tbody>

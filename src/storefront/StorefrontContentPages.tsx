@@ -46,7 +46,7 @@ export function StorefrontPageView({ slug }: { slug: string }) {
         <span className={theme.heading}>{page.title}</span>
       </nav>
 
-      <article className={cn("rounded-3xl border p-5 sm:p-8", theme.panel)}>
+      <article className={cn("rounded-brand-lg border p-5 sm:p-8", theme.panel)}>
         <div className="mb-3 flex items-center gap-2 text-[11px]" style={{ color: theme.primary }}>
           <FileText className="h-3.5 w-3.5" />
           {page.type === "about" ? "عن المتجر" : page.type === "contact" ? "تواصل معنا" : page.type === "policy" ? "السياسات" : "صفحة"}
@@ -82,7 +82,7 @@ export function StorefrontBlogPage() {
       {result.loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className={cn("overflow-hidden rounded-2xl border", theme.panel)}>
+            <div key={index} className={cn("overflow-hidden rounded-brand border", theme.panel)}>
               <div className={cn("aspect-[16/9] animate-pulse", theme.soft)} />
               <div className="space-y-2 p-4">
                 <div className={cn("h-3 w-2/3 animate-pulse rounded", theme.soft)} />
@@ -99,7 +99,7 @@ export function StorefrontBlogPage() {
             <Link
               key={post.id}
               href={`${base}/blog/${encodeURIComponent(post.slug)}`}
-              className={cn("group overflow-hidden rounded-2xl border transition", theme.panel, theme.panelHover)}
+              className={cn("group overflow-hidden rounded-brand border transition", theme.panel, theme.panelHover)}
             >
               <div className="relative aspect-[16/9] overflow-hidden">
                 {post.featuredImage ? (
@@ -109,7 +109,7 @@ export function StorefrontBlogPage() {
                     className="transition duration-300 group-hover:scale-105"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center" style={{ background: `${theme.primary}14` }}>
+                  <div className="flex h-full w-full items-center justify-center" style={{ background: `color-mix(in srgb, ${theme.primary} 8%, transparent)` }}>
                     <BookOpen className="h-8 w-8" style={{ color: theme.primary }} />
                   </div>
                 )}
@@ -175,7 +175,7 @@ export function StorefrontBlogPostPage({ slug }: { slug: string }) {
         <span className={cn("line-clamp-1", theme.heading)}>{post.title}</span>
       </nav>
 
-      <article className={cn("overflow-hidden rounded-3xl border", theme.panel)}>
+      <article className={cn("overflow-hidden rounded-brand-lg border", theme.panel)}>
         {post.featuredImage ? (
           <div className="aspect-[16/8] overflow-hidden">
             <ProductImage src={post.featuredImage} alt={post.title} />
@@ -227,10 +227,10 @@ export function StorefrontNotFoundPage() {
         description="ربما تغيّر الرابط أو أُزيلت الصفحة. يمكنك العودة إلى المتجر أو تصفح المنتجات."
         action={
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <Link href={base} className="rounded-xl px-4 py-2.5 text-xs font-bold text-white" style={{ background: theme.primary }}>
+            <Link href={base} className="rounded-brand px-4 py-2.5 text-xs font-bold text-on-brand" style={{ background: theme.primary }}>
               الصفحة الرئيسية
             </Link>
-            <Link href={`${base}/products`} className={cn("rounded-xl border px-4 py-2.5 text-xs font-bold", theme.border)}>
+            <Link href={`${base}/products`} className={cn("rounded-brand border px-4 py-2.5 text-xs font-bold", theme.border)}>
               تصفح المنتجات
             </Link>
           </div>

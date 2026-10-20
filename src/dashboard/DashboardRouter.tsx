@@ -61,7 +61,7 @@ export function DashboardRouter() {
         title="الصفحة غير موجودة"
         description={`لا يوجد قسم بهذا المسار: ${path}`}
         icon={<Compass className="h-5 w-5" />}
-        action={<Link href="/dashboard" className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:border-blue-500/40">العودة إلى لوحة التحكم</Link>}
+        action={<Link href="/dashboard" className="rounded-brand border border-line px-4 py-2 text-xs font-semibold text-ink transition hover:border-brand-line">العودة إلى لوحة التحكم</Link>}
       />
     </Card>
   );

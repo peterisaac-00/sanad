@@ -23,18 +23,18 @@ import { useDashboard } from "../DashboardShell";
 import { TableShell, Td, Th } from "../common";
 
 const TX_TYPE: Record<string, { label: string; tone: string }> = {
-  deposit: { label: "إيداع", tone: "bg-emerald-500/10 text-emerald-300 border-emerald-500/25" },
-  withdrawal: { label: "سحب", tone: "bg-rose-500/10 text-rose-300 border-rose-500/25" },
-  fee: { label: "رسوم", tone: "bg-amber-500/10 text-amber-300 border-amber-500/25" },
-  refund: { label: "استرداد", tone: "bg-violet-500/10 text-violet-300 border-violet-500/25" },
-  payment: { label: "دفعة", tone: "bg-blue-500/10 text-blue-300 border-blue-500/25" },
+  deposit: { label: "إيداع", tone: "bg-success-soft text-success border-success-line" },
+  withdrawal: { label: "سحب", tone: "bg-danger-soft text-danger border-danger-line" },
+  fee: { label: "رسوم", tone: "bg-warning-soft text-warning border-warning-line" },
+  refund: { label: "استرداد", tone: "bg-info-soft text-info border-info-line" },
+  payment: { label: "دفعة", tone: "bg-brand/10 text-brand border-brand-line" },
 };
 
 const TX_STATUS: Record<string, { label: string; tone: string }> = {
-  pending: { label: "معلّقة", tone: "bg-amber-500/10 text-amber-300 border-amber-500/25" },
-  completed: { label: "مكتملة", tone: "bg-emerald-500/10 text-emerald-300 border-emerald-500/25" },
-  failed: { label: "فاشلة", tone: "bg-rose-500/10 text-rose-300 border-rose-500/25" },
-  cancelled: { label: "ملغاة", tone: "bg-slate-500/10 text-slate-300 border-slate-500/25" },
+  pending: { label: "معلّقة", tone: "bg-warning-soft text-warning border-warning-line" },
+  completed: { label: "مكتملة", tone: "bg-success-soft text-success border-success-line" },
+  failed: { label: "فاشلة", tone: "bg-danger-soft text-danger border-danger-line" },
+  cancelled: { label: "ملغاة", tone: "bg-surface text-ink-soft border-line" },
 };
 
 export function WalletPage() {
@@ -86,19 +86,19 @@ export function WalletPage() {
           label="الرصيد الحالي"
           value={money(data?.summary?.balance ?? 0, currency)}
           icon={<WalletIcon className="h-5 w-5" />}
-          accent="blue"
+          accent="brand"
           hint={data?.account?.updatedAt ? `آخر تحديث ${dateTime(data.account.updatedAt)}` : undefined}
         />
-        <StatCard label="إيداعات معلّقة" value={money(data?.summary?.pendingDeposits ?? 0, currency)} icon={<Clock className="h-5 w-5" />} accent="amber" />
-        <StatCard label="إيداعات مؤكدة" value={money(data?.summary?.completedDeposits ?? 0, currency)} icon={<ArrowDownToLine className="h-5 w-5" />} accent="emerald" />
+        <StatCard label="إيداعات معلّقة" value={money(data?.summary?.pendingDeposits ?? 0, currency)} icon={<Clock className="h-5 w-5" />} accent="warning" />
+        <StatCard label="إيداعات مؤكدة" value={money(data?.summary?.completedDeposits ?? 0, currency)} icon={<ArrowDownToLine className="h-5 w-5" />} accent="success" />
       </div>
 
       {data?.note ? <Alert tone="info" title="كيف تعمل المحفظة؟">{data.note}</Alert> : null}
       {error ? <Alert tone="error" title="تعذر تحميل المحفظة">{safeError(error)}</Alert> : null}
 
       <Card className="overflow-hidden">
-        <div className="flex items-center justify-between border-b border-slate-800/70 px-4 py-3">
-          <div className="text-xs font-bold text-white">سجل الحركات</div>
+        <div className="flex items-center justify-between border-b border-line px-4 py-3">
+          <div className="text-xs font-bold text-ink">سجل الحركات</div>
           <Button variant="ghost" size="sm" onClick={reload} aria-label="تحديث"><RefreshCw className="h-3.5 w-3.5" /></Button>
         </div>
         {loading && !data ? (
@@ -113,7 +113,7 @@ export function WalletPage() {
         ) : (
           <TableShell minWidth={940}>
             <thead>
-              <tr className="border-b border-slate-800/70">
+              <tr className="border-b border-line">
                 <Th>التاريخ</Th>
                 <Th>النوع</Th>
                 <Th>المبلغ</Th>
@@ -125,12 +125,12 @@ export function WalletPage() {
             </thead>
             <tbody>
               {transactions.map((transaction: any) => {
-                const type = TX_TYPE[transaction.type] ?? { label: transaction.type, tone: "bg-slate-800 text-slate-300 border-slate-700" };
-                const status = TX_STATUS[transaction.status] ?? { label: transaction.status, tone: "bg-slate-800 text-slate-300 border-slate-700" };
+                const type = TX_TYPE[transaction.type] ?? { label: transaction.type, tone: "bg-surface text-ink-soft border-line" };
+                const status = TX_STATUS[transaction.status] ?? { label: transaction.status, tone: "bg-surface text-ink-soft border-line" };
                 const incoming = transaction.type === "deposit" || transaction.type === "refund" || transaction.type === "payment";
                 return (
-                  <tr key={transaction.id} className="border-b border-slate-800/40 transition hover:bg-slate-800/20">
-                    <Td><span className="text-[11px] text-slate-400">{dateTime(transaction.createdAt)}</span></Td>
+                  <tr key={transaction.id} className="border-b border-line transition hover:bg-surface">
+                    <Td><span className="text-[11px] text-subtle">{dateTime(transaction.createdAt)}</span></Td>
                     <Td>
                       <Badge tone={type.tone}>
                         {incoming ? <ArrowDownToLine className="h-3 w-3" /> : <ArrowUpFromLine className="h-3 w-3" />}
@@ -138,14 +138,14 @@ export function WalletPage() {
                       </Badge>
                     </Td>
                     <Td>
-                      <span className={incoming ? "font-semibold text-emerald-300" : "font-semibold text-rose-300"}>
+                      <span className={incoming ? "font-semibold text-success" : "font-semibold text-danger"}>
                         {incoming ? "+" : "−"}{money(transaction.amount, currency)}
                       </span>
                     </Td>
-                    <Td><span className="text-[11px] text-slate-400">{money(transaction.balanceBefore, currency)}</span></Td>
-                    <Td><span className="text-[11px] text-slate-400">{money(transaction.balanceAfter, currency)}</span></Td>
+                    <Td><span className="text-[11px] text-subtle">{money(transaction.balanceBefore, currency)}</span></Td>
+                    <Td><span className="text-[11px] text-subtle">{money(transaction.balanceAfter, currency)}</span></Td>
                     <Td>
-                      <div className="max-w-[240px] truncate text-[11px] text-slate-300">{transaction.reference || transaction.note || "—"}</div>
+                      <div className="max-w-[240px] truncate text-[11px] text-ink-soft">{transaction.reference || transaction.note || "—"}</div>
                     </Td>
                     <Td><Badge tone={status.tone}>{status.label}</Badge></Td>
                   </tr>
@@ -190,10 +190,10 @@ export function WalletPage() {
 /* ----------------------------- dropshipping ----------------------------- */
 
 const FULFILLMENT: Record<string, { label: string; tone: string }> = {
-  manual: { label: "إدارة يدوية", tone: "bg-slate-500/10 text-slate-300 border-slate-500/25" },
-  imported: { label: "مستورد", tone: "bg-blue-500/10 text-blue-300 border-blue-500/25" },
-  fulfilled: { label: "تم التوريد", tone: "bg-emerald-500/10 text-emerald-300 border-emerald-500/25" },
-  cancelled: { label: "ملغي", tone: "bg-rose-500/10 text-rose-300 border-rose-500/25" },
+  manual: { label: "إدارة يدوية", tone: "bg-surface text-ink-soft border-line" },
+  imported: { label: "مستورد", tone: "bg-brand/10 text-brand border-brand-line" },
+  fulfilled: { label: "تم التوريد", tone: "bg-success-soft text-success border-success-line" },
+  cancelled: { label: "ملغي", tone: "bg-danger-soft text-danger border-danger-line" },
 };
 
 export function DropshippingPage() {
@@ -356,16 +356,16 @@ export function DropshippingPage() {
 
       {data?.note ? <Alert tone="info" title="وضع التكامل">{data.note}</Alert> : null}
       {error ? <Alert tone="error" title="تعذر تحميل الدروبشيبينغ">{safeError(error)}</Alert> : null}
-      <div className="flex items-center gap-1 rounded-xl border border-slate-800 bg-slate-900/40 p-1 text-xs font-semibold">
+      <div className="flex items-center gap-1 rounded-brand border border-line bg-card p-1 text-xs font-semibold">
         <button
           onClick={() => setTab("suppliers")}
-          className={tab === "suppliers" ? "rounded-lg bg-blue-600 px-4 py-2 text-white" : "rounded-lg px-4 py-2 text-slate-400 hover:text-white"}
+          className={tab === "suppliers" ? "rounded-brand-sm bg-brand px-4 py-2 text-on-brand" : "rounded-brand-sm px-4 py-2 text-subtle hover:text-ink"}
         >
           الموردون ({number(suppliers.length)})
         </button>
         <button
           onClick={() => setTab("links")}
-          className={tab === "links" ? "rounded-lg bg-blue-600 px-4 py-2 text-white" : "rounded-lg px-4 py-2 text-slate-400 hover:text-white"}
+          className={tab === "links" ? "rounded-brand-sm bg-brand px-4 py-2 text-on-brand" : "rounded-brand-sm px-4 py-2 text-subtle hover:text-ink"}
         >
           روابط المنتجات ({number(links.length)})
         </button>
@@ -385,7 +385,7 @@ export function DropshippingPage() {
           ) : (
             <TableShell minWidth={860}>
               <thead>
-                <tr className="border-b border-slate-800/70">
+                <tr className="border-b border-line">
                   <Th>المورد</Th>
                   <Th>جهة الاتصال</Th>
                   <Th>التواصل</Th>
@@ -395,21 +395,21 @@ export function DropshippingPage() {
               </thead>
               <tbody>
                 {suppliers.map((supplier: any) => (
-                  <tr key={supplier.id} className="border-b border-slate-800/40 transition hover:bg-slate-800/20">
+                  <tr key={supplier.id} className="border-b border-line transition hover:bg-surface">
                     <Td>
-                      <div className="font-semibold text-slate-100">{supplier.name}</div>
-                      {supplier.notes ? <div className="mt-0.5 max-w-[280px] truncate text-[10px] text-slate-500">{supplier.notes}</div> : null}
+                      <div className="font-semibold text-ink">{supplier.name}</div>
+                      {supplier.notes ? <div className="mt-0.5 max-w-[280px] truncate text-[10px] text-subtle">{supplier.notes}</div> : null}
                     </Td>
-                    <Td><span className="text-[11px] text-slate-400">{supplier.contactName || "—"}</span></Td>
+                    <Td><span className="text-[11px] text-subtle">{supplier.contactName || "—"}</span></Td>
                     <Td>
-                      <div className="font-mono text-[10px] text-slate-400" dir="ltr">{supplier.phone || "—"}</div>
-                      <div className="font-mono text-[10px] text-slate-500" dir="ltr">{supplier.email || ""}</div>
+                      <div className="font-mono text-[10px] text-subtle" dir="ltr">{supplier.phone || "—"}</div>
+                      <div className="font-mono text-[10px] text-subtle" dir="ltr">{supplier.email || ""}</div>
                     </Td>
-                    <Td><Badge tone={supplier.status === "active" ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/25" : "bg-slate-500/10 text-slate-300 border-slate-500/25"}>{supplier.status === "active" ? "نشط" : "غير نشط"}</Badge></Td>
+                    <Td><Badge tone={supplier.status === "active" ? "bg-success-soft text-success border-success-line" : "bg-surface text-ink-soft border-line"}>{supplier.status === "active" ? "نشط" : "غير نشط"}</Badge></Td>
                     <Td>
                       <div className="flex items-center justify-end gap-1">
                         <Button variant="ghost" size="sm" onClick={() => openSupplier(supplier)}>تعديل</Button>
-                        <button onClick={() => setDeletingSupplier(supplier)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-500/10 hover:text-rose-300" title="حذف">
+                        <button onClick={() => setDeletingSupplier(supplier)} className="rounded-brand-sm p-2 text-subtle hover:bg-danger-soft hover:text-danger" title="حذف">
                           ×
                         </button>
                       </div>
@@ -431,7 +431,7 @@ export function DropshippingPage() {
           ) : (
             <TableShell minWidth={940}>
               <thead>
-                <tr className="border-b border-slate-800/70">
+                <tr className="border-b border-line">
                   <Th>المنتج</Th>
                   <Th>المورد</Th>
                   <Th>تكلفة التوريد</Th>
@@ -444,28 +444,28 @@ export function DropshippingPage() {
               <tbody>
                 {links.map((link: any) => {
                   const m = margin(link);
-                  const fulfillment = FULFILLMENT[link.fulfillmentStatus] ?? { label: link.fulfillmentStatus, tone: "bg-slate-800 text-slate-300 border-slate-700" };
+                  const fulfillment = FULFILLMENT[link.fulfillmentStatus] ?? { label: link.fulfillmentStatus, tone: "bg-surface text-ink-soft border-line" };
                   return (
-                    <tr key={link.id} className="border-b border-slate-800/40 transition hover:bg-slate-800/20">
+                    <tr key={link.id} className="border-b border-line transition hover:bg-surface">
                       <Td>
-                        <div className="font-semibold text-slate-100">{productName(link.product)}</div>
-                        <div className="mt-0.5 font-mono text-[10px] text-slate-500" dir="ltr">{link.product?.sku}</div>
+                        <div className="font-semibold text-ink">{productName(link.product)}</div>
+                        <div className="mt-0.5 font-mono text-[10px] text-subtle" dir="ltr">{link.product?.sku}</div>
                       </Td>
-                      <Td><span className="text-[11px] text-slate-300">{link.supplier?.name ?? "—"}</span></Td>
-                      <Td><span className="text-[11px] text-slate-300">{money(link.costPrice, currency)}</span></Td>
-                      <Td><span className="text-[11px] text-slate-300">{money(link.suggestedPrice, currency)}</span></Td>
+                      <Td><span className="text-[11px] text-ink-soft">{link.supplier?.name ?? "—"}</span></Td>
+                      <Td><span className="text-[11px] text-ink-soft">{money(link.costPrice, currency)}</span></Td>
+                      <Td><span className="text-[11px] text-ink-soft">{money(link.suggestedPrice, currency)}</span></Td>
                       <Td>
                         {m === null ? (
-                          <span className="text-[11px] text-slate-500">أضف سعر بيع</span>
+                          <span className="text-[11px] text-subtle">أضف سعر بيع</span>
                         ) : (
-                          <span className={m >= 0 ? "font-semibold text-emerald-300" : "font-semibold text-rose-300"}>{m}%</span>
+                          <span className={m >= 0 ? "font-semibold text-success" : "font-semibold text-danger"}>{m}%</span>
                         )}
                       </Td>
                       <Td><Badge tone={fulfillment.tone}>{fulfillment.label}</Badge></Td>
                       <Td>
                         <div className="flex items-center justify-end gap-1">
                           <Button variant="ghost" size="sm" onClick={() => openLink(link)}>تعديل</Button>
-                          <button onClick={() => setDeletingLink(link)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-500/10 hover:text-rose-300" title="حذف">
+                          <button onClick={() => setDeletingLink(link)} className="rounded-brand-sm p-2 text-subtle hover:bg-danger-soft hover:text-danger" title="حذف">
                             ×
                           </button>
                         </div>
@@ -507,7 +507,7 @@ export function DropshippingPage() {
             <select
               value={supplierDraft.status}
               onChange={(e) => setSupplierDraft({ ...supplierDraft, status: e.target.value })}
-              className="h-10 w-full rounded-xl border border-slate-700/80 bg-slate-950/60 px-3.5 text-sm text-slate-100 outline-none focus:border-blue-500"
+              className="h-10 w-full rounded-brand border border-line bg-surface px-3.5 text-sm text-ink outline-none focus:border-brand"
             >
               <option value="active">نشط</option>
               <option value="inactive">غير نشط</option>
@@ -536,7 +536,7 @@ export function DropshippingPage() {
               <select
                 value={linkDraft.productId}
                 onChange={(e) => setLinkDraft({ ...linkDraft, productId: e.target.value })}
-                className="h-10 w-full rounded-xl border border-slate-700/80 bg-slate-950/60 px-3.5 text-sm text-slate-100 outline-none focus:border-blue-500"
+                className="h-10 w-full rounded-brand border border-line bg-surface px-3.5 text-sm text-ink outline-none focus:border-brand"
               >
                 <option value="">اختر منتجاً…</option>
                 {products.map((product: any) => (
@@ -549,7 +549,7 @@ export function DropshippingPage() {
             <select
               value={linkDraft.supplierId}
               onChange={(e) => setLinkDraft({ ...linkDraft, supplierId: e.target.value })}
-              className="h-10 w-full rounded-xl border border-slate-700/80 bg-slate-950/60 px-3.5 text-sm text-slate-100 outline-none focus:border-blue-500"
+              className="h-10 w-full rounded-brand border border-line bg-surface px-3.5 text-sm text-ink outline-none focus:border-brand"
             >
               <option value="">اختر مورداً…</option>
               {suppliers.map((supplier: any) => (
@@ -567,7 +567,7 @@ export function DropshippingPage() {
             <select
               value={linkDraft.fulfillmentStatus}
               onChange={(e) => setLinkDraft({ ...linkDraft, fulfillmentStatus: e.target.value })}
-              className="h-10 w-full rounded-xl border border-slate-700/80 bg-slate-950/60 px-3.5 text-sm text-slate-100 outline-none focus:border-blue-500"
+              className="h-10 w-full rounded-brand border border-line bg-surface px-3.5 text-sm text-ink outline-none focus:border-brand"
             >
               {Object.entries(FULFILLMENT).map(([key, meta]) => (
                 <option key={key} value={key}>{meta.label}</option>

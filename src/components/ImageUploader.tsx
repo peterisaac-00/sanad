@@ -25,7 +25,6 @@ export function ImageUploader({
   hint = "JPG / PNG / WebP — بحد أقصى 5 ميجابايت",
   className,
   aspect = "aspect-square",
-  dark = true,
 }: {
   value: string;
   onChange: (url: string) => void;
@@ -33,6 +32,7 @@ export function ImageUploader({
   hint?: string;
   className?: string;
   aspect?: string;
+  /** @deprecated uploads now follow the shared theme tokens automatically. */
   dark?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -61,23 +61,22 @@ export function ImageUploader({
 
   return (
     <div className={cn("space-y-1.5", className)}>
-      <div className="text-xs font-semibold text-slate-300">{label}</div>
+      <div className="text-xs font-semibold text-ink-soft">{label}</div>
       <div
         className={cn(
-          "group relative flex items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition",
+          "group relative flex items-center justify-center overflow-hidden rounded-brand border-2 border-dashed border-line bg-surface transition",
           aspect,
-          dark ? "border-slate-700 bg-slate-950/40" : "border-slate-300 bg-slate-50",
-          !value && "hover:border-blue-500/60"
+          !value && "hover:border-brand-line"
         )}
       >
         {value ? (
           <>
             <img src={mediaUrl(value)} alt={label} className="h-full w-full object-cover" />
-            <div className="absolute inset-0 flex items-center justify-center gap-2 bg-slate-950/60 opacity-0 transition group-hover:opacity-100">
+            <div className="absolute inset-0 flex items-center justify-center gap-2 bg-overlay opacity-0 transition group-hover:opacity-100">
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
-                className="rounded-lg bg-white/90 p-2 text-slate-900"
+                className="rounded-brand-sm bg-card p-2 text-ink shadow-brand-card"
                 title="تغيير الصورة"
               >
                 <UploadCloud className="h-4 w-4" />
@@ -85,7 +84,7 @@ export function ImageUploader({
               <button
                 type="button"
                 onClick={() => onChange("")}
-                className="rounded-lg bg-rose-600 p-2 text-white"
+                className="rounded-brand-sm bg-danger p-2 text-on-danger"
                 title="حذف الصورة"
               >
                 <Trash2 className="h-4 w-4" />
@@ -94,14 +93,14 @@ export function ImageUploader({
           </>
         ) : (
           <button type="button" onClick={() => inputRef.current?.click()} className="flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center">
-            {uploading ? <Loader2 className="h-6 w-6 animate-spin text-blue-400" /> : <ImagePlus className={cn("h-7 w-7", dark ? "text-slate-500" : "text-slate-400")} />}
-            <span className={cn("text-xs font-semibold", dark ? "text-slate-300" : "text-slate-700")}>{uploading ? "جارٍ الرفع…" : "رفع صورة"}</span>
-            <span className={cn("text-[10px]", dark ? "text-slate-500" : "text-slate-400")}>{hint}</span>
+            {uploading ? <Loader2 className="h-6 w-6 animate-spin text-brand" /> : <ImagePlus className="h-7 w-7 text-subtle" />}
+            <span className="text-xs font-semibold text-ink-soft">{uploading ? "جارٍ الرفع…" : "رفع صورة"}</span>
+            <span className="text-[10px] text-subtle">{hint}</span>
           </button>
         )}
-        {uploading && value ? <div className="absolute inset-0 flex items-center justify-center bg-slate-950/60"><Loader2 className="h-6 w-6 animate-spin text-white" /></div> : null}
+        {uploading && value ? <div className="absolute inset-0 flex items-center justify-center bg-overlay"><Loader2 className="h-6 w-6 animate-spin text-white" /></div> : null}
       </div>
-      {error ? <div className="text-[11px] text-rose-400">{error}</div> : null}
+      {error ? <div className="text-[11px] text-danger">{error}</div> : null}
       <input
         ref={inputRef}
         type="file"
@@ -116,12 +115,7 @@ export function ImageUploader({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="أو ألصق رابط الصورة"
-        className={cn(
-          "h-8 w-full rounded-lg border px-2.5 text-[11px] outline-none",
-          dark
-            ? "border-slate-800 bg-slate-950/50 text-slate-300 placeholder:text-slate-600 focus:border-blue-500"
-            : "border-slate-200 bg-white text-slate-700 placeholder:text-slate-400 focus:border-blue-500"
-        )}
+        className="input-control h-9 text-[11px]"
       />
     </div>
   );
@@ -171,19 +165,19 @@ export function MultiImageUploader({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <div className="text-xs font-semibold text-slate-300">{label}</div>
-        <div className="text-[11px] text-slate-500">{value.length}/{max}</div>
+        <div className="text-xs font-semibold text-ink-soft">{label}</div>
+        <div className="text-[11px] text-subtle">{value.length}/{max}</div>
       </div>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
         {value.map((url, index) => (
-          <div key={`${url}-${index}`} className="group relative aspect-square overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
+          <div key={`${url}-${index}`} className="group relative aspect-square overflow-hidden rounded-brand border border-line bg-surface">
             <img src={mediaUrl(url)} alt={`صورة ${index + 1}`} className="h-full w-full object-cover" />
-            {index === 0 ? <span className="absolute start-1 top-1 rounded bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold text-white">رئيسية</span> : null}
-            <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-slate-950/60 opacity-0 transition group-hover:opacity-100">
+            {index === 0 ? <span className="absolute start-1 top-1 rounded-brand-sm bg-brand px-1.5 py-0.5 text-[9px] font-bold text-on-brand">رئيسية</span> : null}
+            <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-overlay opacity-0 transition group-hover:opacity-100">
               {index > 0 ? (
                 <button
                   type="button"
-                  className="rounded bg-white/90 px-2 py-1 text-[10px] font-bold text-slate-900"
+                  className="rounded-brand-sm bg-card px-2 py-1 text-[10px] font-bold text-ink"
                   onClick={() => {
                     const next = [...value];
                     [next[0], next[index]] = [next[index], next[0]];
@@ -195,7 +189,7 @@ export function MultiImageUploader({
               ) : null}
               <button
                 type="button"
-                className="rounded bg-rose-600 p-1.5 text-white"
+                className="rounded-brand-sm bg-danger p-1.5 text-on-danger"
                 onClick={() => onChange(value.filter((_, i) => i !== index))}
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -207,14 +201,14 @@ export function MultiImageUploader({
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-700 bg-slate-950/40 text-slate-400 transition hover:border-blue-500/60 hover:text-blue-300"
+            className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-brand border-2 border-dashed border-line bg-surface text-subtle transition hover:border-brand-line hover:text-brand"
           >
             {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
             <span className="text-[10px] font-semibold">{uploading ? "جارٍ الرفع" : "إضافة صور"}</span>
           </button>
         ) : null}
       </div>
-      {error ? <div className="text-[11px] text-rose-400">{error}</div> : null}
+      {error ? <div className="text-[11px] text-danger">{error}</div> : null}
       <input
         ref={inputRef}
         type="file"

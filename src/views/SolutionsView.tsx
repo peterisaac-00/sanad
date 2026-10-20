@@ -137,15 +137,15 @@ export const SolutionsView: React.FC<SolutionsViewProps> = ({
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
       {/* Header */}
       <div className="text-center max-w-3xl mx-auto space-y-3">
-        <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-md border border-emerald-200">
+        <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand-soft px-3 py-1 rounded-brand-sm border border-brand-line">
           {currentLang === 'ar' ? 'حلول مصممة لطبيعة تجارتك' : 'Tailored Commerce Solutions'}
         </span>
-        <h1 className="text-3xl sm:text-5xl font-extrabold font-heading text-slate-900 tracking-tight">
+        <h1 className="text-3xl sm:text-5xl font-extrabold font-heading text-ink tracking-tight">
           {currentLang === 'ar'
             ? 'حلول تجارة حقيقية تلائم مرحلة نمو عملك'
             : 'Pragmatic Commerce Solutions Built for Your Stage of Growth'}
         </h1>
-        <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+        <p className="text-sm sm:text-base text-ink-soft leading-relaxed">
           {currentLang === 'ar'
             ? 'سواء كنت تبيع ملابس يدوية عبر إنستغرام أو تدير علامة تجارية تطمح للتصدير إلى الخليج العربي، سند تمنحك البنية التحتية المناسبة دون تعقيد.'
             : 'Whether you sell via Instagram DMs or lead an emerging brand expanding to the GCC, Sanad provides the exact infrastructure you need.'}
@@ -161,13 +161,13 @@ export const SolutionsView: React.FC<SolutionsViewProps> = ({
             <button
               key={sol.id}
               onClick={() => setSelectedSolution(sol.id)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              className={`px-4 py-2.5 rounded-brand text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
                 isSelected
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                  ? 'bg-secondary text-white shadow-xs'
+                  : 'bg-card border border-line text-ink-soft hover:bg-surface'
               }`}
             >
-              <Icon className={`w-4 h-4 ${isSelected ? 'text-emerald-400' : 'text-slate-500'}`} />
+              <Icon className={`w-4 h-4 ${isSelected ? 'text-brand-on-dark' : 'text-subtle'}`} />
               <span>{currentLang === 'ar' ? sol.title_ar : sol.title_en}</span>
             </button>
           );
@@ -175,25 +175,25 @@ export const SolutionsView: React.FC<SolutionsViewProps> = ({
       </div>
 
       {/* Solution Presentation Card */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-10">
+      <div className="bg-card rounded-brand-lg border border-line shadow-sm p-6 sm:p-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           <div className="lg:col-span-7 space-y-5">
-            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
+            <span className="text-xs font-bold text-brand bg-brand-soft px-2.5 py-1 rounded border border-brand-line">
               {currentLang === 'ar' ? current.title_ar : current.title_en}
             </span>
 
-            <h2 className="text-2xl sm:text-3xl font-extrabold font-heading text-slate-900">
+            <h2 className="text-2xl sm:text-3xl font-extrabold font-heading text-ink">
               {currentLang === 'ar' ? current.headline_ar : current.headline_en}
             </h2>
 
-            <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+            <p className="text-sm sm:text-base text-ink-soft leading-relaxed">
               {currentLang === 'ar' ? current.desc_ar : current.desc_en}
             </p>
 
-            <div className="space-y-2.5 pt-2 border-t border-slate-100">
+            <div className="space-y-2.5 pt-2 border-t border-line">
               {(currentLang === 'ar' ? current.points_ar : current.points_en).map((pt, idx) => (
-                <div key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-700">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                <div key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-ink-soft">
+                  <CheckCircle2 className="w-4 h-4 text-brand flex-shrink-0 mt-0.5" />
                   <span>{pt}</span>
                 </div>
               ))}
@@ -202,7 +202,7 @@ export const SolutionsView: React.FC<SolutionsViewProps> = ({
             <div className="pt-4 flex flex-wrap gap-3">
               <button
                 onClick={onOpenStoreModal}
-                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-2"
+                className="px-6 py-3 bg-brand hover:bg-brand-hover text-white rounded-brand text-xs font-bold transition-colors cursor-pointer flex items-center gap-2"
               >
                 <span>{currentLang === 'ar' ? 'ابدأ متجرك الآن بـ 100 ج.م/شهر' : 'Start Store for 100 EGP/mo'}</span>
                 {currentLang === 'ar' ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
@@ -210,30 +210,30 @@ export const SolutionsView: React.FC<SolutionsViewProps> = ({
 
               <button
                 onClick={onOpenDemoModal}
-                className="px-5 py-3 border border-slate-300 hover:border-slate-400 text-slate-800 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                className="px-5 py-3 border border-line hover:border-subtle/40 text-ink rounded-brand text-xs font-semibold transition-colors cursor-pointer"
               >
                 {currentLang === 'ar' ? 'معاينة لوحة تحكم التاجر' : 'Preview Merchant Cockpit'}
               </button>
             </div>
           </div>
 
-          <div className="lg:col-span-5 bg-slate-900 text-white rounded-2xl p-6 sm:p-8 space-y-4">
-            <div className="text-xs font-mono text-emerald-400">
+          <div className="lg:col-span-5 bg-secondary text-white rounded-brand-lg p-6 sm:p-8 space-y-4">
+            <div className="text-xs font-mono text-brand-on-dark">
               // SOLUTION_PLAYBOOK : 0% COMMISSION
             </div>
             <div className="text-base font-bold text-white">
               {currentLang === 'ar' ? 'القيمة التجارية المضافة:' : 'Strategic Commercial ROI:'}
             </div>
-            <div className="space-y-3 text-xs text-slate-300">
-              <div className="p-3 bg-slate-800/80 rounded-lg border border-slate-700">
+            <div className="space-y-3 text-xs text-white/70">
+              <div className="p-3 bg-white/10 rounded-brand-sm border border-white/10">
                 <span className="font-bold text-white block mb-0.5">توفير الوقت:</span>
                 <span>توفير ما بين ساعتين إلى ثلاث ساعات يومياً كانت تضيع في تسجيل بيانات العملاء عبر الـ DMs.</span>
               </div>
-              <div className="p-3 bg-slate-800/80 rounded-lg border border-slate-700">
+              <div className="p-3 bg-white/10 rounded-brand-sm border border-white/10">
                 <span className="font-bold text-white block mb-0.5">حماية الأرباح:</span>
                 <span>عدم دفع عمولات تصاعدية تقتطع من هامش ربح التاجر الصافي.</span>
               </div>
-              <div className="p-3 bg-slate-800/80 rounded-lg border border-slate-700">
+              <div className="p-3 bg-white/10 rounded-brand-sm border border-white/10">
                 <span className="font-bold text-white block mb-0.5">تكرار الشراء:</span>
                 <span>إعادة استهداف العملاء السابقين عبر واتساب وقوائم العروض لرفع معدل تكرار الشراء بنسبة 25%+.</span>
               </div>

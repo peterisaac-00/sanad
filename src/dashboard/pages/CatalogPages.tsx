@@ -103,7 +103,7 @@ export function CategoriesPage() {
         ) : (
           <TableShell minWidth={720}>
             <thead>
-              <tr className="border-b border-slate-800/70">
+              <tr className="border-b border-line">
                 <Th>الفئة</Th>
                 <Th>الرابط</Th>
                 <Th>المنتجات</Th>
@@ -114,22 +114,22 @@ export function CategoriesPage() {
             </thead>
             <tbody>
               {categories.map((category: any, index: number) => (
-                <tr key={category.id} className="border-b border-slate-800/40 transition hover:bg-slate-800/20">
+                <tr key={category.id} className="border-b border-line transition hover:bg-surface">
                   <Td>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
-                        {category.imageUrl ? <img src={mediaUrl(category.imageUrl)} alt="" className="h-full w-full object-cover" /> : <Tags className="h-4 w-4 text-slate-600" />}
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-brand-sm border border-line bg-canvas">
+                        {category.imageUrl ? <img src={mediaUrl(category.imageUrl)} alt="" className="h-full w-full object-cover" /> : <Tags className="h-4 w-4 text-subtle" />}
                       </div>
                       <div>
-                        <div className="font-semibold text-slate-200">{category.nameAr || category.name}</div>
-                        {category.nameEn ? <div className="text-[10px] text-slate-500" dir="ltr">{category.nameEn}</div> : null}
+                        <div className="font-semibold text-ink">{category.nameAr || category.name}</div>
+                        {category.nameEn ? <div className="text-[10px] text-subtle" dir="ltr">{category.nameEn}</div> : null}
                       </div>
                     </div>
                   </Td>
-                  <Td className="font-mono text-[10px] text-slate-500" dir="ltr">{category.slug}</Td>
+                  <Td className="font-mono text-[10px] text-subtle" dir="ltr">{category.slug}</Td>
                   <Td>{number(category._count?.products ?? 0)}</Td>
                   <Td>
-                    <Badge tone={category.isActive ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300" : "bg-slate-800 text-slate-400 border-slate-700"}>
+                    <Badge tone={category.isActive ? "border-success-line bg-success-soft text-success" : "bg-surface text-subtle border-line"}>
                       {category.isActive ? "ظاهرة" : "مخفية"}
                     </Badge>
                   </Td>
@@ -142,7 +142,7 @@ export function CategoriesPage() {
                   <Td>
                     <div className="flex items-center gap-1.5">
                       <Button size="sm" variant="ghost" onClick={() => { setEditing(category); setEditorOpen(true); }} aria-label="تعديل"><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="ghost" onClick={() => setDeleting(category)} aria-label="حذف"><Trash2 className="h-3.5 w-3.5 text-rose-400" /></Button>
+                      <Button size="sm" variant="ghost" onClick={() => setDeleting(category)} aria-label="حذف"><Trash2 className="h-3.5 w-3.5 text-danger" /></Button>
                     </div>
                   </Td>
                 </tr>
@@ -238,9 +238,9 @@ function CategoryEditor({ open, category, subdomain, onClose, onSaved }: { open:
 /* -------------------------------- reviews -------------------------------- */
 
 const REVIEW_TONE: Record<string, string> = {
-  pending: "border-amber-500/25 bg-amber-500/10 text-amber-300",
-  approved: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
-  rejected: "bg-slate-800 text-slate-400 border-slate-700",
+  pending: "border-warning-line bg-warning-soft text-warning",
+  approved: "border-success-line bg-success-soft text-success",
+  rejected: "bg-surface text-subtle border-line",
 };
 
 export function ReviewsPage() {
@@ -309,9 +309,9 @@ export function ReviewsPage() {
       />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatCard label="متوسط التقييمات المنشورة" value={number(summary?.averageRating ?? 0)} hint="من 5 نجوم" icon={<Star className="h-4 w-4" />} accent="amber" />
-        <StatCard label="تقييمات منشورة" value={number(summary?.approvedCount ?? 0)} hint="ظهرت للعملاء" icon={<MessageSquare className="h-4 w-4" />} accent="emerald" />
-        <StatCard label="بانتظار المراجعة" value={number(reviews.filter((r: any) => r.status === "pending").length)} hint="في الصفحة الحالية" icon={<RefreshCw className="h-4 w-4" />} accent="blue" />
+        <StatCard label="متوسط التقييمات المنشورة" value={number(summary?.averageRating ?? 0)} hint="من 5 نجوم" icon={<Star className="h-4 w-4" />} accent="warning" />
+        <StatCard label="تقييمات منشورة" value={number(summary?.approvedCount ?? 0)} hint="ظهرت للعملاء" icon={<MessageSquare className="h-4 w-4" />} accent="success" />
+        <StatCard label="بانتظار المراجعة" value={number(reviews.filter((r: any) => r.status === "pending").length)} hint="في الصفحة الحالية" icon={<RefreshCw className="h-4 w-4" />} accent="brand" />
       </div>
 
       <Card className="p-3">
@@ -339,22 +339,22 @@ export function ReviewsPage() {
           <EmptyState title="لا توجد تقييمات" description="عندما يقيّم عملاؤك منتجاتك ستظهر تقييماتهم هنا لمراجعتها قبل النشر." icon={<Star className="h-5 w-5" />} />
         ) : (
           <>
-            <div className="divide-y divide-slate-800/50">
+            <div className="divide-y divide-line">
               {reviews.map((review: any) => (
                 <div key={review.id} className="p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-bold text-slate-300">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface text-xs font-bold text-ink-soft">
                         {(review.customerName || "?").charAt(0)}
                       </div>
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-bold text-slate-100">{review.customerName}</span>
+                          <span className="text-xs font-bold text-ink">{review.customerName}</span>
                           <Stars rating={review.rating} />
                           <Badge tone={REVIEW_TONE[review.status]}>{review.status === "pending" ? "معلّق" : review.status === "approved" ? "منشور" : "مرفوض"}</Badge>
-                          {review.reported ? <Badge tone="border-rose-500/25 bg-rose-500/10 text-rose-300">مُبلّغ عنه</Badge> : null}
+                          {review.reported ? <Badge tone="border-danger-line bg-danger-soft text-danger">مُبلّغ عنه</Badge> : null}
                         </div>
-                        <div className="mt-1 text-[10px] text-slate-500">
+                        <div className="mt-1 text-[10px] text-subtle">
                           {review.product ? `على: ${review.product.nameAr || review.product.nameEn || "منتج"} · ` : ""}
                           {dateTime(review.createdAt)}
                         </div>
@@ -366,12 +366,12 @@ export function ReviewsPage() {
                       <Button size="sm" variant="ghost" onClick={() => { setReplyTo(review); setReplyText(review.merchantReply ?? ""); }}>
                         <MessageSquare className="h-3.5 w-3.5" /> رد
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setDeleting(review)}><Trash2 className="h-3.5 w-3.5 text-rose-400" /></Button>
+                      <Button size="sm" variant="ghost" onClick={() => setDeleting(review)}><Trash2 className="h-3.5 w-3.5 text-danger" /></Button>
                     </div>
                   </div>
-                  <p className="mt-3 whitespace-pre-line text-xs leading-6 text-slate-300">{review.content}</p>
+                  <p className="mt-3 whitespace-pre-line text-xs leading-6 text-ink-soft">{review.content}</p>
                   {review.merchantReply ? (
-                    <div className="mt-3 rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-3 text-[11px] leading-6 text-blue-100">
+                    <div className="mt-3 rounded-brand border border-brand-line bg-brand/[0.06] p-3 text-[11px] leading-6 text-brand">
                       <span className="font-bold">رد المتجر: </span>
                       {review.merchantReply}
                     </div>
@@ -379,7 +379,7 @@ export function ReviewsPage() {
                 </div>
               ))}
             </div>
-            <div className="border-t border-slate-800/60 px-3">
+            <div className="border-t border-line px-3">
               <Pagination page={page} totalPages={data?.pagination?.totalPages ?? 1} total={data?.pagination?.total} onChange={setPage} />
             </div>
           </>

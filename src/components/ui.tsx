@@ -9,18 +9,18 @@ type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "outline" | 
 type ButtonSize = "sm" | "md" | "lg";
 
 const buttonVariants: Record<ButtonVariant, string> = {
-  primary: "bg-blue-600 text-white hover:bg-blue-500 active:bg-blue-700 shadow-lg shadow-blue-950/30 border border-blue-500/40",
-  secondary: "bg-slate-800 text-slate-100 hover:bg-slate-700 border border-slate-700",
-  ghost: "text-slate-300 hover:bg-slate-800/80 hover:text-white border border-transparent",
-  danger: "bg-rose-600 text-white hover:bg-rose-500 border border-rose-500/40",
-  outline: "border border-slate-700 bg-transparent text-slate-200 hover:bg-slate-800/70",
-  success: "bg-emerald-600 text-white hover:bg-emerald-500 border border-emerald-500/40",
+  primary: "border-brand bg-brand text-on-brand shadow-brand-card hover:bg-brand-hover active:bg-brand-active",
+  secondary: "border-secondary bg-secondary text-on-secondary hover:brightness-110",
+  ghost: "border-transparent text-subtle hover:bg-surface hover:text-ink",
+  danger: "border-danger bg-danger text-on-danger hover:brightness-95",
+  outline: "border-line bg-card text-ink hover:border-subtle/50 hover:bg-surface",
+  success: "border-success bg-success text-on-success hover:brightness-95",
 };
 
 const buttonSizes: Record<ButtonSize, string> = {
-  sm: "h-8 px-3 text-xs gap-1.5 rounded-lg",
-  md: "h-10 px-4 text-sm gap-2 rounded-xl",
-  lg: "h-12 px-6 text-sm gap-2 rounded-xl",
+  sm: "h-8 gap-1.5 rounded-brand-sm px-3 text-xs",
+  md: "h-10 gap-2 rounded-brand px-4 text-sm",
+  lg: "h-12 gap-2 rounded-brand px-6 text-sm",
 };
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -33,7 +33,7 @@ export function Button({ variant = "primary", size = "md", loading, className, c
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center font-semibold transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 disabled:opacity-50 disabled:pointer-events-none",
+        "inline-flex items-center justify-center font-semibold transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 disabled:pointer-events-none disabled:opacity-50",
         buttonVariants[variant],
         buttonSizes[size],
         className
@@ -48,7 +48,7 @@ export function Button({ variant = "primary", size = "md", loading, className, c
 }
 
 export function Card({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <div className={cn("rounded-2xl border border-slate-800/80 bg-slate-900/60 backdrop-blur-sm", className)}>{children}</div>;
+  return <div className={cn("surface-card", className)}>{children}</div>;
 }
 
 export function PageHeader({
@@ -65,9 +65,9 @@ export function PageHeader({
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        {eyebrow ? <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-400">{eyebrow}</div> : null}
-        <h1 className="font-heading text-2xl font-bold text-white sm:text-3xl">{title}</h1>
-        {description ? <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-400">{description}</p> : null}
+        {eyebrow ? <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand">{eyebrow}</div> : null}
+        <h1 className="font-heading text-2xl font-bold text-ink sm:text-3xl">{title}</h1>
+        {description ? <p className="mt-1.5 max-w-2xl text-sm leading-6 text-subtle">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
@@ -92,32 +92,31 @@ export function Field({
   return (
     <label className={cn("block space-y-1.5", className)}>
       {label ? (
-        <span className="flex items-center gap-1 text-xs font-semibold text-slate-300">
+        <span className="flex items-center gap-1 text-xs font-semibold text-ink-soft">
           {label}
-          {required ? <span className="text-rose-400">*</span> : null}
+          {required ? <span className="text-danger">*</span> : null}
         </span>
       ) : null}
       {children}
-      {error ? <span className="block text-[11px] text-rose-400">{error}</span> : hint ? <span className="block text-[11px] text-slate-500">{hint}</span> : null}
+      {error ? <span className="block text-[11px] text-danger">{error}</span> : hint ? <span className="block text-[11px] text-subtle">{hint}</span> : null}
     </label>
   );
 }
 
-const controlClass =
-  "w-full rounded-xl border border-slate-700/80 bg-slate-950/60 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-60";
+const controlClass = "input-control h-10 py-0";
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(function Input(
   { className, ...rest },
   ref
 ) {
-  return <input ref={ref} className={cn(controlClass, "h-10 py-0", className)} {...rest} />;
+  return <input ref={ref} className={cn(controlClass, className)} {...rest} />;
 });
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(function Textarea(
   { className, ...rest },
   ref
 ) {
-  return <textarea ref={ref} className={cn(controlClass, "min-h-24 resize-y leading-6", className)} {...rest} />;
+  return <textarea ref={ref} className={cn(controlClass, "h-auto min-h-24 resize-y py-2.5 leading-6", className)} {...rest} />;
 });
 
 export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(function Select(
@@ -125,7 +124,7 @@ export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttrib
   ref
 ) {
   return (
-    <select ref={ref} className={cn(controlClass, "h-10 py-0", className)} {...rest}>
+    <select ref={ref} className={cn(controlClass, className)} {...rest}>
       {children}
     </select>
   );
@@ -144,12 +143,12 @@ export function SearchInput({
 }) {
   return (
     <div className={cn("relative", className)}>
-      <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+      <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className={cn(controlClass, "h-10 py-0 ps-9")}
+        className={cn(controlClass, "ps-9")}
       />
     </div>
   );
@@ -157,7 +156,7 @@ export function SearchInput({
 
 export function Badge({
   children,
-  tone = "bg-slate-800 text-slate-300 border-slate-700",
+  tone = "border-line bg-surface text-ink-soft",
   dot,
   className,
 }: {
@@ -186,18 +185,18 @@ export function Alert({
   className?: string;
 }) {
   const tones = {
-    info: "border-blue-500/25 bg-blue-500/10 text-blue-100",
-    success: "border-emerald-500/25 bg-emerald-500/10 text-emerald-100",
-    warning: "border-amber-500/25 bg-amber-500/10 text-amber-100",
-    error: "border-rose-500/25 bg-rose-500/10 text-rose-100",
+    info: "border-info-line bg-info-soft text-info",
+    success: "border-success-line bg-success-soft text-success",
+    warning: "border-warning-line bg-warning-soft text-warning",
+    error: "border-danger-line bg-danger-soft text-danger",
   };
   const Icon = tone === "success" ? CheckCircle2 : tone === "info" ? Info : AlertTriangle;
   return (
-    <div className={cn("flex gap-3 rounded-xl border p-3.5 text-xs leading-6", tones[tone], className)}>
+    <div className={cn("flex gap-3 rounded-brand border p-3.5 text-xs leading-6", tones[tone], className)}>
       <Icon className="mt-0.5 h-4 w-4 shrink-0" />
       <div>
         {title ? <div className="font-bold">{title}</div> : null}
-        <div className="text-current/85">{children}</div>
+        <div className="text-current/90">{children}</div>
       </div>
     </div>
   );
@@ -205,15 +204,15 @@ export function Alert({
 
 export function Spinner({ label = "جارٍ التحميل…" }: { label?: string }) {
   return (
-    <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-400">
-      <Loader2 className="h-5 w-5 animate-spin text-blue-400" />
+    <div className="flex items-center justify-center gap-2 py-16 text-sm text-subtle">
+      <Loader2 className="h-5 w-5 animate-spin text-brand" />
       {label}
     </div>
   );
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-xl bg-slate-800/70", className)} />;
+  return <div className={cn("animate-pulse rounded-brand bg-surface", className)} />;
 }
 
 export function EmptyState({
@@ -229,12 +228,12 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700 bg-slate-800/70 text-blue-400">
+      <div className="flex h-12 w-12 items-center justify-center rounded-brand border border-line bg-surface text-brand">
         {icon ?? <Info className="h-5 w-5" />}
       </div>
       <div>
-        <div className="font-semibold text-white">{title}</div>
-        {description ? <div className="mx-auto mt-1 max-w-md text-xs leading-6 text-slate-400">{description}</div> : null}
+        <div className="font-semibold text-ink">{title}</div>
+        {description ? <div className="mx-auto mt-1 max-w-md text-xs leading-6 text-subtle">{description}</div> : null}
       </div>
       {action}
     </div>
@@ -275,30 +274,30 @@ export function Modal({
   if (!open) return null;
   const sizes = { sm: "max-w-md", md: "max-w-2xl", lg: "max-w-4xl", xl: "max-w-6xl" };
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/80 p-3 backdrop-blur-sm sm:p-6" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-overlay p-3 backdrop-blur-sm sm:p-6" onMouseDown={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={cn("my-4 w-full overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl", sizes[size])}
+        className={cn("surface-popover my-4 w-full overflow-hidden", sizes[size])}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-800 px-5 py-4">
+        <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
           <div>
-            <h2 className="font-heading text-lg font-bold text-white">{title}</h2>
-            {description ? <p className="mt-0.5 text-xs text-slate-400">{description}</p> : null}
+            <h2 className="font-heading text-lg font-bold text-ink">{title}</h2>
+            {description ? <p className="mt-0.5 text-xs text-subtle">{description}</p> : null}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+            className="rounded-brand-sm p-1.5 text-subtle transition hover:bg-surface hover:text-ink"
             aria-label="إغلاق"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
         <div className="max-h-[70vh] overflow-y-auto px-5 py-5">{children}</div>
-        {footer ? <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-800 bg-slate-950/40 px-5 py-4">{footer}</div> : null}
+        {footer ? <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line bg-surface px-5 py-4">{footer}</div> : null}
       </div>
     </div>
   );
@@ -335,7 +334,7 @@ export function ConfirmDialog({
         </>
       }
     >
-      <div className="flex items-start gap-3 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs leading-6 text-rose-100">
+      <div className="flex items-start gap-3 rounded-brand border border-danger-line bg-danger-soft p-3 text-xs leading-6 text-danger">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
         لا يمكن التراجع عن هذا الإجراء. تأكد من أنك تريد المتابعة.
       </div>
@@ -348,31 +347,30 @@ export function StatCard({
   value,
   hint,
   icon,
-  accent = "blue",
+  accent = "brand",
 }: {
   label: string;
   value: React.ReactNode;
   hint?: React.ReactNode;
   icon?: React.ReactNode;
-  accent?: "blue" | "emerald" | "violet" | "amber" | "rose";
+  accent?: "brand" | "success" | "info" | "warning" | "danger";
 }) {
   const accents = {
-    blue: "from-blue-500/20 text-blue-300 border-blue-500/20",
-    emerald: "from-emerald-500/20 text-emerald-300 border-emerald-500/20",
-    violet: "from-violet-500/20 text-violet-300 border-violet-500/20",
-    amber: "from-amber-500/20 text-amber-300 border-amber-500/20",
-    rose: "from-rose-500/20 text-rose-300 border-rose-500/20",
+    brand: "border-brand-line bg-brand-soft text-brand",
+    success: "border-success-line bg-success-soft text-success",
+    info: "border-info-line bg-info-soft text-info",
+    warning: "border-warning-line bg-warning-soft text-warning",
+    danger: "border-danger-line bg-danger-soft text-danger",
   };
   return (
-    <Card className="relative overflow-hidden p-4">
-      <div className={cn("absolute inset-x-0 top-0 h-24 bg-gradient-to-b to-transparent opacity-50", accents[accent])} />
-      <div className="relative flex items-start justify-between gap-3">
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-[11px] font-medium text-slate-400">{label}</div>
-          <div className="mt-2 font-heading text-2xl font-bold text-white">{value}</div>
-          {hint ? <div className="mt-1 text-[11px] text-slate-500">{hint}</div> : null}
+          <div className="text-[11px] font-medium text-subtle">{label}</div>
+          <div className="mt-2 font-heading text-2xl font-bold text-ink">{value}</div>
+          {hint ? <div className="mt-1 text-[11px] text-subtle">{hint}</div> : null}
         </div>
-        {icon ? <div className={cn("rounded-xl border p-2", accents[accent])}>{icon}</div> : null}
+        {icon ? <div className={cn("rounded-brand border p-2", accents[accent])}>{icon}</div> : null}
       </div>
     </Card>
   );
@@ -392,10 +390,10 @@ export function Switch({
   disabled?: boolean;
 }) {
   return (
-    <label className={cn("flex cursor-pointer items-start justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/30 p-3", disabled && "cursor-not-allowed opacity-60")}>
+    <label className={cn("flex cursor-pointer items-start justify-between gap-3 rounded-brand border border-line bg-surface p-3", disabled && "cursor-not-allowed opacity-60")}>
       <span>
-        <span className="block text-xs font-semibold text-slate-200">{label}</span>
-        {description ? <span className="mt-0.5 block text-[11px] leading-5 text-slate-500">{description}</span> : null}
+        <span className="block text-xs font-semibold text-ink">{label}</span>
+        {description ? <span className="mt-0.5 block text-[11px] leading-5 text-subtle">{description}</span> : null}
       </span>
       <span className="relative mt-0.5 inline-flex h-5 w-9 shrink-0 items-center">
         <input
@@ -405,8 +403,8 @@ export function Switch({
           disabled={disabled}
           onChange={(e) => onChange(e.target.checked)}
         />
-        <span className="h-5 w-9 rounded-full bg-slate-700 transition peer-checked:bg-blue-600" />
-        <span className="absolute start-0.5 h-4 w-4 rounded-full bg-white shadow transition peer-checked:start-[18px]" />
+        <span className="h-5 w-9 rounded-full bg-line transition peer-checked:bg-brand" />
+        <span className="absolute start-0.5 h-4 w-4 rounded-full bg-card shadow transition peer-checked:start-[18px]" />
       </span>
     </label>
   );
@@ -424,10 +422,10 @@ export function Pagination({
   onChange: (page: number) => void;
 }) {
   if (totalPages <= 1) {
-    return total !== undefined ? <div className="px-1 py-3 text-[11px] text-slate-500">إجمالي {total}</div> : null;
+    return total !== undefined ? <div className="px-1 py-3 text-[11px] text-subtle">إجمالي {total}</div> : null;
   }
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-3 text-xs text-slate-400">
+    <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-3 text-xs text-subtle">
       <div>صفحة {page} من {totalPages}{total !== undefined ? ` · ${total} سجل` : ""}</div>
       <div className="flex items-center gap-1">
         <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onChange(page - 1)}>السابق</Button>
@@ -454,7 +452,7 @@ export function CopyButton({ value, label = "نسخ" }: { value: string; label?:
         }
       }}
     >
-      {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
       {copied ? "تم النسخ" : label}
     </Button>
   );
@@ -497,10 +495,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <div
             key={item.id}
             className={cn(
-              "pointer-events-auto flex items-start gap-2.5 rounded-xl border px-4 py-3 text-xs leading-5 shadow-2xl backdrop-blur",
-              item.tone === "success" && "border-emerald-500/30 bg-emerald-950/95 text-emerald-100",
-              item.tone === "error" && "border-rose-500/30 bg-rose-950/95 text-rose-100",
-              item.tone === "info" && "border-slate-700 bg-slate-900/95 text-slate-100"
+              "pointer-events-auto flex items-start gap-2.5 rounded-brand border px-4 py-3 text-xs leading-5 shadow-brand-popover",
+              item.tone === "success" && "border-success-line bg-success-soft text-success",
+              item.tone === "error" && "border-danger-line bg-danger-soft text-danger",
+              item.tone === "info" && "border-line bg-card text-ink"
             )}
           >
             {item.tone === "success" ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : item.tone === "error" ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> : <Info className="mt-0.5 h-4 w-4 shrink-0" />}

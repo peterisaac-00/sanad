@@ -289,7 +289,7 @@ export function SettingsPage() {
         actions={<Button variant="ghost" size="sm" onClick={reload} aria-label="تحديث"><RefreshCw className="h-3.5 w-3.5" /></Button>}
       />
 
-      <div className="flex flex-wrap gap-1 rounded-xl border border-slate-800 bg-slate-900/40 p-1 text-xs font-semibold">
+      <div className="flex flex-wrap gap-1 rounded-brand border border-line bg-card p-1 text-xs font-semibold">
         {TABS.map((entry) => {
           const Icon = entry.icon;
           return (
@@ -297,8 +297,8 @@ export function SettingsPage() {
               key={entry.key}
               onClick={() => setTab(entry.key)}
               className={cn(
-                "flex items-center gap-1.5 rounded-lg px-3 py-2 transition",
-                tab === entry.key ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"
+                "flex items-center gap-1.5 rounded-brand-sm px-3 py-2 transition",
+                tab === entry.key ? "bg-brand text-on-brand" : "text-subtle hover:text-ink"
               )}
             >
               <Icon className="h-3.5 w-3.5" /> {entry.label}
@@ -315,7 +315,7 @@ export function SettingsPage() {
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-4">
             <Card className="p-4">
-              <div className="mb-3 text-xs font-bold text-white">الهوية</div>
+              <div className="mb-3 text-xs font-bold text-ink">الهوية</div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="اسم المتجر" required>
                   <Input value={form.storeName} onChange={(e) => setForm({ ...form, storeName: e.target.value })} />
@@ -332,7 +332,7 @@ export function SettingsPage() {
             </Card>
 
             <Card className="p-4">
-              <div className="mb-3 text-xs font-bold text-white">البيع والتواصل</div>
+              <div className="mb-3 text-xs font-bold text-ink">البيع والتواصل</div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="واتساب الدعم" hint="يظهر في متجرك وفي روابط تأكيد الطلب">
                   <Input value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} dir="ltr" placeholder="+2010…" />
@@ -375,7 +375,7 @@ export function SettingsPage() {
             </Card>
 
             <Card className="p-4">
-              <div className="mb-3 text-xs font-bold text-white">تحسين محركات البحث (SEO)</div>
+              <div className="mb-3 text-xs font-bold text-ink">تحسين محركات البحث (SEO)</div>
               <div className="grid gap-4">
                 <Field label="عنوان الصفحة">
                   <Input value={form.seoTitle} onChange={(e) => setForm({ ...form, seoTitle: e.target.value })} />
@@ -400,38 +400,38 @@ export function SettingsPage() {
 
           <div className="space-y-4">
             <Card className="p-4">
-              <div className="mb-3 text-xs font-bold text-white">استخدام المتجر</div>
-              <div className="space-y-2 text-[11px] text-slate-400">
-                <div className="flex justify-between"><span>المنتجات</span><span className="font-semibold text-slate-200">{number(data?.usage?.products ?? 0)}</span></div>
-                <div className="flex justify-between"><span>الطلبات</span><span className="font-semibold text-slate-200">{number(data?.usage?.orders ?? 0)}</span></div>
-                <div className="flex justify-between"><span>العملاء</span><span className="font-semibold text-slate-200">{number(data?.usage?.customers ?? 0)}</span></div>
-                <div className="flex justify-between"><span>أعضاء الفريق</span><span className="font-semibold text-slate-200">{number((data?.team ?? []).length)}</span></div>
+              <div className="mb-3 text-xs font-bold text-ink">استخدام المتجر</div>
+              <div className="space-y-2 text-[11px] text-subtle">
+                <div className="flex justify-between"><span>المنتجات</span><span className="font-semibold text-ink">{number(data?.usage?.products ?? 0)}</span></div>
+                <div className="flex justify-between"><span>الطلبات</span><span className="font-semibold text-ink">{number(data?.usage?.orders ?? 0)}</span></div>
+                <div className="flex justify-between"><span>العملاء</span><span className="font-semibold text-ink">{number(data?.usage?.customers ?? 0)}</span></div>
+                <div className="flex justify-between"><span>أعضاء الفريق</span><span className="font-semibold text-ink">{number((data?.team ?? []).length)}</span></div>
               </div>
             </Card>
 
             <Card className="p-4">
-              <div className="mb-3 text-xs font-bold text-white">حالة التكاملات</div>
+              <div className="mb-3 text-xs font-bold text-ink">حالة التكاملات</div>
               <div className="space-y-2 text-[11px]">
                 {Object.entries(integrations).map(([key, value]: [string, any]) => (
                   <div key={key} className="flex items-center justify-between">
-                    <span className="text-slate-400">{key}</span>
+                    <span className="text-subtle">{key}</span>
                     {value?.configured ? (
-                      <Badge tone="bg-emerald-500/10 text-emerald-300 border-emerald-500/25"><CheckCircle2 className="h-3 w-3" /> مهيأ</Badge>
+                      <Badge tone="bg-success-soft text-success border-success-line"><CheckCircle2 className="h-3 w-3" /> مهيأ</Badge>
                     ) : (
-                      <Badge tone="bg-slate-800 text-slate-400 border-slate-700">غير مهيأ</Badge>
+                      <Badge tone="bg-surface text-subtle border-line">غير مهيأ</Badge>
                     )}
                   </div>
                 ))}
               </div>
-              <div className="mt-3 text-[10px] leading-5 text-slate-500">
+              <div className="mt-3 text-[10px] leading-5 text-subtle">
                 التكاملات غير المهيأة تعمل بوضع يدوي بشفافية، ولن ندّعي إرسالاً أو ربطاً لم يحدث فعلاً.
               </div>
             </Card>
 
             <Card className="p-4">
-              <div className="mb-2 text-xs font-bold text-white">حساب التاجر</div>
-              <div className="text-[11px] text-slate-400">{data?.merchant?.email}</div>
-              <div className="mt-1 text-[10px] text-slate-500">
+              <div className="mb-2 text-xs font-bold text-ink">حساب التاجر</div>
+              <div className="text-[11px] text-subtle">{data?.merchant?.email}</div>
+              <div className="mt-1 text-[10px] text-subtle">
                 {[data?.merchant?.firstName, data?.merchant?.lastName].filter(Boolean).join(" ") || data?.merchant?.name || ""}
               </div>
               <div className="mt-3">
@@ -442,7 +442,7 @@ export function SettingsPage() {
         </div>
       ) : tab === "notifications" && prefs ? (
         <Card className="max-w-2xl p-4">
-          <div className="mb-3 text-xs font-bold text-white">تفضيلات الإشعارات</div>
+          <div className="mb-3 text-xs font-bold text-ink">تفضيلات الإشعارات</div>
           <div className="grid gap-3">
             <Switch checked={prefs.newOrders} disabled={prefsBusy} onChange={(v) => savePrefs({ ...prefs, newOrders: v })} label="الطلبات الجديدة" description="إشعار فوري عند وصول أي طلب جديد." />
             <Switch checked={prefs.lowStock} disabled={prefsBusy} onChange={(v) => savePrefs({ ...prefs, lowStock: v })} label="تنبيه المخزون المنخفض" description="عند اقتراب أي منتج من النفاد." />
@@ -454,7 +454,7 @@ export function SettingsPage() {
       ) : tab === "domains" ? (
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_380px]">
           <Card className="overflow-hidden">
-            <div className="border-b border-slate-800/70 px-4 py-3 text-xs font-bold text-white">النطاقات المتصلة</div>
+            <div className="border-b border-line px-4 py-3 text-xs font-bold text-ink">النطاقات المتصلة</div>
             {(data?.domains ?? []).length === 0 ? (
               <EmptyState
                 title="لا توجد نطاقات مخصصة"
@@ -462,33 +462,33 @@ export function SettingsPage() {
                 icon={<Globe className="h-5 w-5" />}
               />
             ) : (
-              <div className="divide-y divide-slate-800/60">
+              <div className="divide-y divide-line">
                 {(data?.domains ?? []).map((domain: any) => (
                   <div key={domain.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-semibold text-slate-200" dir="ltr">{domain.domain}</span>
+                        <span className="font-mono text-xs font-semibold text-ink" dir="ltr">{domain.domain}</span>
                         {domain.status === "verified" ? (
-                          <Badge tone="bg-emerald-500/10 text-emerald-300 border-emerald-500/25"><CheckCircle2 className="h-3 w-3" /> موثّق</Badge>
+                          <Badge tone="bg-success-soft text-success border-success-line"><CheckCircle2 className="h-3 w-3" /> موثّق</Badge>
                         ) : (
-                          <Badge tone="bg-amber-500/10 text-amber-300 border-amber-500/25">بانتظار التحقق</Badge>
+                          <Badge tone="bg-warning-soft text-warning border-warning-line">بانتظار التحقق</Badge>
                         )}
                       </div>
                       {domain.status !== "verified" ? (
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500">
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-subtle">
                           <span>سجل TXT على <span className="font-mono" dir="ltr">_sanad-verification.{domain.domain}</span> بالقيمة:</span>
-                          <span className="font-mono text-slate-400" dir="ltr">{domain.verificationToken}</span>
+                          <span className="font-mono text-subtle" dir="ltr">{domain.verificationToken}</span>
                           <CopyButton value={domain.verificationToken} label="" />
                         </div>
                       ) : (
-                        <div className="mt-1 text-[10px] text-slate-500">تم التوثيق {dateTime(domain.verifiedAt)}</div>
+                        <div className="mt-1 text-[10px] text-subtle">تم التوثيق {dateTime(domain.verifiedAt)}</div>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5">
                       {domain.status !== "verified" ? (
                         <Button variant="outline" size="sm" loading={verifyingId === domain.id} onClick={() => verifyDomain(domain)}>تحقق الآن</Button>
                       ) : null}
-                      <button onClick={() => setDeletingDomain(domain)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-500/10 hover:text-rose-300" title="حذف">
+                      <button onClick={() => setDeletingDomain(domain)} className="rounded-brand-sm p-2 text-subtle hover:bg-danger-soft hover:text-danger" title="حذف">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -499,13 +499,13 @@ export function SettingsPage() {
           </Card>
 
           <Card className="p-4">
-            <div className="mb-3 text-xs font-bold text-white">إضافة نطاق</div>
+            <div className="mb-3 text-xs font-bold text-ink">إضافة نطاق</div>
             <div className="space-y-3">
               <Field label="النطاق" hint="مثال: shop.example.com">
                 <Input value={domainInput} onChange={(e) => setDomainInput(e.target.value)} dir="ltr" className="font-mono" placeholder="shop.example.com" />
               </Field>
               <Button className="w-full" loading={domainBusy} onClick={addDomain}>إضافة النطاق</Button>
-              <div className="text-[10px] leading-5 text-slate-500">
+              <div className="text-[10px] leading-5 text-subtle">
                 بعد الإضافة سنعرض لك سجل TXT المطلوب. نتحقق منه فعلياً عبر DNS، ولن يظهر النطاق كموثّق قبل ذلك.
               </div>
             </div>
@@ -515,8 +515,8 @@ export function SettingsPage() {
         <div className="space-y-3">
           <Card className="flex flex-wrap items-center justify-between gap-2 p-4">
             <div>
-              <div className="text-xs font-bold text-white">فريق المتجر</div>
-              <div className="mt-0.5 text-[11px] text-slate-500">
+              <div className="text-xs font-bold text-ink">فريق المتجر</div>
+              <div className="mt-0.5 text-[11px] text-subtle">
                 {data?.invitation_email_configured ? "دعوات البريد مفعّلة." : "إرسال دعوات البريد غير مهيأ بعد — تُنشأ الدعوة داخل النظام فقط."}
               </div>
             </div>
@@ -533,7 +533,7 @@ export function SettingsPage() {
             ) : (
               <TableShell minWidth={780}>
                 <thead>
-                  <tr className="border-b border-slate-800/70">
+                  <tr className="border-b border-line">
                     <Th>العضو</Th>
                     <Th>البريد</Th>
                     <Th>الدور</Th>
@@ -543,9 +543,9 @@ export function SettingsPage() {
                 </thead>
                 <tbody>
                   {(data?.team ?? []).map((member: any) => (
-                    <tr key={member.id} className="border-b border-slate-800/40">
-                      <Td><span className="font-semibold text-slate-100">{member.name || "—"}</span></Td>
-                      <Td><span className="font-mono text-[10px] text-slate-400" dir="ltr">{member.email}</span></Td>
+                    <tr key={member.id} className="border-b border-line">
+                      <Td><span className="font-semibold text-ink">{member.name || "—"}</span></Td>
+                      <Td><span className="font-mono text-[10px] text-subtle" dir="ltr">{member.email}</span></Td>
                       <Td>
                         <Select
                           value={member.role}
@@ -568,7 +568,7 @@ export function SettingsPage() {
                       </Td>
                       <Td>
                         <div className="flex justify-end">
-                          <button onClick={() => setDeletingMember(member)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-500/10 hover:text-rose-300" title="إزالة">
+                          <button onClick={() => setDeletingMember(member)} className="rounded-brand-sm p-2 text-subtle hover:bg-danger-soft hover:text-danger" title="إزالة">
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </div>
@@ -583,7 +583,7 @@ export function SettingsPage() {
       ) : tab === "security" ? (
         <div className="grid gap-3 lg:grid-cols-2">
           <Card className="p-4">
-            <div className="mb-3 flex items-center gap-1.5 text-xs font-bold text-white"><KeyRound className="h-3.5 w-3.5 text-blue-400" /> تغيير كلمة المرور</div>
+            <div className="mb-3 flex items-center gap-1.5 text-xs font-bold text-ink"><KeyRound className="h-3.5 w-3.5 text-brand" /> تغيير كلمة المرور</div>
             <div className="space-y-3">
               <Field label="كلمة المرور الحالية" required>
                 <Input type="password" value={passwordDraft.current} onChange={(e) => setPasswordDraft({ ...passwordDraft, current: e.target.value })} dir="ltr" />
@@ -598,9 +598,9 @@ export function SettingsPage() {
             </div>
           </Card>
 
-          <Card className="border-rose-500/20 p-4">
-            <div className="mb-3 text-xs font-bold text-rose-300">حذف الحساب نهائياً</div>
-            <p className="text-[11px] leading-6 text-slate-400">
+          <Card className="border-danger-line p-4">
+            <div className="mb-3 text-xs font-bold text-danger">حذف الحساب نهائياً</div>
+            <p className="text-[11px] leading-6 text-subtle">
               سيتم حذف حسابك وبيانات تسجيل الدخول. إذا كنت التاجر الوحيد على المتجر فسيُحذف المتجر معه هو وكل بياناته.
               لا يمكن التراجع عن هذا الإجراء.
             </p>
@@ -613,7 +613,7 @@ export function SettingsPage() {
         </div>
       ) : (
         <Card className="overflow-hidden">
-          <div className="border-b border-slate-800/70 px-4 py-3 text-xs font-bold text-white">آخر أنشطة المتجر (سجل تدقيق)</div>
+          <div className="border-b border-line px-4 py-3 text-xs font-bold text-ink">آخر أنشطة المتجر (سجل تدقيق)</div>
           <AuditLogs subdomain={subdomain} />
         </Card>
       )}
@@ -734,7 +734,7 @@ function AuditLogs({ subdomain }: { subdomain: string }) {
   return (
     <TableShell minWidth={720}>
       <thead>
-        <tr className="border-b border-slate-800/70">
+        <tr className="border-b border-line">
           <Th>التاريخ</Th>
           <Th>العملية</Th>
           <Th>الكيان</Th>
@@ -743,11 +743,11 @@ function AuditLogs({ subdomain }: { subdomain: string }) {
       </thead>
       <tbody>
         {logs.map((log: any) => (
-          <tr key={log.id} className="border-b border-slate-800/40">
-            <Td><span className="text-[11px] text-slate-400">{dateTime(log.createdAt)}</span></Td>
-            <Td><Badge tone="bg-slate-800 text-slate-300 border-slate-700">{log.action}</Badge></Td>
-            <Td><span className="font-mono text-[10px] text-slate-500" dir="ltr">{log.entity || "—"}</span></Td>
-            <Td><span className="text-[11px] text-slate-400">{log.merchant?.email || "—"}</span></Td>
+          <tr key={log.id} className="border-b border-line">
+            <Td><span className="text-[11px] text-subtle">{dateTime(log.createdAt)}</span></Td>
+            <Td><Badge tone="bg-surface text-ink-soft border-line">{log.action}</Badge></Td>
+            <Td><span className="font-mono text-[10px] text-subtle" dir="ltr">{log.entity || "—"}</span></Td>
+            <Td><span className="text-[11px] text-subtle">{log.merchant?.email || "—"}</span></Td>
           </tr>
         ))}
       </tbody>

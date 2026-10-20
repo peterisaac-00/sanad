@@ -97,7 +97,7 @@ export function StorefrontCartPage() {
           action={
             <Link
               href={`${base}/products`}
-              className="rounded-xl px-4 py-2.5 text-xs font-bold text-white"
+              className="rounded-brand px-4 py-2.5 text-xs font-bold text-on-brand"
               style={{ background: theme.primary }}
             >
               تصفح المنتجات
@@ -121,12 +121,12 @@ export function StorefrontCartPage() {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
-        <div className={cn("divide-y overflow-hidden rounded-2xl border", theme.panel, theme.border)}>
+        <div className={cn("divide-y overflow-hidden rounded-brand border", theme.panel, theme.border)}>
           {cart.map((item) => (
             <div key={item.key} className="flex gap-3 p-3.5 sm:p-4">
               <Link
                 href={`${base}/products/${encodeURIComponent(item.slug || item.productId)}`}
-                className={cn("h-20 w-20 shrink-0 overflow-hidden rounded-xl border sm:h-24 sm:w-24", theme.border)}
+                className={cn("h-20 w-20 shrink-0 overflow-hidden rounded-brand border sm:h-24 sm:w-24", theme.border)}
               >
                 <ProductImage src={item.image} alt={item.name} />
               </Link>
@@ -168,7 +168,7 @@ export function StorefrontCartPage() {
         </div>
 
         <aside className="space-y-3">
-          <div className={cn("space-y-3 rounded-2xl border p-4", theme.panel)}>
+          <div className={cn("space-y-3 rounded-brand border p-4", theme.panel)}>
             <h2 className={cn("font-heading text-base font-bold", theme.heading)}>ملخص الطلب</h2>
             <div className={cn("space-y-2 text-xs", theme.muted)}>
               <div className="flex items-center justify-between gap-2">
@@ -176,7 +176,7 @@ export function StorefrontCartPage() {
                 <span className={cn("font-semibold tabular-nums", theme.heading)}>{money(subtotal, currency)}</span>
               </div>
               {discount > 0 ? (
-                <div className="flex items-center justify-between gap-2 text-emerald-500">
+                <div className="flex items-center justify-between gap-2 text-success">
                   <span>الخصم {coupon?.freeShipping ? "(شحن مجاني)" : ""}</span>
                   <span className="font-semibold tabular-nums">{coupon?.freeShipping ? "—" : `- ${money(discount, currency)}`}</span>
                 </div>
@@ -195,7 +195,7 @@ export function StorefrontCartPage() {
             <CouponBox />
             <Link
               href={`${base}/checkout`}
-              className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:opacity-90"
+              className="flex w-full items-center justify-center gap-2 rounded-brand px-4 py-3 text-sm font-bold text-on-brand shadow-lg transition hover:opacity-90"
               style={{ background: theme.primary }}
             >
               <ArrowLeft className="h-4 w-4" /> إتمام الطلب
@@ -206,7 +206,7 @@ export function StorefrontCartPage() {
               </p>
             ) : null}
           </div>
-          <div className={cn("rounded-2xl border p-4 text-[11px] leading-6", theme.panel, theme.muted)}>
+          <div className={cn("rounded-brand border p-4 text-[11px] leading-6", theme.panel, theme.muted)}>
             الأسعار والكميات تُراجع مرة أخرى على الخادم عند تأكيد الطلب. إذا تغيّر المخزون سيظهر لك تنبيه واضح قبل الخصم.
           </div>
         </aside>
@@ -393,7 +393,7 @@ export function StorefrontCheckoutPage() {
           action={
             <Link
               href={`${base}/products`}
-              className="rounded-xl px-4 py-2.5 text-xs font-bold text-white"
+              className="rounded-brand px-4 py-2.5 text-xs font-bold text-on-brand"
               style={{ background: theme.primary }}
             >
               تصفح المنتجات
@@ -418,7 +418,7 @@ export function StorefrontCheckoutPage() {
 
       <form onSubmit={submit} className="grid gap-5 lg:grid-cols-[1fr_380px]" noValidate>
         <div className="space-y-4">
-          <section className={cn("space-y-4 rounded-2xl border p-4 sm:p-5", theme.panel)}>
+          <section className={cn("space-y-4 rounded-brand border p-4 sm:p-5", theme.panel)}>
             <h2 className={cn("flex items-center gap-2 font-heading text-base font-bold", theme.heading)}>
               <MapPin className="h-4 w-4" style={{ color: theme.primary }} /> بيانات التوصيل
             </h2>
@@ -433,7 +433,7 @@ export function StorefrontCheckoutPage() {
                   maxLength={200}
                   placeholder="الاسم كما سيظهر للمندوب"
                 />
-                {errors.customer_name ? <span className="text-[11px] text-rose-500">{errors.customer_name}</span> : null}
+                {errors.customer_name ? <span className="text-[11px] text-danger">{errors.customer_name}</span> : null}
               </label>
               <label className="space-y-1.5">
                 <span className={cn("text-xs font-semibold", theme.heading)}>رقم الهاتف *</span>
@@ -448,7 +448,7 @@ export function StorefrontCheckoutPage() {
                   maxLength={32}
                   placeholder="01xxxxxxxxx"
                 />
-                {errors.customer_phone ? <span className="text-[11px] text-rose-500">{errors.customer_phone}</span> : null}
+                {errors.customer_phone ? <span className="text-[11px] text-danger">{errors.customer_phone}</span> : null}
               </label>
               <label className="space-y-1.5">
                 <span className={cn("text-xs font-semibold", theme.heading)}>البريد الإلكتروني (اختياري)</span>
@@ -463,7 +463,7 @@ export function StorefrontCheckoutPage() {
                   maxLength={254}
                   placeholder="you@example.com"
                 />
-                {errors.customer_email ? <span className="text-[11px] text-rose-500">{errors.customer_email}</span> : null}
+                {errors.customer_email ? <span className="text-[11px] text-danger">{errors.customer_email}</span> : null}
               </label>
               <label className="space-y-1.5">
                 <span className={cn("text-xs font-semibold", theme.heading)}>
@@ -489,7 +489,7 @@ export function StorefrontCheckoutPage() {
                     placeholder="المدينة أو المنطقة"
                   />
                 )}
-                {errors.governorate ? <span className="text-[11px] text-rose-500">{errors.governorate}</span> : null}
+                {errors.governorate ? <span className="text-[11px] text-danger">{errors.governorate}</span> : null}
               </label>
               <label className="space-y-1.5">
                 <span className={cn("text-xs font-semibold", theme.heading)}>المدينة / الحي</span>
@@ -512,7 +512,7 @@ export function StorefrontCheckoutPage() {
                   maxLength={300}
                   placeholder="اسم الشارع، رقم المبنى، علامة مميزة"
                 />
-                {errors.address ? <span className="text-[11px] text-rose-500">{errors.address}</span> : null}
+                {errors.address ? <span className="text-[11px] text-danger">{errors.address}</span> : null}
               </label>
               <label className="space-y-1.5 sm:col-span-2">
                 <span className={cn("text-xs font-semibold", theme.heading)}>ملاحظات على الطلب (اختياري)</span>
@@ -527,7 +527,7 @@ export function StorefrontCheckoutPage() {
             </div>
           </section>
 
-          <section className={cn("space-y-3 rounded-2xl border p-4 sm:p-5", theme.panel)}>
+          <section className={cn("space-y-3 rounded-brand border p-4 sm:p-5", theme.panel)}>
             <h2 className={cn("flex items-center gap-2 font-heading text-base font-bold", theme.heading)}>
               <CreditCard className="h-4 w-4" style={{ color: theme.primary }} /> طريقة الدفع
             </h2>
@@ -540,16 +540,16 @@ export function StorefrontCheckoutPage() {
                       key={method.value}
                       type="button"
                       onClick={() => setPayment(method.value)}
-                      className={cn("rounded-xl border p-3 text-start transition", active ? "" : theme.panelHover)}
-                      style={active ? { borderColor: theme.primary, background: `${theme.primary}12` } : { borderColor: theme.dark ? "rgba(255,255,255,.1)" : "#e2e8f0" }}
+                      className={cn("rounded-brand border p-3 text-start transition", active ? "" : theme.panelHover)}
+                      style={active ? { borderColor: theme.primary, background: `color-mix(in srgb, ${theme.primary} 7%, transparent)` } : { borderColor: "var(--color-border)" }}
                     >
                       <span className="flex items-center justify-between gap-2">
                         <span className={cn("text-xs font-bold", theme.heading)}>{method.label}</span>
                         <span
                           className="flex h-4 w-4 items-center justify-center rounded-full border"
-                          style={{ borderColor: active ? theme.primary : "#94a3b8", background: active ? theme.primary : "transparent" }}
+                          style={{ borderColor: active ? theme.primary : "var(--color-muted)", background: active ? theme.primary : "transparent" }}
                         >
-                          {active ? <Check className="h-2.5 w-2.5 text-white" /> : null}
+                          {active ? <Check className="h-2.5 w-2.5 text-on-brand" /> : null}
                         </span>
                       </span>
                       <span className={cn("mt-1 block text-[11px] leading-5", theme.muted)}>{method.description}</span>
@@ -563,21 +563,21 @@ export function StorefrontCheckoutPage() {
                 })}
               </div>
             ) : (
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-[11px] leading-6 text-amber-600">
+              <div className="rounded-brand border border-warning-line bg-warning-soft p-3 text-[11px] leading-6 text-warning">
                 لا توجد طريقة دفع مهيأة حالياً لهذا المتجر. تواصل مع المتجر عبر واتساب لإتمام طلبك.
               </div>
             )}
-            {errors.notes ? <span className="text-[11px] text-rose-500">{errors.notes}</span> : null}
+            {errors.notes ? <span className="text-[11px] text-danger">{errors.notes}</span> : null}
           </section>
 
-          <section className={cn("rounded-2xl border p-4 sm:p-5", theme.panel)}>
+          <section className={cn("rounded-brand border p-4 sm:p-5", theme.panel)}>
             <div className="flex items-start gap-2 text-[11px] leading-6">
               <Truck className="mt-0.5 h-4 w-4 shrink-0" style={{ color: theme.primary }} />
               <div className={theme.muted}>
                 {quoteLoading ? (
                   <span className="inline-flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> جارٍ حساب الشحن…</span>
                 ) : quoteError ? (
-                  <span className="text-amber-600">{quoteError}</span>
+                  <span className="text-warning">{quoteError}</span>
                 ) : quote?.zoneId ? (
                   <span>
                     الشحن إلى <strong className={theme.heading}>{quote.zoneName}</strong>
@@ -597,12 +597,12 @@ export function StorefrontCheckoutPage() {
         </div>
 
         <aside className="space-y-3">
-          <div className={cn("space-y-3 rounded-2xl border p-4", theme.panel)}>
+          <div className={cn("space-y-3 rounded-brand border p-4", theme.panel)}>
             <h2 className={cn("font-heading text-base font-bold", theme.heading)}>ملخص الطلب</h2>
             <div className="max-h-64 space-y-2.5 overflow-y-auto pe-1">
               {cart.map((item) => (
                 <div key={item.key} className="flex items-center gap-2.5">
-                  <div className={cn("h-11 w-11 shrink-0 overflow-hidden rounded-lg border", theme.border)}>
+                  <div className={cn("h-11 w-11 shrink-0 overflow-hidden rounded-brand-sm border", theme.border)}>
                     <ProductImage src={item.image} alt={item.name} />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -625,7 +625,7 @@ export function StorefrontCheckoutPage() {
                 <span className={cn("font-semibold tabular-nums", theme.heading)}>{money(subtotal, currency)}</span>
               </div>
               {discount > 0 ? (
-                <div className="flex items-center justify-between gap-2 text-emerald-500">
+                <div className="flex items-center justify-between gap-2 text-success">
                   <span>الخصم</span>
                   <span className="font-semibold tabular-nums">- {money(discount, currency)}</span>
                 </div>
@@ -634,7 +634,7 @@ export function StorefrontCheckoutPage() {
                 <span>الشحن</span>
                 <span className="tabular-nums">{coupon?.freeShipping ? "مجاني" : quote ? money(shippingFee + codFee, currency) : "—"}</span>
               </div>
-              <div className="flex items-center justify-between gap-2 border-t pt-2 text-sm" style={{ borderColor: theme.dark ? "rgba(255,255,255,.1)" : "#e2e8f0" }}>
+              <div className="flex items-center justify-between gap-2 border-t pt-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
                 <span className={cn("font-bold", theme.heading)}>الإجمالي</span>
                 <span className="font-heading text-lg font-extrabold tabular-nums" style={{ color: theme.primary }}>{money(total, currency)}</span>
               </div>
@@ -642,7 +642,7 @@ export function StorefrontCheckoutPage() {
             </div>
 
             {submitError ? (
-              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-2.5 text-[11px] leading-6 text-rose-500">
+              <div className="rounded-brand border border-danger-line bg-danger-soft p-2.5 text-[11px] leading-6 text-danger">
                 {submitError}
               </div>
             ) : null}
@@ -650,7 +650,7 @@ export function StorefrontCheckoutPage() {
             <button
               type="submit"
               disabled={submitting || !canOrder}
-              className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-brand px-4 py-3 text-sm font-bold text-on-brand shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               style={{ background: theme.primary }}
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
@@ -662,7 +662,7 @@ export function StorefrontCheckoutPage() {
               </p>
             ) : null}
           </div>
-          <div className={cn("flex items-start gap-2 rounded-2xl border p-3 text-[10px] leading-5", theme.panel, theme.muted)}>
+          <div className={cn("flex items-start gap-2 rounded-brand border p-3 text-[10px] leading-5", theme.panel, theme.muted)}>
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" style={{ color: theme.primary }} />
             <span>لا نحفظ أي بيانات بطاقات بنكية في المتصفح. الدفع عند الاستلام لا يتطلب دفعاً مقدماً.</span>
           </div>
@@ -682,10 +682,10 @@ const STAGES = [
 ];
 
 function statusTone(status: string) {
-  if (status === "cancelled" || status === "returned") return "bg-rose-500/10 text-rose-500 border-rose-500/25";
-  if (status === "delivered") return "bg-emerald-500/10 text-emerald-500 border-emerald-500/25";
-  if (status === "shipped" || status === "out_for_delivery") return "bg-sky-500/10 text-sky-500 border-sky-500/25";
-  return "bg-amber-500/10 text-amber-600 border-amber-500/25";
+  if (status === "cancelled" || status === "returned") return "bg-danger-soft text-danger border-danger-line";
+  if (status === "delivered") return "bg-success-soft text-success border-success-line";
+  if (status === "shipped" || status === "out_for_delivery") return "bg-info-soft text-info border-info-line";
+  return "bg-warning-soft text-warning border-warning-line";
 }
 
 function TrackForm({
@@ -720,9 +720,9 @@ function TrackForm({
   };
 
   return (
-    <form onSubmit={submit} className={cn("mx-auto w-full max-w-md space-y-3 rounded-2xl border p-5", theme.panel)} noValidate>
+    <form onSubmit={submit} className={cn("mx-auto w-full max-w-md space-y-3 rounded-brand border p-5", theme.panel)} noValidate>
       <div className="text-center">
-        <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-2xl" style={{ background: `${theme.primary}18`, color: theme.primary }}>
+        <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-brand" style={{ background: `color-mix(in srgb, ${theme.primary} 9%, transparent)`, color: theme.primary }}>
           <Search className="h-5 w-5" />
         </div>
         <h1 className={cn("font-heading text-xl font-bold", theme.heading)}>تتبع طلبك</h1>
@@ -731,7 +731,7 @@ function TrackForm({
         </p>
       </div>
       {error || localError ? (
-        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-2.5 text-[11px] text-rose-500">{localError || error}</div>
+        <div className="rounded-brand border border-danger-line bg-danger-soft p-2.5 text-[11px] text-danger">{localError || error}</div>
       ) : null}
       <label className="block space-y-1.5">
         <span className={cn("text-xs font-semibold", theme.heading)}>رقم الطلب</span>
@@ -759,7 +759,7 @@ function TrackForm({
       </label>
       <button
         type="submit"
-        className="w-full rounded-xl px-4 py-2.5 text-xs font-bold text-white"
+        className="w-full rounded-brand px-4 py-2.5 text-xs font-bold text-on-brand"
         style={{ background: theme.primary }}
       >
         عرض الطلب
@@ -834,14 +834,14 @@ export function StorefrontOrderPage({ orderNumber }: { orderNumber: string }) {
 
   return (
     <div className="mx-auto max-w-4xl space-y-5 px-4 py-8 sm:px-6 sm:py-10">
-      <div className={cn("overflow-hidden rounded-3xl border", theme.panel)}>
+      <div className={cn("overflow-hidden rounded-brand-lg border", theme.panel)}>
         <div
           className="space-y-2 p-5 text-center sm:p-7"
-          style={{ background: `linear-gradient(140deg, ${theme.primary}18, transparent 65%)` }}
+          style={{ background: `linear-gradient(140deg, color-mix(in srgb, ${theme.primary} 9%, transparent), transparent 65%)` }}
         >
           <div
-            className="mx-auto flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg"
-            style={{ background: success ? theme.primary : theme.dark ? "rgba(255,255,255,.1)" : "#e2e8f0", color: success ? "#fff" : theme.primary }}
+            className="mx-auto flex h-14 w-14 items-center justify-center rounded-full text-on-brand shadow-lg"
+            style={{ background: success ? theme.primary : "var(--color-surface)", color: success ? "var(--color-on-primary)" : theme.primary }}
           >
             {success ? <Check className="h-7 w-7" /> : <Package className="h-6 w-6" />}
           </div>
@@ -854,13 +854,13 @@ export function StorefrontOrderPage({ orderNumber }: { orderNumber: string }) {
               : `مرحباً ${order.customerName || ""}، هذه آخر حالة مسجلة لطلبك.`}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-            <span className="rounded-full bg-black/10 px-3 py-1 font-mono text-xs font-bold" dir="ltr">
+            <span className="rounded-full bg-surface px-3 py-1 font-mono text-xs font-bold" dir="ltr">
               SND-{order.orderNumber}
             </span>
             <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-bold", statusTone(String(order.status)))}>
               {statusInfo?.label || order.status}
             </span>
-            <span className="rounded-full border border-slate-500/25 bg-slate-500/10 px-2.5 py-1 text-[10px] font-semibold">
+            <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-[10px] font-semibold">
               {paymentInfo?.label || order.paymentStatus}
             </span>
           </div>
@@ -875,8 +875,8 @@ export function StorefrontOrderPage({ orderNumber }: { orderNumber: string }) {
                   <div key={stage.label} className="space-y-1.5 text-center">
                     <div className="flex items-center">
                       <span
-                        className={cn("mx-auto flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold", complete ? "text-white" : "")}
-                        style={complete ? { background: theme.primary } : { background: theme.dark ? "rgba(255,255,255,.08)" : "#e2e8f0", color: theme.dark ? "#94a3b8" : "#64748b" }}
+                        className={cn("mx-auto flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold", complete ? "text-on-brand" : "")}
+                        style={complete ? { background: theme.primary, color: "var(--color-on-primary)" } : { background: "var(--color-surface)", color: "var(--color-muted)" }}
                       >
                         {complete ? <Check className="h-3.5 w-3.5" /> : index + 1}
                       </span>
@@ -889,25 +889,25 @@ export function StorefrontOrderPage({ orderNumber }: { orderNumber: string }) {
           ) : null}
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className={cn("rounded-xl border p-3", theme.border)}>
+            <div className={cn("rounded-brand border p-3", theme.border)}>
               <div className={cn("text-[10px]", theme.muted)}>تاريخ الطلب</div>
               <div className={cn("mt-1 text-xs font-semibold", theme.heading)}>{dateTime(order.createdAt)}</div>
             </div>
-            <div className={cn("rounded-xl border p-3", theme.border)}>
+            <div className={cn("rounded-brand border p-3", theme.border)}>
               <div className={cn("text-[10px]", theme.muted)}>العميل</div>
               <div className={cn("mt-1 text-xs font-semibold", theme.heading)}>{order.customerName || "—"}</div>
             </div>
-            <div className={cn("rounded-xl border p-3", theme.border)}>
+            <div className={cn("rounded-brand border p-3", theme.border)}>
               <div className={cn("text-[10px]", theme.muted)}>الإجمالي</div>
               <div className={cn("mt-1 text-xs font-bold", theme.heading)}>{order.amountText || money(Number(order.amountEgp), currency)}</div>
             </div>
           </div>
 
-          <div className={cn("divide-y rounded-xl border", theme.border)}>
+          <div className={cn("divide-y rounded-brand border", theme.border)}>
             {items.map((item: any, index: number) => (
               <div key={`${item.name}-${index}`} className="flex items-center justify-between gap-3 p-3">
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <div className={cn("h-10 w-10 shrink-0 overflow-hidden rounded-lg border", theme.border)}>
+                  <div className={cn("h-10 w-10 shrink-0 overflow-hidden rounded-brand-sm border", theme.border)}>
                     <ProductImage src={item.imageUrl} alt={item.name} />
                   </div>
                   <div className="min-w-0">
@@ -923,7 +923,7 @@ export function StorefrontOrderPage({ orderNumber }: { orderNumber: string }) {
             ))}
           </div>
 
-          <div className={cn("flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 text-[11px]", theme.border, theme.muted)}>
+          <div className={cn("flex flex-wrap items-center justify-between gap-3 rounded-brand border p-3 text-[11px]", theme.border, theme.muted)}>
             <span className={cn("inline-flex items-center gap-1.5", theme.muted)}>
               <Phone className="h-3.5 w-3.5" /> {order.customerPhone || "—"}
             </span>
@@ -938,7 +938,7 @@ export function StorefrontOrderPage({ orderNumber }: { orderNumber: string }) {
                 href={whatsapp}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white"
+                className="inline-flex items-center gap-2 rounded-brand px-4 py-2.5 text-xs font-bold text-on-brand"
                 style={{ background: theme.primary }}
               >
                 <MessageCircle className="h-4 w-4" /> تواصل بخصوص الطلب
@@ -946,13 +946,13 @@ export function StorefrontOrderPage({ orderNumber }: { orderNumber: string }) {
             ) : null}
             <Link
               href={`${base}/products`}
-              className={cn("inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold", theme.border)}
+              className={cn("inline-flex items-center gap-2 rounded-brand border px-4 py-2.5 text-xs font-bold", theme.border)}
             >
               <ShoppingBag className="h-4 w-4" /> متابعة التسوق
             </Link>
             <Link
               href={`${base}/track`}
-              className={cn("inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold", theme.border)}
+              className={cn("inline-flex items-center gap-2 rounded-brand border px-4 py-2.5 text-xs font-bold", theme.border)}
             >
               <Search className="h-4 w-4" /> تتبع طلب آخر
             </Link>

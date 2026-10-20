@@ -208,7 +208,7 @@ export function ProductsPage() {
           <>
             <TableShell minWidth={860}>
               <thead>
-                <tr className="border-b border-slate-800/70">
+                <tr className="border-b border-line">
                   <Th>المنتج</Th>
                   <Th>SKU</Th>
                   <Th>الفئة</Th>
@@ -220,39 +220,39 @@ export function ProductsPage() {
               </thead>
               <tbody>
                 {products.map((product: any) => (
-                  <tr key={product.id} className="border-b border-slate-800/40 transition hover:bg-slate-800/20">
+                  <tr key={product.id} className="border-b border-line transition hover:bg-surface">
                     <Td>
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-brand-sm border border-line bg-canvas">
                           {product.images?.[0]?.url ? (
                             <img src={mediaUrl(product.images[0].url)} alt="" className="h-full w-full object-cover" />
                           ) : (
-                            <ImageIcon className="h-4 w-4 text-slate-600" />
+                            <ImageIcon className="h-4 w-4 text-subtle" />
                           )}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="max-w-60 truncate font-semibold text-slate-200">{product.nameAr || product.nameEn || "بدون اسم"}</span>
-                            {product.isFeatured ? <Badge tone="border-amber-500/25 bg-amber-500/10 text-amber-300">مميز</Badge> : null}
+                            <span className="max-w-60 truncate font-semibold text-ink">{product.nameAr || product.nameEn || "بدون اسم"}</span>
+                            {product.isFeatured ? <Badge tone="border-warning-line bg-warning-soft text-warning">مميز</Badge> : null}
                           </div>
-                          <div className="mt-0.5 text-[10px] text-slate-500">{product.variants?.length ? `${product.variants.length} متغير` : "بدون متغيرات"} · {date(product.createdAt)}</div>
+                          <div className="mt-0.5 text-[10px] text-subtle">{product.variants?.length ? `${product.variants.length} متغير` : "بدون متغيرات"} · {date(product.createdAt)}</div>
                         </div>
                       </div>
                     </Td>
-                    <Td className="font-mono text-[10px] text-slate-400">{product.sku}</Td>
-                    <Td className="text-slate-400">{product.category?.nameAr || product.category?.name || "—"}</Td>
+                    <Td className="font-mono text-[10px] text-subtle">{product.sku}</Td>
+                    <Td className="text-subtle">{product.category?.nameAr || product.category?.name || "—"}</Td>
                     <Td>
-                      <div className="font-bold text-slate-100">{money(product.basePrice, store.currency)}</div>
-                      {product.compareAtPrice ? <div className="text-[10px] text-slate-500 line-through">{money(product.compareAtPrice, store.currency)}</div> : null}
+                      <div className="font-bold text-ink">{money(product.basePrice, store.currency)}</div>
+                      {product.compareAtPrice ? <div className="text-[10px] text-subtle line-through">{money(product.compareAtPrice, store.currency)}</div> : null}
                     </Td>
                     <Td>
-                      <span className={product.stock <= 0 ? "font-bold text-rose-300" : product.stock <= (product.lowStockThreshold ?? 5) ? "font-bold text-amber-300" : "font-semibold text-slate-200"}>
+                      <span className={product.stock <= 0 ? "font-bold text-danger" : product.stock <= (product.lowStockThreshold ?? 5) ? "font-bold text-warning" : "font-semibold text-ink"}>
                         {number(product.stock)}
                       </span>
                     </Td>
                     <Td>
                       <div className="flex flex-col gap-1">
-                        <Badge tone={product.status === "active" ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300" : product.status === "draft" ? "border-amber-500/25 bg-amber-500/10 text-amber-300" : "bg-slate-800 text-slate-400 border-slate-700"}>
+                        <Badge tone={product.status === "active" ? "border-success-line bg-success-soft text-success" : product.status === "draft" ? "border-warning-line bg-warning-soft text-warning" : "bg-surface text-subtle border-line"}>
                           {product.status === "active" ? "نشط" : product.status === "draft" ? "مسودة" : "مؤرشف"}
                         </Badge>
                         {product.variants?.length ? <ActivePill active={(product.variants ?? []).some((v: any) => v.isActive)} /> : null}
@@ -264,7 +264,7 @@ export function ProductsPage() {
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => setDeleting(product)} aria-label="حذف">
-                          <Trash2 className="h-3.5 w-3.5 text-rose-400" />
+                          <Trash2 className="h-3.5 w-3.5 text-danger" />
                         </Button>
                       </div>
                     </Td>
@@ -272,7 +272,7 @@ export function ProductsPage() {
                 ))}
               </tbody>
             </TableShell>
-            <div className="border-t border-slate-800/60 px-3">
+            <div className="border-t border-line px-3">
               <Pagination page={page} totalPages={pagination?.totalPages ?? 1} total={pagination?.total} onChange={setPage} />
             </div>
           </>
@@ -487,12 +487,12 @@ function ProductEditor({
         </>
       }
     >
-      <div className="mb-5 flex flex-wrap gap-1.5 border-b border-slate-800 pb-3">
+      <div className="mb-5 flex flex-wrap gap-1.5 border-b border-line pb-3">
         {tabs.map((item) => (
           <button
             key={item.id}
             onClick={() => setTab(item.id)}
-            className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold transition ${tab === item.id ? "bg-blue-500/15 text-blue-100 ring-1 ring-inset ring-blue-500/30" : "text-slate-400 hover:bg-slate-800/60"}`}
+            className={`rounded-brand-sm px-3 py-1.5 text-[11px] font-semibold transition ${tab === item.id ? "bg-brand/15 text-brand ring-1 ring-inset ring-brand/30" : "text-subtle hover:bg-surface"}`}
           >
             {item.label}
           </button>
@@ -566,20 +566,20 @@ function ProductEditor({
         <div className="space-y-5">
           <div>
             <div className="flex items-center justify-between">
-              <div className="text-sm font-bold text-white">خيارات المنتج</div>
+              <div className="text-sm font-bold text-ink">خيارات المنتج</div>
               <Button size="sm" variant="outline" onClick={() => setOptions((current) => [...current, { name: "", nameAr: "", values: [{ value: "", valueAr: "" }] }])}>
                 <Plus className="h-3.5 w-3.5" /> خيار
               </Button>
             </div>
-            <p className="mt-1 text-[11px] text-slate-500">مثل: المقاس، اللون. القيم المستخدمة هنا تظهر عند إضافة المتغيرات.</p>
+            <p className="mt-1 text-[11px] text-subtle">مثل: المقاس، اللون. القيم المستخدمة هنا تظهر عند إضافة المتغيرات.</p>
             {options.length === 0 ? (
-              <div className="mt-3 rounded-xl border border-dashed border-slate-700 p-4 text-center text-[11px] text-slate-500">
+              <div className="mt-3 rounded-brand border border-dashed border-line p-4 text-center text-[11px] text-subtle">
                 لا توجد خيارات — المنتج يُباع كقطعة واحدة بمخزون المنتج الأساسي.
               </div>
             ) : (
               <div className="mt-3 space-y-3">
                 {options.map((option, optionIndex) => (
-                  <div key={optionIndex} className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+                  <div key={optionIndex} className="rounded-brand border border-line bg-surface p-3">
                     <div className="flex flex-wrap items-end gap-2">
                       <Field label="الاسم (عربي)" className="w-40">
                         <Input
@@ -597,7 +597,7 @@ function ProductEditor({
                         />
                       </Field>
                       <Button size="sm" variant="ghost" className="ms-auto" onClick={() => setOptions((current) => current.filter((_, i) => i !== optionIndex))}>
-                        <Trash2 className="h-3.5 w-3.5 text-rose-400" /> حذف الخيار
+                        <Trash2 className="h-3.5 w-3.5 text-danger" /> حذف الخيار
                       </Button>
                     </div>
                     <div className="mt-3 space-y-2">
@@ -629,7 +629,7 @@ function ProductEditor({
                             className="w-44"
                           />
                           <Button size="sm" variant="ghost" onClick={() => setOptions((current) => current.map((o, i) => (i === optionIndex ? { ...o, values: o.values.filter((_, vi) => vi !== valueIndex) } : o)))}>
-                            <Trash2 className="h-3.5 w-3.5 text-slate-500" />
+                            <Trash2 className="h-3.5 w-3.5 text-subtle" />
                           </Button>
                         </div>
                       ))}
@@ -645,20 +645,20 @@ function ProductEditor({
 
           <div>
             <div className="flex items-center justify-between">
-              <div className="text-sm font-bold text-white">المتغيرات</div>
+              <div className="text-sm font-bold text-ink">المتغيرات</div>
               <Button size="sm" variant="outline" onClick={() => setVariants((current) => [...current, { sku: "", price: draft.basePrice || "0", compareAtPrice: "", stock: "0", optionValues: {}, imageUrl: "", isActive: true }])}>
                 <Plus className="h-3.5 w-3.5" /> متغير
               </Button>
             </div>
-            <p className="mt-1 text-[11px] text-slate-500">لكل متغير SKU وسعر ومخزون مستقل. المخزون يُخصم من المتغير عند البيع.</p>
+            <p className="mt-1 text-[11px] text-subtle">لكل متغير SKU وسعر ومخزون مستقل. المخزون يُخصم من المتغير عند البيع.</p>
             {variants.length === 0 ? (
-              <div className="mt-3 rounded-xl border border-dashed border-slate-700 p-4 text-center text-[11px] text-slate-500">
+              <div className="mt-3 rounded-brand border border-dashed border-line p-4 text-center text-[11px] text-subtle">
                 لا توجد متغيرات — يُستخدم مخزون المنتج الأساسي ({number(num(draft.stock))} قطعة).
               </div>
             ) : (
               <div className="mt-3 space-y-3">
                 {variants.map((variant, variantIndex) => (
-                  <div key={variantIndex} className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+                  <div key={variantIndex} className="rounded-brand border border-line bg-surface p-3">
                     <div className="grid gap-2 sm:grid-cols-5">
                       <Field label="SKU" required>
                         <Input
@@ -696,7 +696,7 @@ function ProductEditor({
                       </Field>
                       <div className="flex items-end">
                         <Button size="sm" variant="ghost" onClick={() => setVariants((current) => current.filter((_, i) => i !== variantIndex))}>
-                          <Trash2 className="h-3.5 w-3.5 text-rose-400" /> حذف
+                          <Trash2 className="h-3.5 w-3.5 text-danger" /> حذف
                         </Button>
                       </div>
                     </div>
@@ -756,7 +756,7 @@ function ProductEditor({
           </Field>
           {product ? (
             <div className="sm:col-span-2">
-              <Link href={`/store/${subdomain}/products/${product.slug}`} target="_blank" className="text-[11px] font-bold text-blue-400">
+              <Link href={`/store/${subdomain}/products/${product.slug}`} target="_blank" className="text-[11px] font-bold text-brand">
                 عرض المنتج في المتجر ←
               </Link>
             </div>

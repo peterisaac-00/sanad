@@ -153,26 +153,26 @@ export const CODProcessVisualizer: React.FC<CODProcessVisualizerProps> = ({ curr
   const activeStage = STAGES.find((s) => s.id === selectedStage) || STAGES[1];
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+    <div className="bg-card rounded-brand-lg border border-line shadow-sm p-6 sm:p-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-line">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 mb-1">
+          <div className="flex items-center gap-2 text-xs font-semibold text-brand mb-1">
             <Banknote className="w-4 h-4" />
             <span>{currentLang === 'ar' ? 'البنية التحتية التشغيلية للدفع عند الاستلام' : 'COD Operating Infrastructure'}</span>
           </div>
-          <h3 className="text-xl sm:text-2xl font-bold font-heading text-slate-900">
+          <h3 className="text-xl sm:text-2xl font-bold font-heading text-ink">
             {currentLang === 'ar' ? 'دورة حياة الـ COD المتكاملة (من الطلب إلى توريد الكاش)' : 'The 8-Stage COD Lifecycle Pipeline'}
           </h3>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          <p className="text-xs sm:text-sm text-subtle mt-1">
             {currentLang === 'ar'
               ? 'انقر على أي مرحلة لاستكشاف الإجراء التشغيلي المطبق للتحكم في تكاليف الشحن وتفادي المرتجعات.'
               : 'Click any step to inspect the operational mechanisms engineered to control shipping costs and maximize cash recovery.'}
           </p>
         </div>
 
-        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 rounded-lg border border-emerald-200 text-xs text-emerald-800 font-semibold self-start sm:self-auto">
-          <ShieldCheck className="w-4 h-4 text-emerald-600" />
+        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-soft rounded-brand-sm border border-brand-line text-xs text-brand font-semibold self-start sm:self-auto">
+          <ShieldCheck className="w-4 h-4 text-brand" />
           <span>{currentLang === 'ar' ? 'متوسط نجاح تسليم: 85%+' : 'Target Delivery Success: 85%+'}</span>
         </div>
       </div>
@@ -186,15 +186,15 @@ export const CODProcessVisualizer: React.FC<CODProcessVisualizerProps> = ({ curr
             <button
               key={stage.id}
               onClick={() => setSelectedStage(stage.id)}
-              className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-2 ${
+              className={`p-3 rounded-brand border text-center transition-all cursor-pointer flex flex-col items-center gap-2 ${
                 isSelected
-                  ? 'border-emerald-600 bg-emerald-50/80 text-emerald-950 shadow-xs ring-1 ring-emerald-500'
-                  : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                  ? 'border-brand bg-brand-soft/80 text-brand-active shadow-xs ring-1 ring-brand/30'
+                  : 'border-line hover:border-line bg-card text-ink-soft hover:bg-surface'
               }`}
             >
               <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                  isSelected ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
+                className={`w-8 h-8 rounded-brand-sm flex items-center justify-center ${
+                  isSelected ? 'bg-brand text-white' : 'bg-surface text-ink-soft'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -208,29 +208,29 @@ export const CODProcessVisualizer: React.FC<CODProcessVisualizerProps> = ({ curr
       </div>
 
       {/* Selected Stage Detail Panel */}
-      <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+      <div className="bg-surface rounded-brand p-5 border border-line">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
           <div className="md:col-span-8 space-y-3">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded">
+              <span className="text-xs font-bold text-brand bg-brand-soft/80 px-2 py-0.5 rounded">
                 {currentLang === 'ar' ? activeStage.actor_ar : activeStage.actor_en}
               </span>
-              <span className="text-xs text-slate-400">·</span>
-              <span className="text-xs font-semibold text-slate-600">
+              <span className="text-xs text-subtle">·</span>
+              <span className="text-xs font-semibold text-ink-soft">
                 {currentLang === 'ar' ? activeStage.impact_ar : activeStage.impact_en}
               </span>
             </div>
 
-            <h4 className="text-lg font-bold font-heading text-slate-900">
+            <h4 className="text-lg font-bold font-heading text-ink">
               {currentLang === 'ar' ? activeStage.title_ar : activeStage.title_en}
             </h4>
 
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            <p className="text-xs sm:text-sm text-ink-soft leading-relaxed">
               {currentLang === 'ar' ? activeStage.desc_ar : activeStage.desc_en}
             </p>
 
-            <div className="p-3 bg-white rounded-lg border border-slate-200 text-xs text-slate-700 space-y-1">
-              <span className="font-bold text-slate-900 block">
+            <div className="p-3 bg-card rounded-brand-sm border border-line text-xs text-ink-soft space-y-1">
+              <span className="font-bold text-ink block">
                 {currentLang === 'ar' ? 'الإجراء التشغيلي المطبق في نظام سند:' : 'System Action Implemented in Sanad:'}
               </span>
               <span>{currentLang === 'ar' ? activeStage.action_ar : activeStage.action_en}</span>
@@ -238,22 +238,22 @@ export const CODProcessVisualizer: React.FC<CODProcessVisualizerProps> = ({ curr
           </div>
 
           {/* Illustrative benchmarks callout (not live merchant data) */}
-          <div className="md:col-span-4 bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <div className="md:col-span-4 bg-card p-4 rounded-brand border border-line shadow-2xs space-y-3">
+            <div className="text-xs font-semibold text-subtle uppercase tracking-wider">
               {currentLang === 'ar' ? 'نتائج توضيحية (مثال)' : 'Illustrative outcomes (example)'}
             </div>
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-600">{currentLang === 'ar' ? 'معدل نجاح التسليم:' : 'Delivery Success Rate:'}</span>
-                <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">86.4%</span>
+                <span className="text-ink-soft">{currentLang === 'ar' ? 'معدل نجاح التسليم:' : 'Delivery Success Rate:'}</span>
+                <span className="font-bold text-brand bg-brand-soft px-1.5 py-0.5 rounded">86.4%</span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-600">{currentLang === 'ar' ? 'نسبة خفض المرتجع:' : 'Return Reduction:'}</span>
-                <span className="font-bold text-slate-900">-38.5%</span>
+                <span className="text-ink-soft">{currentLang === 'ar' ? 'نسبة خفض المرتجع:' : 'Return Reduction:'}</span>
+                <span className="font-bold text-ink">-38.5%</span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-600">{currentLang === 'ar' ? 'كاش معلق للتوريد:' : 'Pending Remittances:'}</span>
-                <span className="font-bold text-slate-900">14,250 {currentLang === 'ar' ? 'ج.م' : 'EGP'}</span>
+                <span className="text-ink-soft">{currentLang === 'ar' ? 'كاش معلق للتوريد:' : 'Pending Remittances:'}</span>
+                <span className="font-bold text-ink">14,250 {currentLang === 'ar' ? 'ج.م' : 'EGP'}</span>
               </div>
             </div>
           </div>

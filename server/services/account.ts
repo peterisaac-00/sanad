@@ -32,7 +32,15 @@ export async function uniqueSubdomain(base: string): Promise<string> {
 export async function ensureStoreDefaults(storeId: string, currency: string) {
   await prisma.storeBranding.upsert({
     where: { storeId },
-    create: { id: newId("brand_"), storeId },
+    create: {
+      id: newId("brand_"),
+      storeId,
+      primaryColor: "#047857",
+      secondaryColor: "#0F2A24",
+      textColor: "#0F172A",
+      themeMode: "light",
+      arabicFont: "IBM Plex Sans Arabic",
+    },
     update: {},
   });
   await prisma.walletAccount.upsert({

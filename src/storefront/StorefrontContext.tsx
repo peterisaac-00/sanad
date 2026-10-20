@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api";
+import { readableOnPrimary } from "../lib/color";
 import { useToast } from "../components/ui";
 
 /**
@@ -188,10 +189,11 @@ export function StorefrontProvider({
   const branding = data.branding ?? {};
   const currency = store.currency || "EGP";
   const systemDark = useSystemDark();
-  const mode = branding.themeMode || "dark";
-  const dark = mode === "light" ? false : mode === "system" ? systemDark : true;
-  const primary = branding.primaryColor || "#2563EB";
-  const font = branding.arabicFont || "Cairo";
+  const mode = branding.themeMode || "light";
+  const dark = mode === "dark" ? true : mode === "system" ? systemDark : false;
+  const customPrimary = typeof branding.primaryColor === "string" ? branding.primaryColor.trim() : "";
+  const primary = "var(--sf-primary)";
+  const font = branding.arabicFont || "IBM Plex Sans Arabic";
 
   const [cart, setCart] = useState<CartItem[]>(() => readCart(subdomain));
   const [coupon, setCoupon] = useState<CouponState | null>(null);
@@ -338,17 +340,15 @@ export function StorefrontProvider({
       dark,
       primary,
       font,
-      page: dark ? "bg-[#070b13] text-slate-100" : "bg-[#f7f8fb] text-slate-900",
-      panel: dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-white shadow-sm",
-      panelHover: dark ? "hover:border-white/20" : "hover:border-slate-300",
-      heading: dark ? "text-white" : "text-slate-900",
-      muted: dark ? "text-slate-400" : "text-slate-500",
-      border: dark ? "border-white/10" : "border-slate-200",
-      input: dark
-        ? "w-full rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-[var(--sf-primary)] focus:ring-2 focus:ring-white/10"
-        : "w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-[var(--sf-primary)] focus:ring-2 focus:ring-slate-900/5",
-      soft: dark ? "bg-white/[0.06]" : "bg-slate-100",
-      navLink: dark ? "text-slate-300 hover:text-white" : "text-slate-600 hover:text-slate-900",
+      page: "bg-canvas text-ink",
+      panel: "border-line bg-card shadow-brand-card",
+      panelHover: "hover:border-brand-line",
+      heading: "text-ink",
+      muted: "text-subtle",
+      border: "border-line",
+      input: "input-control",
+      soft: "bg-surface",
+      navLink: "text-subtle hover:text-ink",
     }),
     [dark, primary, font]
   );
@@ -411,8 +411,21 @@ export function StorefrontProvider({
     <StorefrontContext.Provider value={value}>
       <div
         dir="rtl"
+        data-theme={dark ? "dark" : "light"}
         className={`min-h-screen font-arabic ${theme.page}`}
-        style={{ fontFamily: `'${font}', var(--font-arabic)`, ["--sf-primary" as any]: primary }}
+        style={{
+          fontFamily: `'${font}', var(--font-arabic)`,
+          ["--sf-primary" as any]: customPrimary || "var(--color-primary)",
+          ...(customPrimary
+            ? {
+                ["--color-primary" as any]: customPrimary,
+                ["--color-on-primary" as any]: readableOnPrimary(customPrimary),
+                ["--color-primary-hover" as any]: `color-mix(in srgb, ${customPrimary} 86%, var(--color-text))`,
+                ["--color-primary-soft" as any]: `color-mix(in srgb, ${customPrimary} 13%, var(--color-card))`,
+                ["--color-primary-line" as any]: `color-mix(in srgb, ${customPrimary} 32%, var(--color-card))`,
+              }
+            : {}),
+        }}
       >
         {children}
       </div>

@@ -173,7 +173,7 @@ export function MarketingApp() {
   };
 
   return (
-    <div className={`min-h-screen bg-slate-50 flex flex-col ${currentLang === 'ar' ? 'font-arabic' : 'font-sans'}`}>
+    <div className={`min-h-screen bg-surface flex flex-col ${currentLang === 'ar' ? 'font-arabic' : 'font-sans'}`}>
       <Navbar
         currentLang={currentLang}
         onLanguageChange={setCurrentLang}

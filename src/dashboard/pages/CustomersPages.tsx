@@ -79,9 +79,9 @@ export function CustomersPage() {
       />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatCard label="عملاء الصفحة" value={number(customers.length)} hint={`${number(pagination?.total ?? 0)} عميل إجمالاً`} icon={<Users className="h-4 w-4" />} accent="blue" />
-        <StatCard label="إجمالي شراء عملاء الصفحة" value={money(totalSpent, store.currency)} hint="مجموع الطلبات المسجلة" icon={<User className="h-4 w-4" />} accent="emerald" />
-        <StatCard label="لديهم طلبات" value={number(customers.filter((c: any) => (c.ordersCount ?? 0) > 0).length)} hint="في الصفحة الحالية" icon={<RefreshCw className="h-4 w-4" />} accent="violet" />
+        <StatCard label="عملاء الصفحة" value={number(customers.length)} hint={`${number(pagination?.total ?? 0)} عميل إجمالاً`} icon={<Users className="h-4 w-4" />} accent="brand" />
+        <StatCard label="إجمالي شراء عملاء الصفحة" value={money(totalSpent, store.currency)} hint="مجموع الطلبات المسجلة" icon={<User className="h-4 w-4" />} accent="success" />
+        <StatCard label="لديهم طلبات" value={number(customers.filter((c: any) => (c.ordersCount ?? 0) > 0).length)} hint="في الصفحة الحالية" icon={<RefreshCw className="h-4 w-4" />} accent="info" />
       </div>
 
       <Card className="p-3">
@@ -106,13 +106,13 @@ export function CustomersPage() {
             title="لا يوجد عملاء بعد"
             description="أول طلب من متجرك يُنشئ ملف العميل تلقائياً مع بياناته وعناوينه."
             icon={<Users className="h-5 w-5" />}
-            action={<Link href={`/store/${subdomain}`} target="_blank" className="text-[11px] font-bold text-blue-400">فتح المتجر ←</Link>}
+            action={<Link href={`/store/${subdomain}`} target="_blank" className="text-[11px] font-bold text-brand">فتح المتجر ←</Link>}
           />
         ) : (
           <>
             <TableShell minWidth={860}>
               <thead>
-                <tr className="border-b border-slate-800/70">
+                <tr className="border-b border-line">
                   <Th>العميل</Th>
                   <Th>الهاتف</Th>
                   <Th>الطلبات</Th>
@@ -124,30 +124,30 @@ export function CustomersPage() {
               </thead>
               <tbody>
                 {customers.map((customer: any) => (
-                  <tr key={customer.id} className="border-b border-slate-800/40 transition hover:bg-slate-800/20">
+                  <tr key={customer.id} className="border-b border-line transition hover:bg-surface">
                     <Td>
                       <button onClick={() => setOpenId(customer.id)} className="text-start">
-                        <div className="font-semibold text-slate-200 hover:text-blue-300">{customer.name || "بدون اسم"}</div>
-                        {customer.email ? <div className="mt-0.5 text-[10px] text-slate-500" dir="ltr">{customer.email}</div> : null}
+                        <div className="font-semibold text-ink hover:text-brand">{customer.name || "بدون اسم"}</div>
+                        {customer.email ? <div className="mt-0.5 text-[10px] text-subtle" dir="ltr">{customer.email}</div> : null}
                       </button>
                     </Td>
-                    <Td className="font-mono text-[11px] text-slate-400" dir="ltr">{customer.phone || "—"}</Td>
+                    <Td className="font-mono text-[11px] text-subtle" dir="ltr">{customer.phone || "—"}</Td>
                     <Td>{number(customer.ordersCount ?? 0)}</Td>
-                    <Td className="font-bold text-slate-100">{money(customer.totalSpent, store.currency)}</Td>
-                    <Td className="text-[10px] text-slate-500">{customer.lastOrderAt ? date(customer.lastOrderAt) : "—"}</Td>
-                    <Td className="text-[11px] text-slate-400">{number(customer.addressesCount ?? 0)}</Td>
+                    <Td className="font-bold text-ink">{money(customer.totalSpent, store.currency)}</Td>
+                    <Td className="text-[10px] text-subtle">{customer.lastOrderAt ? date(customer.lastOrderAt) : "—"}</Td>
+                    <Td className="text-[11px] text-subtle">{number(customer.addressesCount ?? 0)}</Td>
                     <Td>
                       <div className="flex items-center gap-1.5">
                         <Button size="sm" variant="ghost" onClick={() => setOpenId(customer.id)} aria-label="فتح الملف"><User className="h-3.5 w-3.5" /></Button>
                         <Button size="sm" variant="ghost" onClick={() => setEditing(customer)} aria-label="تعديل"><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button size="sm" variant="ghost" onClick={() => setDeleting(customer)} aria-label="حذف"><Trash2 className="h-3.5 w-3.5 text-rose-400" /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => setDeleting(customer)} aria-label="حذف"><Trash2 className="h-3.5 w-3.5 text-danger" /></Button>
                       </div>
                     </Td>
                   </tr>
                 ))}
               </tbody>
             </TableShell>
-            <div className="border-t border-slate-800/60 px-3">
+            <div className="border-t border-line px-3">
               <Pagination page={page} totalPages={pagination?.totalPages ?? 1} total={pagination?.total} onChange={setPage} />
             </div>
           </>
@@ -284,56 +284,56 @@ function CustomerProfileModal({
       ) : (
         <div className="space-y-5">
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3 text-center">
-              <div className="text-[10px] text-slate-500">إجمالي الشراء</div>
-              <div className="mt-1 text-lg font-bold text-white">{money(customer.totalSpent, currency)}</div>
+            <div className="rounded-brand border border-line bg-surface p-3 text-center">
+              <div className="text-[10px] text-subtle">إجمالي الشراء</div>
+              <div className="mt-1 text-lg font-bold text-ink">{money(customer.totalSpent, currency)}</div>
             </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3 text-center">
-              <div className="text-[10px] text-slate-500">الطلبات</div>
-              <div className="mt-1 text-lg font-bold text-white">{number(customer.orders?.length ?? 0)}</div>
+            <div className="rounded-brand border border-line bg-surface p-3 text-center">
+              <div className="text-[10px] text-subtle">الطلبات</div>
+              <div className="mt-1 text-lg font-bold text-ink">{number(customer.orders?.length ?? 0)}</div>
             </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3 text-center">
-              <div className="text-[10px] text-slate-500">نقاط الولاء</div>
-              <div className="mt-1 text-lg font-bold text-white">{number(customer.loyalty?.points ?? 0)}</div>
+            <div className="rounded-brand border border-line bg-surface p-3 text-center">
+              <div className="text-[10px] text-subtle">نقاط الولاء</div>
+              <div className="mt-1 text-lg font-bold text-ink">{number(customer.loyalty?.points ?? 0)}</div>
             </div>
           </div>
 
           <div className="grid gap-2 text-[11px] sm:grid-cols-2">
-            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3"><span className="text-slate-500">البريد: </span><span className="text-slate-200" dir="ltr">{customer.email || "—"}</span></div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3"><span className="text-slate-500">الهاتف: </span><span className="font-mono text-slate-200" dir="ltr">{customer.phone || "—"}</span></div>
-            {customer.notes ? <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3 sm:col-span-2"><span className="text-slate-500">ملاحظات: </span><span className="text-slate-300">{customer.notes}</span></div> : null}
+            <div className="rounded-brand border border-line bg-surface p-3"><span className="text-subtle">البريد: </span><span className="text-ink" dir="ltr">{customer.email || "—"}</span></div>
+            <div className="rounded-brand border border-line bg-surface p-3"><span className="text-subtle">الهاتف: </span><span className="font-mono text-ink" dir="ltr">{customer.phone || "—"}</span></div>
+            {customer.notes ? <div className="rounded-brand border border-line bg-surface p-3 sm:col-span-2"><span className="text-subtle">ملاحظات: </span><span className="text-ink-soft">{customer.notes}</span></div> : null}
           </div>
 
           <div>
             <div className="flex items-center justify-between">
-              <div className="text-sm font-bold text-white">العناوين</div>
+              <div className="text-sm font-bold text-ink">العناوين</div>
               <Button size="sm" variant="outline" onClick={() => { setEditingAddress(null); setAddressForm({ label: "", address: "", city: "", governorate: "", phone: customer.phone ?? "", isDefault: false }); setAddressOpen(true); }}>
                 <MapPin className="h-3.5 w-3.5" /> عنوان جديد
               </Button>
             </div>
             {(customer.addresses ?? []).length === 0 ? (
-              <div className="mt-2 rounded-xl border border-dashed border-slate-700 p-4 text-center text-[11px] text-slate-500">لا توجد عناوين محفوظة.</div>
+              <div className="mt-2 rounded-brand border border-dashed border-line p-4 text-center text-[11px] text-subtle">لا توجد عناوين محفوظة.</div>
             ) : (
               <div className="mt-2 space-y-2">
                 {(customer.addresses ?? []).map((address: any) => (
-                  <div key={address.id} className="flex flex-wrap items-start justify-between gap-2 rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+                  <div key={address.id} className="flex flex-wrap items-start justify-between gap-2 rounded-brand border border-line bg-surface p-3">
                     <div className="text-[11px]">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-200">{address.label || "عنوان"}</span>
-                        {address.isDefault ? <Badge tone="border-blue-500/25 bg-blue-500/10 text-blue-300">افتراضي</Badge> : null}
+                        <span className="font-bold text-ink">{address.label || "عنوان"}</span>
+                        {address.isDefault ? <Badge tone="border-brand-line bg-brand/10 text-brand">افتراضي</Badge> : null}
                       </div>
-                      <div className="mt-1 leading-6 text-slate-400">
+                      <div className="mt-1 leading-6 text-subtle">
                         {address.address}
                         {address.city ? `، ${address.city}` : ""}
                         {address.governorate ? `، ${address.governorate}` : ""}
                       </div>
-                      {address.phone ? <div className="mt-0.5 font-mono text-[10px] text-slate-500" dir="ltr">{address.phone}</div> : null}
+                      {address.phone ? <div className="mt-0.5 font-mono text-[10px] text-subtle" dir="ltr">{address.phone}</div> : null}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Button size="sm" variant="ghost" onClick={() => { setEditingAddress(address); setAddressForm({ label: address.label ?? "", address: address.address ?? "", city: address.city ?? "", governorate: address.governorate ?? "", phone: address.phone ?? "", isDefault: Boolean(address.isDefault) }); setAddressOpen(true); }}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => removeAddress(address.id)}><Trash2 className="h-3.5 w-3.5 text-rose-400" /></Button>
+                      <Button size="sm" variant="ghost" onClick={() => removeAddress(address.id)}><Trash2 className="h-3.5 w-3.5 text-danger" /></Button>
                     </div>
                   </div>
                 ))}
@@ -342,14 +342,14 @@ function CustomerProfileModal({
           </div>
 
           <div>
-            <div className="text-sm font-bold text-white">سجل الطلبات</div>
+            <div className="text-sm font-bold text-ink">سجل الطلبات</div>
             {(customer.orders ?? []).length === 0 ? (
-              <div className="mt-2 rounded-xl border border-dashed border-slate-700 p-4 text-center text-[11px] text-slate-500">لا توجد طلبات لهذا العميل بعد.</div>
+              <div className="mt-2 rounded-brand border border-dashed border-line p-4 text-center text-[11px] text-subtle">لا توجد طلبات لهذا العميل بعد.</div>
             ) : (
-              <div className="mt-2 overflow-hidden rounded-xl border border-slate-800">
+              <div className="mt-2 overflow-hidden rounded-brand border border-line">
                 <TableShell minWidth={560}>
                   <thead>
-                    <tr className="border-b border-slate-800/70 bg-slate-950/40">
+                    <tr className="border-b border-line bg-surface">
                       <Th>الطلب</Th>
                       <Th>الحالة</Th>
                       <Th>المبلغ</Th>
@@ -358,13 +358,13 @@ function CustomerProfileModal({
                   </thead>
                   <tbody>
                     {(customer.orders ?? []).map((order: any) => (
-                      <tr key={order.id} className="border-b border-slate-800/40">
+                      <tr key={order.id} className="border-b border-line">
                         <Td>
-                          <Link href={`/dashboard/orders/${order.id}`} className="font-mono text-[11px] font-bold text-blue-300">SND-{order.orderNumber}</Link>
+                          <Link href={`/dashboard/orders/${order.id}`} className="font-mono text-[11px] font-bold text-brand">SND-{order.orderNumber}</Link>
                         </Td>
                         <Td><StatusBadge status={order.status} /></Td>
-                        <Td className="font-bold text-slate-100">{money(order.amountEgp, currency)}</Td>
-                        <Td className="text-[10px] text-slate-500">{dateTime(order.createdAt)}</Td>
+                        <Td className="font-bold text-ink">{money(order.amountEgp, currency)}</Td>
+                        <Td className="text-[10px] text-subtle">{dateTime(order.createdAt)}</Td>
                       </tr>
                     ))}
                   </tbody>
@@ -393,7 +393,7 @@ function CustomerProfileModal({
           <Field label="العنوان" className="sm:col-span-2"><Input value={addressForm.address} onChange={(e) => setAddressForm({ ...addressForm, address: e.target.value })} /></Field>
           <Field label="المدينة"><Input value={addressForm.city} onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })} /></Field>
           <Field label="المحافظة"><Input value={addressForm.governorate} onChange={(e) => setAddressForm({ ...addressForm, governorate: e.target.value })} /></Field>
-          <label className="flex items-center gap-2 text-[11px] text-slate-400 sm:col-span-2">
+          <label className="flex items-center gap-2 text-[11px] text-subtle sm:col-span-2">
             <input type="checkbox" checked={addressForm.isDefault} onChange={(e) => setAddressForm({ ...addressForm, isDefault: e.target.checked })} />
             تعيين كعنوان افتراضي
           </label>

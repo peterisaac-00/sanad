@@ -19,6 +19,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@prisma/client": [
+        "./generated/prisma/client"
       ]
     },
     "allowImportingTsExtensions": true,

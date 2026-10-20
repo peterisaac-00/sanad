@@ -46,26 +46,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-secondary/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150">
+      <div className="bg-card rounded-brand-lg shadow-2xl border border-line w-full max-w-md overflow-hidden">
         {/* Header */}
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div className="p-5 border-b border-line flex items-center justify-between bg-surface">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-slate-900 text-emerald-400 font-bold flex items-center justify-center text-sm">
+            <div className="w-8 h-8 rounded-brand-sm bg-secondary text-brand-on-dark font-bold flex items-center justify-center text-sm">
               سـ
             </div>
             <div>
-              <h3 className="font-heading font-bold text-base text-slate-900">
+              <h3 className="font-heading font-bold text-base text-ink">
                 {currentLang === 'ar' ? 'بوابة دخول التاجر' : 'Merchant Portal Login'}
               </h3>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-subtle">
                 {currentLang === 'ar' ? 'الوصول إلى لوحة تحكم متجرك' : 'Access your merchant console'}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-200/60 transition-colors"
+            className="p-1 text-subtle hover:text-ink-soft rounded-brand-sm hover:bg-line/60 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -74,7 +74,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         {/* Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">
+            <label className="block font-semibold text-ink-soft mb-1">
               {currentLang === 'ar' ? 'البريد الإلكتروني للتاجر:' : 'Merchant Email:'}
             </label>
             <div className="relative">
@@ -85,14 +85,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 value={email}
                 placeholder={currentLang === 'ar' ? 'name@store.com' : 'name@store.com'}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full py-2.5 px-3 border border-slate-300 rounded-lg text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                className="input-control pe-9 text-xs"
               />
-              <Mail className={`w-4 h-4 text-slate-400 absolute top-3 ${currentLang === 'ar' ? 'left-3' : 'right-3'}`} />
+              <Mail className={`w-4 h-4 text-subtle absolute top-3 ${currentLang === 'ar' ? 'left-3' : 'right-3'}`} />
             </div>
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">
+            <label className="block font-semibold text-ink-soft mb-1">
               {currentLang === 'ar' ? 'كلمة المرور:' : 'Password:'}
             </label>
             <div className="relative">
@@ -103,20 +103,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 value={password}
                 placeholder={currentLang === 'ar' ? 'أدخل كلمة المرور' : 'Enter your password'}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full py-2.5 px-3 border border-slate-300 rounded-lg text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                className="input-control pe-9 text-xs"
               />
-              <Lock className={`w-4 h-4 text-slate-400 absolute top-3 ${currentLang === 'ar' ? 'left-3' : 'right-3'}`} />
+              <Lock className={`w-4 h-4 text-subtle absolute top-3 ${currentLang === 'ar' ? 'left-3' : 'right-3'}`} />
             </div>
           </div>
 
           {error && (
-            <div className="text-[11px] font-semibold text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <div className="text-[11px] font-semibold text-danger bg-danger-soft border border-danger-line rounded-brand-sm px-3 py-2">
               {error}
             </div>
           )}
 
-          <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-[11px] text-slate-500 flex items-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+          <div className="p-2.5 bg-surface rounded-brand-sm border border-line text-[11px] text-subtle flex items-center gap-1.5">
+            <ShieldCheck className="w-4 h-4 text-brand flex-shrink-0" />
             <span>
               {currentLang === 'ar'
                 ? 'عزل آمن للبيانات (Multi-tenant): بيانات كل متجر مشفرة ومستقلة تماماً.'
@@ -127,13 +127,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white rounded-lg font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-brand-sm bg-secondary py-3 text-xs font-bold text-on-secondary shadow-xs transition hover:brightness-110 disabled:opacity-60"
           >
-            <LogIn className="w-4 h-4 text-emerald-400" />
+            <LogIn className="w-4 h-4 text-brand-on-dark" />
             <span>{isLoading ? (currentLang === 'ar' ? 'جاري تسجيل الدخول...' : 'Signing in...') : (currentLang === 'ar' ? 'تسجيل الدخول إلى لوحة التحكم' : 'Sign in to Merchant Cockpit')}</span>
           </button>
 
-          <div className="text-center pt-2 border-t border-slate-100 text-slate-600">
+          <div className="text-center pt-2 border-t border-line text-ink-soft">
             <span>{currentLang === 'ar' ? 'ليس لديك متجر بعد؟' : "Don't have a store yet?"} </span>
             <button
               type="button"
@@ -141,7 +141,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 onClose();
                 onOpenStoreModal();
               }}
-              className="text-emerald-700 font-bold hover:underline cursor-pointer"
+              className="text-brand font-bold hover:underline cursor-pointer"
             >
               {currentLang === 'ar' ? 'أنشئ متجرك بعمولة 0%' : 'Create store with 0% cut'}
             </button>

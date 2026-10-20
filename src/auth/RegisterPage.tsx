@@ -97,7 +97,7 @@ export function RegisterPage() {
       footer={
         <>
           لديك حساب بالفعل؟{" "}
-          <Link href="/auth/login" className="font-bold text-blue-400 hover:text-blue-300">
+          <Link href="/auth/login" className="font-bold text-brand hover:text-brand">
             سجّل الدخول
           </Link>
         </>
@@ -109,7 +109,7 @@ export function RegisterPage() {
         <div className="grid grid-cols-2 gap-3">
           <Field label="الاسم الأول" required error={errors.firstName}>
             <div className="relative">
-              <User className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <User className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
               <Input value={form.firstName} onChange={(e) => set("firstName", e.target.value)} placeholder="محمد" className="pe-9" autoComplete="given-name" />
             </div>
           </Field>
@@ -120,22 +120,22 @@ export function RegisterPage() {
 
         <Field label="البريد الإلكتروني" required error={errors.email}>
           <div className="relative">
-            <Mail className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-            <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="you@store.com" className="pe-9" dir="ltr" autoComplete="email" />
+            <Mail className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
+            <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="you@store.com" className="pe-9 ps-9" dir="ltr" autoComplete="email" />
           </div>
         </Field>
 
         <Field label="رقم الهاتف / واتساب" required error={errors.phone}>
           <div className="relative">
-            <Phone className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-            <Input type="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="01012345678" className="pe-9" dir="ltr" autoComplete="tel" />
+            <Phone className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
+            <Input type="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="01012345678" className="pe-9 ps-9" dir="ltr" autoComplete="tel" />
           </div>
         </Field>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="كلمة المرور" required error={errors.password} hint="8 أحرف على الأقل">
             <div className="relative">
-              <LockKeyhole className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <LockKeyhole className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
               <Input
                 type={showPassword ? "text" : "password"}
                 value={form.password}
@@ -148,7 +148,7 @@ export function RegisterPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute start-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-500 hover:bg-slate-800"
+                className="absolute start-2 top-1/2 -translate-y-1/2 rounded-brand-sm p-1.5 text-subtle hover:bg-surface"
                 aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
               >
                 {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
@@ -167,19 +167,19 @@ export function RegisterPage() {
           </Field>
         </div>
 
-        <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
-          <label className="flex cursor-pointer items-start gap-2.5 text-[11px] leading-6 text-slate-400">
+        <div className="rounded-brand border border-line bg-surface p-3">
+          <label className="flex cursor-pointer items-start gap-2.5 text-[11px] leading-6 text-subtle">
             <input
               type="checkbox"
               checked={form.acceptTerms}
               onChange={(e) => set("acceptTerms", e.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-slate-600 bg-slate-900 text-blue-600 focus:ring-blue-500"
+              className="mt-1 h-4 w-4 rounded border-line bg-card accent-brand focus:ring-brand/30"
             />
             <span>
-              أوافق على <span className="font-semibold text-slate-200">شروط الاستخدام</span> و<span className="font-semibold text-slate-200">سياسة الخصوصية</span>، وأقر بأن بيانات المتجر التي أقدمها صحيحة.
+              أوافق على <span className="font-semibold text-ink">شروط الاستخدام</span> و<span className="font-semibold text-ink">سياسة الخصوصية</span>، وأقر بأن بيانات المتجر التي أقدمها صحيحة.
             </span>
           </label>
-          {errors.acceptTerms ? <div className="mt-1 text-[11px] text-rose-400">{errors.acceptTerms}</div> : null}
+          {errors.acceptTerms ? <div className="mt-1 text-[11px] text-danger">{errors.acceptTerms}</div> : null}
         </div>
 
         <Button type="submit" size="lg" className="w-full" loading={submitting}>
@@ -187,7 +187,7 @@ export function RegisterPage() {
           {!submitting ? <ArrowLeft className="h-4 w-4" /> : null}
         </Button>
 
-        <div className="flex items-center gap-2 text-[11px] text-slate-500">
+        <div className="flex items-center gap-2 text-[11px] text-subtle">
           <LockKeyhole className="h-3.5 w-3.5" />
           بعد إنشاء الحساب ستنتقل مباشرة إلى تهيئة المتجر. لا نخزّن كلمات المرور في المتصفح.
         </div>

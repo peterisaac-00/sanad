@@ -69,15 +69,15 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({ currentLang, onO
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
       {/* Header */}
       <div className="text-center max-w-3xl mx-auto space-y-3">
-        <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-md border border-emerald-200">
+        <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand-soft px-3 py-1 rounded-brand-sm border border-brand-line">
           {currentLang === 'ar' ? 'مركز المساعدة والتوثيق' : 'Help Center & Documentation'}
         </span>
-        <h1 className="text-3xl sm:text-5xl font-extrabold font-heading text-slate-900 tracking-tight">
+        <h1 className="text-3xl sm:text-5xl font-extrabold font-heading text-ink tracking-tight">
           {currentLang === 'ar'
             ? 'كيف يمكننا مساعدتك في إدارة متجرك؟'
             : 'How Can We Assist Your Merchant Operations?'}
         </h1>
-        <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+        <p className="text-sm sm:text-base text-ink-soft leading-relaxed">
           {currentLang === 'ar'
             ? 'شروحات واضحة وتوثيق خطوة بخطوة لكافة وظائف المنصة؛ من إضافة أول منتج وحتى مطابقة تحصيلات الشحن.'
             : 'Step-by-step documentation for every platform operation, from adding products to courier cash reconciliation.'}
@@ -90,37 +90,37 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({ currentLang, onO
             placeholder={currentLang === 'ar' ? 'ابحث في الشروحات: مثلاً "شحن المحافظات" أو "بوابة الدفع"...' : 'Search guides: e.g. "shipping zones" or "custom domain"...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full py-3.5 px-4 pe-12 bg-white border border-slate-300 rounded-2xl text-xs sm:text-sm text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            className="w-full py-3.5 px-4 pe-12 bg-card border border-line rounded-brand-lg text-xs sm:text-sm text-ink shadow-xs focus:outline-none focus:ring-2 focus:ring-brand/30"
           />
-          <Search className={`w-5 h-5 text-slate-400 absolute top-6 ${currentLang === 'ar' ? 'left-4' : 'right-4'}`} />
+          <Search className={`w-5 h-5 text-subtle absolute top-6 ${currentLang === 'ar' ? 'left-4' : 'right-4'}`} />
         </div>
       </div>
 
       {/* Support Direct Channels Card */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto">
-        <div className="p-5 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0">
+        <div className="p-5 rounded-brand-lg bg-brand-soft/80 border border-brand-line flex items-center gap-4">
+          <div className="w-10 h-10 rounded-brand bg-brand text-white flex items-center justify-center flex-shrink-0">
             <MessageCircle className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-heading font-bold text-sm text-emerald-950">
+            <h3 className="font-heading font-bold text-sm text-brand-active">
               {currentLang === 'ar' ? 'دعم مباشر عبر واتساب' : 'Direct WhatsApp Support'}
             </h3>
-            <p className="text-xs text-emerald-800">
+            <p className="text-xs text-brand">
               {currentLang === 'ar' ? 'تواصل مع فريق الدعم الفني مباشرة لأي استفسار تشغيلي.' : 'Chat directly with our operational support team.'}
             </p>
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-slate-100 border border-slate-200 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center flex-shrink-0">
+        <div className="p-5 rounded-brand-lg bg-surface border border-line flex items-center gap-4">
+          <div className="w-10 h-10 rounded-brand bg-secondary text-white flex items-center justify-center flex-shrink-0">
             <Mail className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-heading font-bold text-sm text-slate-900">
+            <h3 className="font-heading font-bold text-sm text-ink">
               {currentLang === 'ar' ? 'التوثيق المكتوب والبريد' : 'Merchant Documentation'}
             </h3>
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-ink-soft">
               {currentLang === 'ar' ? 'أدلة إرشادية وتحديثات دورية على مدار الساعة.' : 'Complete technical guides available 24/7.'}
             </p>
           </div>
@@ -145,9 +145,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({ currentLang, onO
           })
           .filter((top) => top.articles.length > 0)
           .map((top) => (
-          <div key={top.id} className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-2xs">
-            <div className="flex items-center gap-2 text-sm font-bold font-heading text-slate-900 border-b border-slate-100 pb-3">
-              <BookOpen className="w-4 h-4 text-emerald-600" />
+          <div key={top.id} className="bg-card rounded-brand-lg border border-line p-6 space-y-4 shadow-2xs">
+            <div className="flex items-center gap-2 text-sm font-bold font-heading text-ink border-b border-line pb-3">
+              <BookOpen className="w-4 h-4 text-brand" />
               <span>{currentLang === 'ar' ? top.title_ar : top.title_en}</span>
             </div>
 
@@ -155,13 +155,13 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({ currentLang, onO
               {top.articles.map((art, idx) => (
                 <div
                   key={idx}
-                  className="p-3 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100/80 transition-colors cursor-pointer flex items-center justify-between text-xs text-slate-700"
+                  className="p-3 rounded-brand border border-line bg-surface hover:bg-surface/80 transition-colors cursor-pointer flex items-center justify-between text-xs text-ink-soft"
                 >
                   <div className="flex items-center gap-2">
-                    <FileText className="w-3.5 h-3.5 text-slate-400" />
+                    <FileText className="w-3.5 h-3.5 text-subtle" />
                     <span className="font-medium">{currentLang === 'ar' ? art.title_ar : art.title_en}</span>
                   </div>
-                  {currentLang === 'ar' ? <ArrowLeft className="w-3.5 h-3.5 text-slate-400" /> : <ArrowRight className="w-3.5 h-3.5 text-slate-400" />}
+                  {currentLang === 'ar' ? <ArrowLeft className="w-3.5 h-3.5 text-subtle" /> : <ArrowRight className="w-3.5 h-3.5 text-subtle" />}
                 </div>
               ))}
             </div>
@@ -176,7 +176,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({ currentLang, onO
                 a.title_en.toLowerCase().includes(q)
             );
           }) && (
-            <div className="md:col-span-2 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200 p-6">
+            <div className="md:col-span-2 text-center text-xs text-subtle bg-card rounded-brand-lg border border-line p-6">
               {currentLang === 'ar' ? 'لا توجد نتائج مطابقة لبحثك.' : 'No guides match your search.'}
             </div>
           )}
