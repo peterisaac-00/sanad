@@ -90,7 +90,7 @@ export const GrowthCenterPreview: React.FC<GrowthCenterPreviewProps> = ({
     setError('');
     try {
       const [s, o, p] = await Promise.all([
-        api.summary(storeSubdomain),
+        api.dashboard.summary(storeSubdomain),
         api.orders.list(storeSubdomain, { pageSize: 50, status: statusFilter || undefined }),
         api.products.list(storeSubdomain, { pageSize: 100 }),
       ]);

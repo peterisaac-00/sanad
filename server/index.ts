@@ -33,24 +33,37 @@ import {
 import {
   validateBody,
   validateParams,
-  validateQuery,
   registerSchema,
   loginSchema,
   changePasswordSchema,
   subdomainParamSchema,
-  paginationQuerySchema,
-  productBodySchema,
-  productUpdateSchema,
-  productIdParamSchema,
-  merchantOrderBodySchema,
-  orderListQuerySchema,
-  orderIdParamSchema,
-  orderStatusSchema,
-  ORDER_TRANSITIONS,
-  checkoutBodySchema,
   storeUpdateSchema,
   leadBodySchema,
 } from "./validate.js";
+import { ensureStoreDefaults, uniqueSubdomain, writeAudit } from "./services/account.js";
+import { paymentService } from "./services/integrations.js";
+
+// Feature routers
+import { productsRouter } from "./routes/products.js";
+import { categoriesRouter } from "./routes/categories.js";
+import { ordersRouter } from "./routes/orders.js";
+import { customersRouter } from "./routes/customers.js";
+import { walletRouter } from "./routes/wallet.js";
+import { shippingRouter } from "./routes/shipping.js";
+import { couponsRouter } from "./routes/coupons.js";
+import { growthRouter } from "./routes/growth.js";
+import { contentRouter } from "./routes/content.js";
+import { reviewsRouter } from "./routes/reviews.js";
+import { loyaltyRouter } from "./routes/loyalty.js";
+import { dropshippingRouter } from "./routes/dropshipping.js";
+import { assistantRouter } from "./routes/assistant.js";
+import { dashboardRouter } from "./routes/dashboard.js";
+import { abandonedRouter } from "./routes/abandoned.js";
+import { reportsRouter } from "./routes/reports.js";
+import { settingsRouter } from "./routes/settings.js";
+import { storefrontRouter } from "./routes/storefront.js";
+import { onboardingRouter } from "./routes/onboarding.js";
+import { mediaRouter } from "./routes/media.js";
 
 export const app = express();
 
@@ -58,13 +71,10 @@ app.set("trust proxy", env.trustProxy);
 app.disable("x-powered-by");
 
 app.use(helmet());
-// Strict CORS applies to the API only: the served frontend bundle and its
-// assets are same-origin and must never be gated by the API allowlist.
 app.use(
   "/api",
   cors({
     origin: (origin, cb) => {
-      // Same-origin / non-browser requests (no Origin header) are allowed.
       if (!origin) return cb(null, true);
       if (env.corsOrigins.includes(origin.replace(/\/$/, ""))) return cb(null, true);
       return cb(new Error("CORS origin not allowed"));
@@ -73,9 +83,14 @@ app.use(
   })
 );
 app.use(cookieParser());
-app.use(express.json({ limit: env.jsonBodyLimit }));
 app.use(httpLogger);
 app.use(csrfOriginCheck);
+
+// Media uploads are base64 JSON and need a larger parser than normal API
+// requests. Mount them before the global parser so the limit applies only here.
+app.use("/api/media", express.json({ limit: "12mb" }), mediaRouter);
+
+app.use(express.json({ limit: env.jsonBodyLimit }));
 
 // ---- helpers ----
 function publicStorefront(row: Store) {
@@ -95,6 +110,9 @@ function toMerchantJson(row: Merchant) {
     email: row.email,
     store_handle: row.storeHandle,
     name: row.name ?? "",
+    first_name: row.firstName,
+    last_name: row.lastName,
+    phone: row.phone,
   };
 }
 
@@ -108,21 +126,6 @@ async function createSession(merchantId: string): Promise<string> {
     },
   });
   return token;
-}
-
-/**
- * Allocate the next per-store order number atomically. The row lock on the
- * store serializes concurrent checkouts, so numbers are unique per store
- * (displayed as SND-{n}). May skip on aborted checkouts.
- */
-async function allocateOrderNumber(storeId: string): Promise<number> {
-  const rows = await prisma.$queryRaw<{ nextOrderNumber: number }[]>`
-    UPDATE "stores" SET "next_order_number" = "next_order_number" + 1
-    WHERE "id" = ${storeId} RETURNING "next_order_number" AS "nextOrderNumber"`;
-  if (rows.length !== 1 || typeof rows[0].nextOrderNumber !== "number") {
-    throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");
-  }
-  return rows[0].nextOrderNumber;
 }
 
 // ---- health (public): liveness + database connectivity ----
@@ -141,45 +144,77 @@ app.post(
   authLimiter,
   validateBody(registerSchema),
   asyncHandler(async (req, res) => {
-    const { email, password, name, phone, storeName, subdomain, countryCode, storeCurrency } = req.body;
+    const {
+      email,
+      password,
+      name,
+      firstName,
+      lastName,
+      phone,
+      storeName,
+      subdomain,
+      countryCode,
+      storeCurrency,
+      acceptTerms,
+    } = req.body;
+
+    if (acceptTerms === false) {
+      throw new ApiError(400, "TERMS_REQUIRED", "You must accept the terms of service to create an account.");
+    }
+
+    const displayName =
+      name || [firstName, lastName].filter(Boolean).join(" ").trim() || email.split("@")[0] || "";
+    const chosenStoreName = storeName || (displayName ? `متجر ${displayName}` : "متجري");
+    const chosenSubdomain = subdomain || (await uniqueSubdomain(email.split("@")[0] || chosenStoreName));
 
     const emailTaken = await prisma.merchant.findUnique({ where: { email }, select: { id: true } });
     if (emailTaken) throw new ApiError(409, "EMAIL_TAKEN", "This email is already registered.");
-    const subTaken = await prisma.store.findUnique({ where: { subdomain }, select: { id: true } });
+    const subTaken = await prisma.store.findUnique({ where: { subdomain: chosenSubdomain }, select: { id: true } });
     if (subTaken) throw new ApiError(409, "SUBDOMAIN_TAKEN", "This store address is already taken.");
 
     const storeId = newId("store_");
     const merchantId = newId("merch_");
     const passwordHash = await hashPasswordArgon2(password);
 
-    // Atomic store + merchant creation: a store can never be orphaned or hijacked by handle-claiming.
-    // The subscription plan is server-assigned (billing lives outside the app).
     try {
       await prisma.$transaction([
         prisma.store.create({
           data: {
             id: storeId,
-            storeName,
-            subdomain,
+            storeName: chosenStoreName,
+            subdomain: chosenSubdomain,
             phone,
             countryCode,
             currency: storeCurrency,
             plan: "annual",
+            // Kept active so the storefront and checkout are usable while the
+            // merchant finishes onboarding. Publication is tracked separately.
             status: "active",
+            onboardingStep: 1,
+            onboardingCompleted: false,
+            publishedAt: null,
           },
         }),
         prisma.merchant.create({
           data: {
             id: merchantId,
             storeId,
-            storeHandle: subdomain,
+            storeHandle: chosenSubdomain,
             email,
             passwordHash,
             passwordSalt: null,
             passwordAlgo: "argon2id",
-            name,
+            name: displayName,
+            firstName: firstName ?? "",
+            lastName: lastName ?? "",
             phone,
           },
+        }),
+        prisma.storeBranding.create({
+          data: { id: newId("brand_"), storeId },
+        }),
+        prisma.walletAccount.create({
+          data: { id: newId("wal_"), storeId, currency: storeCurrency },
         }),
       ]);
     } catch (e: unknown) {
@@ -193,7 +228,19 @@ app.post(
     res.cookie(sessionCookieName(), token, sessionCookieOptions());
     const store = await prisma.store.findUnique({ where: { id: storeId } });
     const merchant = (await prisma.merchant.findUnique({ where: { id: merchantId } })) as Merchant;
-    res.status(201).json({ merchant: toMerchantJson(merchant), store });
+    await writeAudit({
+      storeId,
+      merchantId,
+      action: "account.registered",
+      entity: "merchant",
+      entityId: merchantId,
+      ip: req.ip,
+    });
+    res.status(201).json({
+      merchant: toMerchantJson(merchant),
+      store,
+      next: store?.onboardingCompleted ? "/dashboard" : "/onboarding",
+    });
   })
 );
 
@@ -205,8 +252,6 @@ app.post(
     const { email, password } = req.body;
     const merchant = await prisma.merchant.findUnique({ where: { email } });
     if (!merchant) {
-      // Unknown email still costs a full Argon2 verify (timing parity with
-      // the wrong-password path), then fails with the generic message.
       await verifyUnknownEmail(password);
       throw new ApiError(401, "INVALID_CREDENTIALS", "Invalid email or password.");
     }
@@ -217,7 +262,6 @@ app.post(
     );
     if (!ok) throw new ApiError(401, "INVALID_CREDENTIALS", "Invalid email or password.");
 
-    // Transparent upgrade of legacy scrypt hashes to Argon2id.
     if (needsRehash) {
       const upgraded = await hashPasswordArgon2(password);
       await prisma.merchant.update({
@@ -226,8 +270,6 @@ app.post(
       });
     }
 
-    // Session rotation: an incoming valid cookie is consumed (deleted) so
-    // sessions never accumulate, then a fresh token is issued.
     const incoming = req.cookies?.[sessionCookieName()];
     if (typeof incoming === "string" && incoming) {
       await prisma.session.delete({ where: { tokenHash: hashSessionToken(incoming) } }).catch(() => undefined);
@@ -285,7 +327,6 @@ app.post(
         where: { id: merchant.id },
         data: { passwordHash: hash, passwordSalt: null, passwordAlgo: "argon2id" },
       }),
-      // Invalidate all other sessions (logout other devices), keep the current one.
       ...(typeof current === "string" && current
         ? [
             prisma.session.deleteMany({
@@ -299,14 +340,16 @@ app.post(
 );
 
 // ---- stores ----
-// Public storefront lookup (safe fields only). Everything else is authenticated.
-app.get("/api/stores/:subdomain", validateParams(subdomainParamSchema), asyncHandler(async (req, res) => {
-  const store = await prisma.store.findUnique({ where: { subdomain: req.params.subdomain } });
-  if (!store) throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");
-  res.json({ store: publicStorefront(store) });
-}));
+app.get(
+  "/api/stores/:subdomain",
+  validateParams(subdomainParamSchema),
+  asyncHandler(async (req, res) => {
+    const store = await prisma.store.findUnique({ where: { subdomain: req.params.subdomain } });
+    if (!store) throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");
+    res.json({ store: publicStorefront(store) });
+  })
+);
 
-// Authenticated merchant's own store(s) only — never a global listing.
 app.get(
   "/api/stores",
   asyncHandler(requireAuth),
@@ -316,395 +359,7 @@ app.get(
   })
 );
 
-// ---- products (owner only) ----
-app.get(
-  "/api/stores/:subdomain/products",
-  asyncHandler(requireAuth),
-  validateParams(subdomainParamSchema),
-  asyncHandler(requireStoreOwnership),
-  validateQuery(paginationQuerySchema),
-  asyncHandler(async (req, res) => {
-    const { page, pageSize, search } = req.query as unknown as { page: number; pageSize: number; search?: string };
-    const where: Prisma.ProductWhereInput = { storeId: req.ownedStore!.id };
-    if (search) {
-      where.OR = [
-        { sku: { contains: search, mode: "insensitive" } },
-        { nameEn: { contains: search, mode: "insensitive" } },
-        { nameAr: { contains: search } },
-      ];
-    }
-    const [total, rows] = await prisma.$transaction([
-      prisma.product.count({ where }),
-      prisma.product.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-    ]);
-    res.json({ products: rows, pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) } });
-  })
-);
-
-app.get(
-  "/api/stores/:subdomain/products/:id",
-  asyncHandler(requireAuth),
-  validateParams(productIdParamSchema),
-  asyncHandler(requireStoreOwnership),
-  asyncHandler(async (req, res) => {
-    const product = await prisma.product.findFirst({
-      where: { id: req.params.id, storeId: req.ownedStore!.id },
-    });
-    if (!product) throw new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found.");
-    res.json({ product });
-  })
-);
-
-app.post(
-  "/api/stores/:subdomain/products",
-  asyncHandler(requireAuth),
-  validateParams(subdomainParamSchema),
-  asyncHandler(requireStoreOwnership),
-  validateBody(productBodySchema),
-  asyncHandler(async (req, res) => {
-    const { sku, name_ar, name_en, price_egp, price_sar, stock } = req.body;
-    try {
-      const product = await prisma.product.create({
-        data: {
-          id: newId("prod_"),
-          storeId: req.ownedStore!.id,
-          sku,
-          nameAr: name_ar,
-          nameEn: name_en,
-          priceEgp: price_egp,
-          priceSar: price_sar,
-          stock,
-        },
-      });
-      res.status(201).json({ product });
-    } catch (e: unknown) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-        throw new ApiError(409, "SKU_TAKEN", "A product with this SKU already exists in your store.");
-      }
-      throw e;
-    }
-  })
-);
-
-app.put(
-  "/api/stores/:subdomain/products/:id",
-  asyncHandler(requireAuth),
-  validateParams(productIdParamSchema),
-  asyncHandler(requireStoreOwnership),
-  validateBody(productUpdateSchema),
-  asyncHandler(async (req, res) => {
-    const existing = await prisma.product.findFirst({
-      where: { id: req.params.id, storeId: req.ownedStore!.id },
-    });
-    if (!existing) throw new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found.");
-    const { sku, name_ar, name_en, price_egp, price_sar, stock } = req.body;
-    try {
-      const product = await prisma.product.update({
-        where: { id: existing.id },
-        data: {
-          ...(sku !== undefined ? { sku } : {}),
-          ...(name_ar !== undefined ? { nameAr: name_ar } : {}),
-          ...(name_en !== undefined ? { nameEn: name_en } : {}),
-          ...(price_egp !== undefined ? { priceEgp: price_egp } : {}),
-          ...(price_sar !== undefined ? { priceSar: price_sar } : {}),
-          ...(stock !== undefined ? { stock } : {}),
-        },
-      });
-      res.json({ product });
-    } catch (e: unknown) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-        throw new ApiError(409, "SKU_TAKEN", "A product with this SKU already exists in your store.");
-      }
-      throw e;
-    }
-  })
-);
-
-app.delete(
-  "/api/stores/:subdomain/products/:id",
-  asyncHandler(requireAuth),
-  validateParams(productIdParamSchema),
-  asyncHandler(requireStoreOwnership),
-  asyncHandler(async (req, res) => {
-    const existing = await prisma.product.findFirst({
-      where: { id: req.params.id, storeId: req.ownedStore!.id },
-    });
-    if (!existing) throw new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found.");
-    await prisma.product.delete({ where: { id: existing.id } });
-    res.json({ ok: true });
-  })
-);
-
-// ---- orders (owner only; public checkout below) ----
-app.get(
-  "/api/stores/:subdomain/orders",
-  asyncHandler(requireAuth),
-  validateParams(subdomainParamSchema),
-  asyncHandler(requireStoreOwnership),
-  validateQuery(orderListQuerySchema),
-  asyncHandler(async (req, res) => {
-    const { page, pageSize, status, from, to } = req.query as unknown as {
-      page: number;
-      pageSize: number;
-      status?: string;
-      from?: string;
-      to?: string;
-    };
-    const where: Prisma.OrderWhereInput = { storeId: req.ownedStore!.id };
-    if (status) where.status = status;
-    if (from || to) {
-      where.createdAt = {};
-      if (from) (where.createdAt as Prisma.DateTimeFilter).gte = new Date(from);
-      if (to) (where.createdAt as Prisma.DateTimeFilter).lte = new Date(to);
-    }
-    const [total, rows] = await prisma.$transaction([
-      prisma.order.count({ where }),
-      prisma.order.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        include: { items: true },
-      }),
-    ]);
-    res.json({ orders: rows, pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) } });
-  })
-);
-
-app.get(
-  "/api/stores/:subdomain/orders/:id",
-  asyncHandler(requireAuth),
-  validateParams(orderIdParamSchema),
-  asyncHandler(requireStoreOwnership),
-  asyncHandler(async (req, res) => {
-    const order = await prisma.order.findFirst({
-      where: { id: req.params.id, storeId: req.ownedStore!.id },
-      include: { items: true },
-    });
-    if (!order) throw new ApiError(404, "ORDER_NOT_FOUND", "Order not found.");
-    res.json({ order });
-  })
-);
-
-app.patch(
-  "/api/stores/:subdomain/orders/:id/status",
-  asyncHandler(requireAuth),
-  validateParams(orderIdParamSchema),
-  asyncHandler(requireStoreOwnership),
-  validateBody(orderStatusSchema),
-  asyncHandler(async (req, res) => {
-    const target = req.body.status as string;
-    const current = await prisma.order.findFirst({
-      where: { id: req.params.id, storeId: req.ownedStore!.id },
-      include: { items: true },
-    });
-    if (!current) throw new ApiError(404, "ORDER_NOT_FOUND", "Order not found.");
-    const allowed = ORDER_TRANSITIONS[current.status] ?? [];
-    if (!allowed.includes(target)) {
-      throw new ApiError(
-        409,
-        "INVALID_TRANSITION",
-        `Cannot move order from '${current.status}' to '${target}'. Allowed: ${allowed.join(", ") || "none"}.`
-      );
-    }
-    // Atomic write: only succeeds if the status is still what we validated.
-    // A concurrent transition wins the race; losers get 409, never a lost update.
-    const updated = await prisma.$transaction(async (tx) => {
-      const wrote = await tx.order.updateMany({
-        where: { id: current.id, storeId: current.storeId, status: current.status },
-        data: { status: target },
-      });
-      if (wrote.count !== 1) {
-        throw new ApiError(409, "ORDER_CONFLICT", "Order changed concurrently, please retry.");
-      }
-      // Restore reserved stock exactly once when entering a terminal
-      // no-fulfillment state. The flag makes retries/double requests safe.
-      if ((target === "cancelled" || target === "returned") && !current.stockRestored) {
-        for (const item of current.items) {
-          if (!item.productId) continue;
-          await tx.product
-            .update({ where: { id: item.productId }, data: { stock: { increment: item.qty } } })
-            .catch(() => null);
-        }
-        await tx.order.update({ where: { id: current.id }, data: { stockRestored: true } });
-      }
-      return tx.order.findUnique({ where: { id: current.id }, include: { items: true } });
-    });
-    res.json({ order: updated });
-  })
-);
-
-app.post(
-  "/api/stores/:subdomain/orders",
-  asyncHandler(requireAuth),
-  validateParams(subdomainParamSchema),
-  asyncHandler(requireStoreOwnership),
-  validateBody(merchantOrderBodySchema),
-  asyncHandler(async (req, res) => {
-    const { customer_name, customer_phone, address, city, items_summary, amount_text, amount_egp, payment_method, status, courier } = req.body;
-    const orderNumber = await allocateOrderNumber(req.ownedStore!.id);
-    try {
-      const order = await prisma.order.create({
-        data: {
-          id: newId("ord_"),
-          storeId: req.ownedStore!.id,
-          orderNumber,
-          customerName: customer_name,
-          customerPhone: customer_phone,
-          address,
-          city,
-          itemsSummary: items_summary,
-          amountText: amount_text,
-          amountEgp: amount_egp,
-          paymentMethod: payment_method,
-          status,
-          courier,
-        },
-      });
-      res.status(201).json({ order });
-    } catch (e: unknown) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-        throw new ApiError(409, "ORDER_CONFLICT", "Order number collision, please retry.");
-      }
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003") {
-        throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");
-      }
-      throw e;
-    }
-  })
-);
-
-// ---- public checkout (no auth; rate-limited; prices computed server-side) ----
-// Shoppers submit SKUs + quantities only. Totals, line items, and stock
-// moves are derived from the merchant's own catalog — the client can never
-// set prices or totals.
-app.post(
-  "/api/stores/:subdomain/checkout",
-  publicWriteLimiter,
-  validateParams(subdomainParamSchema),
-  validateBody(checkoutBodySchema),
-  asyncHandler(async (req, res) => {
-    const store = await prisma.store.findUnique({ where: { subdomain: req.params.subdomain } });
-    if (!store || store.status !== "active") throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");
-    const { customer_name, customer_phone, address, city, payment_method, courier, items } = req.body as {
-      customer_name: string;
-      customer_phone: string;
-      address: string;
-      city: string;
-      payment_method: string;
-      courier: string;
-      items: { sku: string; qty: number }[];
-    };
-
-    // Merge duplicate SKUs first (summed qty), so stock checks and totals
-    // can never be split across lines to oversell.
-    const merged = new Map<string, number>();
-    for (const i of items) merged.set(i.sku, (merged.get(i.sku) ?? 0) + i.qty);
-    const mergedItems = [...merged.entries()].map(([sku, qty]) => ({ sku, qty }));
-
-    const skus = mergedItems.map((i) => i.sku);
-    const catalog = await prisma.product.findMany({ where: { storeId: store.id, sku: { in: skus } } });
-    const bySku = new Map(catalog.map((p) => [p.sku, p]));
-    const missing = skus.filter((s) => !bySku.has(s));
-    if (missing.length > 0) {
-      throw new ApiError(400, "UNKNOWN_SKU", `Unknown product(s): ${missing.join(", ")}.`, { missing });
-    }
-    // Fast-path check only; the guarded decrement inside the transaction is authoritative.
-    const short = mergedItems.filter((i) => (bySku.get(i.sku)?.stock ?? 0) < i.qty).map((i) => i.sku);
-    if (short.length > 0) {
-      throw new ApiError(409, "INSUFFICIENT_STOCK", `Not enough stock for: ${short.join(", ")}.`, { short });
-    }
-
-    const lines = mergedItems.map((i) => {
-      const p = bySku.get(i.sku)!;
-      // Currency rule: checkout charges the price column matching the
-      // store's currency. Products without a positive price there are
-      // rejected; other currencies are unsupported at checkout.
-      const priceColumn = store.currency === "EGP" ? "priceEgp" : store.currency === "SAR" ? "priceSar" : null;
-      if (!priceColumn) {
-        throw new ApiError(
-          400,
-          "CHECKOUT_CURRENCY_UNSUPPORTED",
-          `Checkout supports EGP and SAR priced catalogs; this store uses ${store.currency}.`
-        );
-      }
-      const unit = p[priceColumn];
-      if (!(unit > 0)) {
-        throw new ApiError(400, "PRODUCT_NOT_PRICED", `Product ${p.sku} has no ${store.currency} price.`, {
-          sku: p.sku,
-        });
-      }
-      return { productId: p.id, sku: p.sku, name: p.nameEn || p.nameAr || p.sku, qty: i.qty, unitPrice: unit };
-    });
-    const total = lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
-
-    const orderNumber = await allocateOrderNumber(store.id);
-    try {
-      const order = await prisma.$transaction(async (tx) => {
-        const created = await tx.order.create({
-          data: {
-            id: newId("ord_"),
-            storeId: store.id,
-            orderNumber,
-            customerName: customer_name,
-            customerPhone: customer_phone,
-            address,
-            city,
-              itemsSummary: lines.map((l) => `${l.name} ×${l.qty}`).join(" + "),
-              amountText: `${total} ${store.currency}`,
-              // Legacy column names: amountEgp / unitPriceEgp hold the total
-              // denominated in the STORE's currency (EGP or SAR per the rule above).
-              amountEgp: total,
-              paymentMethod: payment_method,
-              status: "pending",
-              courier,
-              items: {
-                create: lines.map((l) => ({
-                  id: newId("item_"),
-                  productId: l.productId,
-                  sku: l.sku,
-                  name: l.name,
-                  qty: l.qty,
-                  unitPriceEgp: l.unitPrice,
-                })),
-              },
-            },
-            include: { items: true },
-          });
-          for (const l of lines) {
-            // Guarded decrement: only succeeds when enough stock remains at
-            // write time. Concurrent checkouts serialize here; losers abort
-            // with 409 and the whole transaction rolls back.
-            const moved = await tx.product.updateMany({
-              where: { id: l.productId, storeId: store.id, stock: { gte: l.qty } },
-              data: { stock: { decrement: l.qty } },
-            });
-            if (moved.count !== 1) {
-              throw new ApiError(409, "INSUFFICIENT_STOCK", `Not enough stock for: ${l.sku}.`, { short: [l.sku] });
-            }
-          }
-          return created;
-        });
-        res.status(201).json({ order });
-      } catch (e: unknown) {
-        if (e instanceof ApiError) throw e;
-        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-          throw new ApiError(409, "ORDER_CONFLICT", "Order number collision, please retry.");
-        }
-        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003") {
-          throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");
-        }
-        throw e;
-      }
-  })
-);
-
-// ---- store settings (owner only; subdomain is immutable) ----
+// ---- account store settings (legacy path preserved) ----
 app.get(
   "/api/account/store",
   asyncHandler(requireAuth),
@@ -722,58 +377,39 @@ app.patch(
   validateBody(storeUpdateSchema),
   asyncHandler(async (req, res) => {
     if (!req.auth!.storeId) throw new ApiError(404, "STORE_NOT_FOUND", "No store linked to this account.");
-    // NOTE: plan is intentionally not writable here (server-assigned billing).
-    const { storeName, phone, countryCode, storeCurrency } = req.body as {
-      storeName?: string;
-      phone?: string;
-      countryCode?: string;
-      storeCurrency?: string;
-    };
-    const store = await prisma.store.update({
-      where: { id: req.auth!.storeId },
-      data: {
-        ...(storeName !== undefined ? { storeName } : {}),
-        ...(phone !== undefined ? { phone } : {}),
-        ...(countryCode !== undefined ? { countryCode } : {}),
-        ...(storeCurrency !== undefined ? { currency: storeCurrency } : {}),
-      },
-    }).catch(() => null);
+    const b = req.body;
+    if (b.onlinePaymentEnabled === true && !paymentService.configured) {
+      throw new ApiError(
+        409,
+        "PAYMENT_PROVIDER_NOT_CONFIGURED",
+        "Online payments cannot be enabled until a payment gateway is configured."
+      );
+    }
+    await ensureStoreDefaults(req.auth!.storeId, b.storeCurrency ?? "EGP");
+    const store = await prisma.store
+      .update({
+        where: { id: req.auth!.storeId },
+        data: {
+          ...(b.storeName !== undefined ? { storeName: b.storeName } : {}),
+          ...(b.phone !== undefined ? { phone: b.phone } : {}),
+          ...(b.countryCode !== undefined ? { countryCode: b.countryCode } : {}),
+          ...(b.storeCurrency !== undefined ? { currency: b.storeCurrency } : {}),
+          ...(b.description !== undefined ? { description: b.description } : {}),
+          ...(b.logoUrl !== undefined ? { logoUrl: b.logoUrl } : {}),
+          ...(b.coverUrl !== undefined ? { coverUrl: b.coverUrl } : {}),
+          ...(b.supportEmail !== undefined ? { supportEmail: b.supportEmail } : {}),
+          ...(b.seoTitle !== undefined ? { seoTitle: b.seoTitle } : {}),
+          ...(b.seoDescription !== undefined ? { seoDescription: b.seoDescription } : {}),
+          ...(b.whatsapp !== undefined ? { whatsapp: b.whatsapp } : {}),
+          ...(b.codEnabled !== undefined ? { codEnabled: b.codEnabled } : {}),
+          ...(b.onlinePaymentEnabled !== undefined ? { onlinePaymentEnabled: b.onlinePaymentEnabled } : {}),
+          ...(b.primaryLanguage !== undefined ? { primaryLanguage: b.primaryLanguage } : {}),
+          ...(b.timeZone !== undefined ? { timeZone: b.timeZone } : {}),
+        },
+      })
+      .catch(() => null);
     if (!store) throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");
     res.json({ store });
-  })
-);
-
-// ---- dashboard summary (owner only, computed from real data) ----
-app.get(
-  "/api/stores/:subdomain/summary",
-  asyncHandler(requireAuth),
-  validateParams(subdomainParamSchema),
-  asyncHandler(requireStoreOwnership),
-  asyncHandler(async (req, res) => {
-    const storeId = req.ownedStore!.id;
-    const store = await prisma.store.findUnique({ where: { id: storeId } });
-    const [total, delivered, sales, methods, recent] = await prisma.$transaction([
-      prisma.order.count({ where: { storeId } }),
-      prisma.order.count({ where: { storeId, status: "delivered" } }),
-      prisma.order.aggregate({ where: { storeId }, _sum: { amountEgp: true } }),
-      prisma.order.groupBy({ by: ["paymentMethod"], where: { storeId }, _count: { _all: true } }),
-      prisma.order.findMany({ where: { storeId }, orderBy: { createdAt: "desc" }, take: 5 }),
-    ]);
-    const totalSales = Math.round(sales._sum.amountEgp ?? 0);
-    const codCount = methods
-      .filter((m) => /cod/i.test(m.paymentMethod) || m.paymentMethod.includes("استلام"))
-      .reduce((s, m) => s + m._count._all, 0);
-    res.json({
-      store,
-      kpis: {
-        total_orders: total,
-        delivered_orders: delivered,
-        total_sales_egp: totalSales,
-        avg_order_egp: total ? Math.round(totalSales / total) : 0,
-        cod_share_percent: total ? Math.round((codCount / total) * 100) : 0,
-      },
-      recent_orders: recent,
-    });
   })
 );
 
@@ -797,7 +433,6 @@ app.post(
   })
 );
 
-// Authenticated listing, always scoped to the caller's own store.
 app.get(
   "/api/leads",
   asyncHandler(requireAuth),
@@ -813,7 +448,6 @@ app.get(
   })
 );
 
-// Admin-only: full leads listing across all stores.
 app.get(
   "/api/admin/leads",
   asyncHandler(requireAuth),
@@ -827,6 +461,31 @@ app.get(
   })
 );
 
+// ---- domain routers ----
+app.use("/api/onboarding", onboardingRouter);
+app.use(productsRouter);
+app.use(categoriesRouter);
+app.use(ordersRouter);
+app.use(customersRouter);
+app.use(walletRouter);
+app.use(shippingRouter);
+app.use(couponsRouter);
+app.use(growthRouter);
+app.use(contentRouter);
+app.use(reviewsRouter);
+app.use(loyaltyRouter);
+app.use(dropshippingRouter);
+app.use(assistantRouter);
+app.use(dashboardRouter);
+app.use(abandonedRouter);
+app.use(reportsRouter);
+app.use(settingsRouter);
+app.use(storefrontRouter);
+
+// ---- uploaded media (local storage driver) ----
+const uploadsDir = path.resolve(process.cwd(), env.storageDir);
+app.use("/uploads", express.static(uploadsDir, { fallthrough: true, maxAge: "7d" }));
+
 // ---- frontend build in production ----
 const distDir = path.join(process.cwd(), "dist");
 if (fs.existsSync(distDir)) {
@@ -839,15 +498,32 @@ if (fs.existsSync(distDir)) {
 app.use("/api", notFoundHandler);
 app.use(errorHandler);
 
+/**
+ * Wait for PostgreSQL instead of exiting on the first failed ping. Containers
+ * and managed databases routinely report "the database system is starting up"
+ * for a few seconds after boot; exiting here restarts the process and turns
+ * every API request (including registration) into a gateway 502.
+ */
+async function waitForDatabase(attempts = 30, delayMs = 1000): Promise<void> {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      await checkDb();
+      return;
+    } catch (err) {
+      if (attempt === attempts) throw err;
+      logger.warn({ err, attempt }, "database not ready yet, retrying");
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+}
+
 async function boot() {
-  // No seeding on boot. Demo data comes only from `npm run db:seed` (DEMO_MODE-gated).
-  await checkDb();
+  await waitForDatabase();
   startSessionCleanup();
   const server = app.listen(env.port, "0.0.0.0", () => {
     logger.info(`[sanad-backend] listening on http://localhost:${env.port} (env=${env.nodeEnv})`);
   });
 
-  // Graceful shutdown: stop accepting, drain, then release the DB pool.
   const shutdown = (signal: string) => {
     logger.info(`[sanad-backend] ${signal} received, shutting down`);
     server.close(() => {
@@ -856,7 +532,6 @@ async function boot() {
         .catch(() => undefined)
         .finally(() => process.exit(0));
     });
-    // Hard stop if connections linger.
     setTimeout(() => process.exit(0), 10_000).unref();
   };
   if (process.env.VITEST !== "true") {

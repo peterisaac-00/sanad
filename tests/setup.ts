@@ -40,7 +40,5 @@ execSync("node node_modules/prisma/build/index.js migrate deploy", {
 // from regression tests) so every run starts from empty tables.
 const scrub = new pg.Client({ connectionString: base });
 await scrub.connect();
-await scrub.query(
-  'TRUNCATE "sessions", "order_items", "orders", "products", "leads", "merchants", "stores" CASCADE'
-);
+await scrub.query('TRUNCATE "merchants", "stores" CASCADE');
 await scrub.end();

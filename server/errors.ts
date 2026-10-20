@@ -50,6 +50,15 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     } satisfies ApiErrorBody);
     return;
   }
+
+  // Express raises a 400 with this message when a path parameter cannot be
+  // percent-decoded. Return the standard API error shape instead of a 500.
+  if (err instanceof Error && /Failed to decode param/i.test(err.message)) {
+    res.status(400).json({
+      error: { code: "INVALID_PATH", message: "Malformed URL parameter." },
+    } satisfies ApiErrorBody);
+    return;
+  }
   logger.error({ err, method: req.method, path: req.path }, "unhandled error");
   res.status(500).json({
     error: {

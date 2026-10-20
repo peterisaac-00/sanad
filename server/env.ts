@@ -16,6 +16,21 @@ const raw = {
   DEMO_MERCHANT_PASSWORD: process.env.DEMO_MERCHANT_PASSWORD || "",
   DATABASE_URL: process.env.DATABASE_URL || "",
   SESSION_SECRET: process.env.SESSION_SECRET || "",
+  // Optional integration credentials. Empty values leave the integration
+  // explicitly "not configured" instead of silently faking success.
+  APP_URL: process.env.APP_URL || "http://localhost:3000",
+  STORAGE_DRIVER: process.env.STORAGE_DRIVER || "local",
+  STORAGE_DIR: process.env.STORAGE_DIR || "data/uploads",
+  AI_BASE_URL: process.env.AI_BASE_URL || "",
+  AI_API_KEY: process.env.AI_API_KEY || "",
+  AI_MODEL: process.env.AI_MODEL || "gpt-4o-mini",
+  PAYMENT_PROVIDER: process.env.PAYMENT_PROVIDER || "",
+  PAYMENT_SECRET_KEY: process.env.PAYMENT_SECRET_KEY || "",
+  WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN || "",
+  WHATSAPP_PHONE_ID: process.env.WHATSAPP_PHONE_ID || "",
+  SHIPPING_PROVIDER: process.env.SHIPPING_PROVIDER || "",
+  SHIPPING_API_KEY: process.env.SHIPPING_API_KEY || "",
+  MEDIA_MAX_BYTES: process.env.MEDIA_MAX_BYTES || "5242880",
 };
 
 const envSchema = z.object({
@@ -34,6 +49,19 @@ const envSchema = z.object({
     .refine((v) => v.startsWith("postgresql://") || v.startsWith("postgres://"), {
       message: "DATABASE_URL must be a postgresql:// connection string",
     }),
+  APP_URL: z.string().url(),
+  STORAGE_DRIVER: z.enum(["local", "s3"]),
+  STORAGE_DIR: z.string().min(1),
+  AI_BASE_URL: z.string(),
+  AI_API_KEY: z.string(),
+  AI_MODEL: z.string(),
+  PAYMENT_PROVIDER: z.string(),
+  PAYMENT_SECRET_KEY: z.string(),
+  WHATSAPP_ACCESS_TOKEN: z.string(),
+  WHATSAPP_PHONE_ID: z.string(),
+  SHIPPING_PROVIDER: z.string(),
+  SHIPPING_API_KEY: z.string(),
+  MEDIA_MAX_BYTES: z.coerce.number().int().min(1024).max(20 * 1024 * 1024),
 });
 
 const parsed = envSchema.safeParse(raw);
@@ -103,4 +131,29 @@ export const env = {
   demoMerchantPassword,
   databaseUrl: parsed.data.DATABASE_URL,
   sessionSecret,
+  appUrl: parsed.data.APP_URL.replace(/\/$/, ""),
+  storageDriver: parsed.data.STORAGE_DRIVER,
+  storageDir: parsed.data.STORAGE_DIR,
+  mediaMaxBytes: parsed.data.MEDIA_MAX_BYTES,
+  ai: {
+    configured: Boolean(parsed.data.AI_BASE_URL && parsed.data.AI_API_KEY),
+    baseUrl: parsed.data.AI_BASE_URL,
+    apiKey: parsed.data.AI_API_KEY,
+    model: parsed.data.AI_MODEL,
+  },
+  payments: {
+    configured: Boolean(parsed.data.PAYMENT_PROVIDER && parsed.data.PAYMENT_SECRET_KEY),
+    provider: parsed.data.PAYMENT_PROVIDER,
+    secretKey: parsed.data.PAYMENT_SECRET_KEY,
+  },
+  whatsapp: {
+    cloudConfigured: Boolean(parsed.data.WHATSAPP_ACCESS_TOKEN && parsed.data.WHATSAPP_PHONE_ID),
+    accessToken: parsed.data.WHATSAPP_ACCESS_TOKEN,
+    phoneId: parsed.data.WHATSAPP_PHONE_ID,
+  },
+  shipping: {
+    configured: Boolean(parsed.data.SHIPPING_PROVIDER && parsed.data.SHIPPING_API_KEY),
+    provider: parsed.data.SHIPPING_PROVIDER,
+    apiKey: parsed.data.SHIPPING_API_KEY,
+  },
 };

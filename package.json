@@ -8,7 +8,8 @@
     "npm": ">=11"
   },
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
+    "dev": "node scripts/dev-full.mjs",
+    "dev:web": "vite --port=3000 --host=0.0.0.0",
     "dev:backend": "tsx --watch server/index.ts",
     "dev:full": "node scripts/dev-full.mjs",
     "build": "vite build",

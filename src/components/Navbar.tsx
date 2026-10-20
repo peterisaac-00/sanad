@@ -24,6 +24,7 @@ interface NavbarProps {
   onNavigate: (viewId: string) => void;
   onOpenStoreModal: () => void;
   onOpenLoginModal: () => void;
+  onOpenDashboard: () => void;
   onOpenDemoModal: () => void;
   session: { merchant: any; store: any } | null;
   onLogout: () => void;
@@ -36,6 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onNavigate,
   onOpenStoreModal,
   onOpenLoginModal,
+  onOpenDashboard,
   onOpenDemoModal,
   session,
   onLogout
@@ -226,7 +228,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {session.merchant?.email}
                 </span>
                 <button
-                  onClick={onOpenDemoModal}
+                  onClick={onOpenDashboard}
                   className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
@@ -267,7 +269,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={onOpenStoreModal}
               className="bg-emerald-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg"
             >
-              {t.nav_signup}
+              {session ? (currentLang === 'ar' ? 'لوحة التحكم' : 'Dashboard') : t.nav_signup}
             </button>
 
             <button
@@ -357,15 +359,27 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             {session ? (
-              <button
-                onClick={() => {
-                  onLogout();
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full py-2 px-3 border border-slate-300 text-slate-700 rounded-lg text-xs font-medium text-center"
-              >
-                {currentLang === 'ar' ? `خروج (${session.merchant?.email})` : `Logout (${session.merchant?.email})`}
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    onOpenDashboard();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full py-2.5 px-3 bg-slate-900 text-white rounded-lg text-xs font-semibold text-center flex items-center justify-center gap-1.5"
+                >
+                  <TrendingUp className="w-4 h-4 text-emerald-400" />
+                  <span>{currentLang === 'ar' ? 'لوحة التحكم' : 'Dashboard'}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    onLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full py-2 px-3 border border-slate-300 text-slate-700 rounded-lg text-xs font-medium text-center"
+                >
+                  {currentLang === 'ar' ? `خروج (${session.merchant?.email})` : `Logout (${session.merchant?.email})`}
+                </button>
+              </>
             ) : (
               <button
                 onClick={onOpenLoginModal}

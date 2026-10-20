@@ -1,6 +1,7 @@
-// Prisma schema for Sanad merchant platform (PostgreSQL).
-// IDs are app-generated prefixed strings (store_*, merch_*, prod_*, SND-*, lead_*)
-// so public identifiers stay stable and opaque.
+// Prisma schema for Sanad — multi-tenant SaaS commerce platform (PostgreSQL).
+// IDs are app-generated prefixed strings so public identifiers stay stable
+// and opaque. Every merchant-owned row carries storeId and every query is
+// scoped by it server-side.
 
 generator client {
   provider = "prisma-client-js"
@@ -14,6 +15,7 @@ model Store {
   id          String   @id
   storeName   String   @map("store_name")
   subdomain   String   @unique
+  customDomain String? @unique @map("custom_domain")
   phone       String   @default("")
   countryCode String   @default("EG") @map("country_code")
   currency    String   @default("EGP")
@@ -22,17 +24,120 @@ model Store {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  // Next order number to allocate (first order is 4825, displayed SND-4825).
-  // Incremented atomically with UPDATE...RETURNING, so concurrent checkouts
-  // never collide. May skip on aborted checkouts.
+  // Order numbering (first order is 4825, displayed SND-4825).
   nextOrderNumber Int @default(4824) @map("next_order_number")
 
-  merchants Merchant[]
-  products  Product[]
-  orders    Order[]
-  leads     Lead[]
+  // Onboarding / brand profile
+  onboardingStep      Int      @default(1) @map("onboarding_step")
+  onboardingCompleted Boolean  @default(false) @map("onboarding_completed")
+  businessType        String   @default("other") @map("business_type")
+  description         String   @default("")
+  country             String   @default("EG")
+  governorate         String   @default("")
+  primaryLanguage     String   @default("ar") @map("primary_language")
+  timeZone            String   @default("Africa/Cairo") @map("time_zone")
+  logoUrl             String   @default("") @map("logo_url")
+  coverUrl            String   @default("") @map("cover_url")
+  whatsapp            String   @default("")
+  returnPolicy        String   @default("") @map("return_policy")
+  codEnabled          Boolean  @default(true) @map("cod_enabled")
+  onlinePaymentEnabled Boolean @default(false) @map("online_payment_enabled")
+  templateKey         String   @default("general") @map("template_key")
+  publishedAt         DateTime? @map("published_at")
+  seoTitle            String   @default("") @map("seo_title")
+  seoDescription      String   @default("") @map("seo_description")
+  supportEmail        String   @default("") @map("support_email")
+  notificationPrefs   Json     @default("{}") @map("notification_prefs")
+  onboardingDraft     Json     @default("{}") @map("onboarding_draft")
+
+  branding   StoreBranding?
+  themes     StoreTheme[]
+  domains    StoreDomain[]
+  merchants  Merchant[]
+  team       TeamMember[]
+  products   Product[]
+  categories Category[]
+  orders     Order[]
+  customers  Customer[]
+  addresses  CustomerAddress[]
+  orderEvents OrderEvent[]
+  shippingZones ShippingZone[]
+  shippingRates ShippingRate[]
+  coupons    Coupon[]
+  couponUsages CouponUsage[]
+  upsells    UpsellRule[]
+  relatedProducts RelatedProduct[]
+  pages      Page[]
+  blogPosts  BlogPost[]
+  affiliates Affiliate[]
+  affiliateAttributions AffiliateAttribution[]
+  wallet     WalletAccount?
+  walletTransactions WalletTransaction[]
+  abandonedCarts AbandonedCart[]
+  payments   Payment[]
+  refunds    Refund[]
+  reviews    Review[]
+  notifications Notification[]
+  auditLogs  AuditLog[]
+  media      MediaAsset[]
+  loyaltyRules LoyaltyRule[]
+  loyaltyAccounts LoyaltyAccount[]
+  loyaltyTransactions LoyaltyTransaction[]
+  suppliers  Supplier[]
+  dropshipProducts DropshipProduct[]
+  leads      Lead[]
 
   @@map("stores")
+}
+
+model StoreBranding {
+  id             String   @id
+  storeId        String   @unique @map("store_id")
+  store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  primaryColor   String   @default("#2563EB") @map("primary_color")
+  secondaryColor String   @default("#0F172A") @map("secondary_color")
+  textColor      String   @default("#F8FAFC") @map("text_color")
+  themeMode      String   @default("dark") @map("theme_mode")
+  arabicFont     String   @default("Cairo") @map("arabic_font")
+  templateKey    String   @default("general") @map("template_key")
+  headerConfig   Json     @default("{}") @map("header_config")
+  footerConfig   Json     @default("{}") @map("footer_config")
+  heroConfig     Json     @default("{}") @map("hero_config")
+  homepageSections Json   @default("[]") @map("homepage_sections")
+  draftConfig    Json     @default("{}") @map("draft_config")
+  publishedAt    DateTime? @map("published_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("store_branding")
+}
+
+// Future-ready theme preset per store (kept alongside branding so merchants
+// can keep multiple presets without changing the public contract).
+model StoreTheme {
+  id         String   @id
+  storeId    String   @map("store_id")
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name       String
+  config     Json     @default("{}")
+  isActive   Boolean  @default(false) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([storeId])
+  @@map("store_themes")
+}
+
+model StoreDomain {
+  id                String    @id
+  storeId           String    @map("store_id")
+  store             Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  domain            String    @unique
+  status            String    @default("pending")
+  verificationToken String    @map("verification_token")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  verifiedAt        DateTime? @map("verified_at")
+
+  @@index([storeId])
+  @@map("store_domains")
 }
 
 model Merchant {
@@ -46,59 +151,255 @@ model Merchant {
   passwordAlgo String   @default("argon2id") @map("password_algo")
   role         String   @default("merchant")
   name         String   @default("")
+  firstName    String   @default("") @map("first_name")
+  lastName     String   @default("") @map("last_name")
   phone        String   @default("")
   createdAt    DateTime @default(now()) @map("created_at")
 
   sessions Session[]
+  notifications Notification[]
+  auditLogs    AuditLog[]
 
   @@index([storeId])
   @@map("merchants")
+}
+
+model TeamMember {
+  id        String   @id
+  storeId   String   @map("store_id")
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name      String   @default("")
+  email     String
+  role      String   @default("staff")
+  status    String   @default("invited")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([storeId, email])
+  @@index([storeId])
+  @@map("team_members")
+}
+
+model Category {
+  id          String   @id
+  storeId     String   @map("store_id")
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name        String
+  nameAr      String   @default("") @map("name_ar")
+  nameEn      String   @default("") @map("name_en")
+  slug        String
+  description String   @default("")
+  imageUrl    String   @default("") @map("image_url")
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  products Product[]
+
+  @@unique([storeId, slug])
+  @@index([storeId])
+  @@map("categories")
 }
 
 model Product {
   id        String   @id
   storeId   String   @map("store_id")
   store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  categoryId String? @map("category_id")
+  category  Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   sku       String
+  slug      String   @default("")
   nameAr    String   @default("") @map("name_ar")
   nameEn    String   @default("") @map("name_en")
+  shortDescriptionAr String @default("") @map("short_description_ar")
+  shortDescriptionEn String @default("") @map("short_description_en")
+  descriptionAr String @default("") @map("description_ar")
+  descriptionEn String @default("") @map("description_en")
+  // Legacy per-currency columns kept for backward-compatible checkout.
   priceEgp  Float    @default(0) @map("price_egp")
   priceSar  Float    @default(0) @map("price_sar")
+  basePrice Float    @default(0) @map("base_price")
+  compareAtPrice Float? @map("compare_at_price")
+  costPrice Float?   @map("cost_price")
   stock     Int      @default(0)
+  lowStockThreshold Int @default(5) @map("low_stock_threshold")
+  barcode   String   @default("")
+  weight    Float?
+  width     Float?
+  height    Float?
+  length    Float?
+  status    String   @default("active")
+  isFeatured Boolean @default(false) @map("is_featured")
+  seoTitle  String   @default("") @map("seo_title")
+  seoDescription String @default("") @map("seo_description")
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  orderItems OrderItem[]
+  images      ProductImage[]
+  options     ProductOption[]
+  variants    ProductVariant[]
+  orderItems  OrderItem[]
+  relatedFrom RelatedProduct[] @relation("RelatedSource")
+  relatedTo   RelatedProduct[] @relation("RelatedTarget")
+  upsellTriggers UpsellRule[] @relation("UpsellTrigger")
+  upsellOffers   UpsellRule[] @relation("UpsellOffer")
+  reviews     Review[]
+  dropship    DropshipProduct[]
 
   @@unique([storeId, sku])
+  @@index([storeId, slug])
   @@index([storeId])
+  @@index([storeId, status])
+  @@index([storeId, categoryId])
   @@map("products")
 }
 
+model ProductImage {
+  id        String  @id
+  storeId   String  @map("store_id")
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String  @default("")
+  sortOrder Int     @default(0) @map("sort_order")
+
+  @@index([storeId])
+  @@index([productId])
+  @@map("product_images")
+}
+
+model ProductOption {
+  id        String @id
+  storeId   String @map("store_id")
+  productId String @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  nameAr    String @default("") @map("name_ar")
+  position  Int    @default(0)
+
+  values ProductOptionValue[]
+
+  @@index([storeId])
+  @@index([productId])
+  @@map("product_options")
+}
+
+model ProductOptionValue {
+  id        String @id
+  storeId   String @map("store_id")
+  optionId  String @map("option_id")
+  option    ProductOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  value     String
+  valueAr   String @default("") @map("value_ar")
+  position  Int    @default(0)
+
+  @@index([storeId])
+  @@index([optionId])
+  @@map("product_option_values")
+}
+
+model ProductVariant {
+  id             String  @id
+  storeId        String  @map("store_id")
+  productId      String  @map("product_id")
+  product        Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku            String
+  price          Float   @default(0)
+  compareAtPrice Float?  @map("compare_at_price")
+  stock          Int     @default(0)
+  optionValues   Json    @default("{}") @map("option_values")
+  imageUrl       String  @default("") @map("image_url")
+  isActive       Boolean @default(true) @map("is_active")
+
+  @@unique([storeId, sku])
+  @@index([storeId])
+  @@index([productId])
+  @@map("product_variants")
+}
+
+model Customer {
+  id        String   @id
+  storeId   String   @map("store_id")
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name      String   @default("")
+  phone     String   @default("")
+  email     String   @default("")
+  notes     String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  addresses  CustomerAddress[]
+  orders     Order[]
+  coupons    CouponUsage[]
+  carts      AbandonedCart[]
+  loyalty    LoyaltyAccount?
+  reviews    Review[]
+
+  @@index([storeId])
+  @@index([storeId, phone])
+  @@index([storeId, email])
+  @@map("customers")
+}
+
+model CustomerAddress {
+  id          String  @id
+  storeId     String  @map("store_id")
+  store       Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customerId  String  @map("customer_id")
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  label       String  @default("")
+  address     String  @default("")
+  city        String  @default("")
+  governorate String  @default("")
+  phone       String  @default("")
+  isDefault   Boolean @default(false) @map("is_default")
+
+  @@index([storeId])
+  @@index([customerId])
+  @@map("customer_addresses")
+}
+
 model Order {
-  // Internal opaque id. Merchants and shoppers see SND-{orderNumber}.
   id           String   @id
   storeId      String   @map("store_id")
   store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   orderNumber  Int      @map("order_number")
+  customerId   String?  @map("customer_id")
+  customer     Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   customerName String   @default("") @map("customer_name")
   customerPhone String  @default("") @map("customer_phone")
+  customerEmail String  @default("") @map("customer_email")
   address      String   @default("")
   city         String   @default("")
+  governorate  String   @default("")
   itemsSummary String   @default("") @map("items_summary")
   amountText   String   @default("") @map("amount_text")
   amountEgp    Float    @default(0) @map("amount_egp")
+  subtotal     Float    @default(0)
+  discount     Float    @default(0)
+  shippingFee  Float    @default(0) @map("shipping_fee")
+  couponCode   String   @default("") @map("coupon_code")
+  shippingZoneId String? @map("shipping_zone_id")
   paymentMethod String  @default("COD") @map("payment_method")
+  paymentStatus String  @default("unpaid") @map("payment_status")
   status       String   @default("pending")
-  // True once reserved stock was returned (cancel/return). Guarded so a
-  // retry or double request can never restore twice.
   stockRestored Boolean @default(false) @map("stock_restored")
   courier      String   @default("")
+  notes        String   @default("")
+  internalNotes String  @default("") @map("internal_notes")
   createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
 
-  items OrderItem[]
+  items      OrderItem[]
+  events     OrderEvent[]
+  payments   Payment[]
+  refunds    Refund[]
+  couponUsage CouponUsage?
+  affiliateAttribution AffiliateAttribution?
 
   @@index([storeId])
   @@index([storeId, status])
+  @@index([storeId, paymentStatus])
   @@unique([storeId, orderNumber])
   @@map("orders")
 }
@@ -109,13 +410,506 @@ model OrderItem {
   order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId   String? @map("product_id")
   product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variantId   String? @map("variant_id")
+  variantLabel String @default("") @map("variant_label")
   sku         String  @default("")
   name        String  @default("")
   qty         Int     @default(1)
   unitPriceEgp Float  @default(0) @map("unit_price_egp")
+  imageUrl    String  @default("") @map("image_url")
 
   @@index([orderId])
   @@map("order_items")
+}
+
+model OrderEvent {
+  id        String   @id
+  storeId   String   @map("store_id")
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderId   String   @map("order_id")
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type      String
+  message   String   @default("")
+  actor     String   @default("merchant")
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([storeId])
+  @@index([orderId])
+  @@map("order_events")
+}
+
+model ShippingZone {
+  id                  String   @id
+  storeId             String   @map("store_id")
+  store               Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name                String
+  governorates        Json     @default("[]")
+  cities              Json     @default("[]")
+  fee                 Float    @default(0)
+  freeShippingThreshold Float? @map("free_shipping_threshold")
+  codFee              Float    @default(0) @map("cod_fee")
+  estimatedDaysMin    Int      @default(1) @map("estimated_days_min")
+  estimatedDaysMax    Int      @default(3) @map("estimated_days_max")
+  carrier             String   @default("")
+  trackingSupported   Boolean  @default(false) @map("tracking_supported")
+  isActive            Boolean  @default(true) @map("is_active")
+  isFallback          Boolean  @default(false) @map("is_fallback")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  rates ShippingRate[]
+
+  @@index([storeId])
+  @@map("shipping_zones")
+}
+
+model ShippingRate {
+  id             String  @id
+  storeId        String  @map("store_id")
+  store          Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  zoneId         String  @map("zone_id")
+  zone           ShippingZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  governorate    String  @default("")
+  city           String  @default("")
+  district       String  @default("")
+  fee            Float   @default(0)
+  codFee         Float   @default(0) @map("cod_fee")
+  estimatedDays  Int     @default(2) @map("estimated_days")
+  isActive       Boolean @default(true) @map("is_active")
+
+  @@index([storeId])
+  @@index([zoneId])
+  @@map("shipping_rates")
+}
+
+model Coupon {
+  id                String   @id
+  storeId           String   @map("store_id")
+  store             Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  code              String
+  type              String   @default("percentage")
+  value             Float    @default(0)
+  startsAt          DateTime? @map("starts_at")
+  endsAt            DateTime? @map("ends_at")
+  minOrderValue     Float    @default(0) @map("min_order_value")
+  maxUses           Int?     @map("max_uses")
+  perCustomerLimit  Int?     @map("per_customer_limit")
+  firstOrderOnly    Boolean  @default(false) @map("first_order_only")
+  freeShipping      Boolean  @default(false) @map("free_shipping")
+  productIds        Json     @default("[]") @map("product_ids")
+  categoryIds       Json     @default("[]") @map("category_ids")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  usages CouponUsage[]
+
+  @@unique([storeId, code])
+  @@index([storeId])
+  @@map("coupons")
+}
+
+model CouponUsage {
+  id         String   @id
+  storeId    String   @map("store_id")
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  couponId   String   @map("coupon_id")
+  coupon     Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  orderId    String   @unique @map("order_id")
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customerId String?  @map("customer_id")
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  discount   Float    @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([storeId])
+  @@index([couponId])
+  @@map("coupon_usages")
+}
+
+model UpsellRule {
+  id              String   @id
+  storeId         String   @map("store_id")
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name            String   @default("")
+  triggerProductId String? @map("trigger_product_id")
+  triggerProduct  Product? @relation("UpsellTrigger", fields: [triggerProductId], references: [id], onDelete: SetNull)
+  offerProductId  String   @map("offer_product_id")
+  offerProduct    Product  @relation("UpsellOffer", fields: [offerProductId], references: [id], onDelete: Cascade)
+  discountType    String   @default("percentage") @map("discount_type")
+  discountValue   Float    @default(0) @map("discount_value")
+  priority        Int      @default(0)
+  isActive        Boolean  @default(true) @map("is_active")
+  placement       String   @default("cart")
+  startsAt        DateTime? @map("starts_at")
+  endsAt          DateTime? @map("ends_at")
+  impressions     Int      @default(0)
+  additions       Int      @default(0)
+  conversions     Int      @default(0)
+  revenue         Float    @default(0)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([storeId])
+  @@map("upsell_rules")
+}
+
+model RelatedProduct {
+  id               String  @id
+  storeId          String  @map("store_id")
+  store            Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productId        String  @map("product_id")
+  product          Product @relation("RelatedSource", fields: [productId], references: [id], onDelete: Cascade)
+  relatedProductId String  @map("related_product_id")
+  relatedProduct   Product @relation("RelatedTarget", fields: [relatedProductId], references: [id], onDelete: Cascade)
+  sortOrder        Int     @default(0) @map("sort_order")
+  isActive         Boolean @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@unique([storeId, productId, relatedProductId])
+  @@index([storeId])
+  @@map("related_products")
+}
+
+model Page {
+  id             String    @id
+  storeId        String    @map("store_id")
+  store          Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  title          String
+  slug           String
+  type           String    @default("custom")
+  content        String    @default("")
+  seoTitle       String    @default("") @map("seo_title")
+  seoDescription String    @default("") @map("seo_description")
+  status         String    @default("draft")
+  publishedAt    DateTime? @map("published_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@unique([storeId, slug])
+  @@index([storeId])
+  @@map("pages")
+}
+
+model BlogPost {
+  id             String    @id
+  storeId        String    @map("store_id")
+  store          Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  title          String
+  slug           String
+  excerpt        String    @default("")
+  author         String    @default("")
+  featuredImage  String    @default("") @map("featured_image")
+  content        String    @default("")
+  categories     Json      @default("[]")
+  tags           Json      @default("[]")
+  seoTitle       String    @default("") @map("seo_title")
+  seoDescription String    @default("") @map("seo_description")
+  status         String    @default("draft")
+  publishedAt    DateTime? @map("published_at")
+  scheduledAt    DateTime? @map("scheduled_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@unique([storeId, slug])
+  @@index([storeId])
+  @@map("blog_posts")
+}
+
+model Affiliate {
+  id             String   @id
+  storeId        String   @map("store_id")
+  store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name           String
+  phone          String   @default("")
+  email          String   @default("")
+  referralCode   String   @map("referral_code")
+  commissionRate Float    @default(5) @map("commission_rate")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  attributions AffiliateAttribution[]
+
+  @@unique([storeId, referralCode])
+  @@index([storeId])
+  @@map("affiliates")
+}
+
+model AffiliateAttribution {
+  id               String   @id
+  storeId          String   @map("store_id")
+  store            Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  affiliateId      String   @map("affiliate_id")
+  affiliate        Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  orderId          String   @unique @map("order_id")
+  order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  commissionAmount Float    @default(0) @map("commission_amount")
+  status           String   @default("pending")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([storeId])
+  @@index([affiliateId])
+  @@map("affiliate_attributions")
+}
+
+model WalletAccount {
+  id        String   @id
+  storeId   String   @unique @map("store_id")
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  balance   Float    @default(0)
+  currency  String   @default("EGP")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  transactions WalletTransaction[]
+
+  @@map("wallet_accounts")
+}
+
+model WalletTransaction {
+  id            String   @id
+  storeId       String   @map("store_id")
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  accountId     String   @map("account_id")
+  account       WalletAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  type          String   @default("deposit")
+  amount        Float
+  balanceBefore Float    @default(0) @map("balance_before")
+  balanceAfter  Float    @default(0) @map("balance_after")
+  status        String   @default("pending")
+  reference     String   @default("")
+  invoiceRef    String   @default("") @map("invoice_ref")
+  note          String   @default("")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([storeId])
+  @@index([accountId])
+  @@map("wallet_transactions")
+}
+
+model AbandonedCart {
+  id             String   @id
+  storeId        String   @map("store_id")
+  store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  cartToken      String   @map("cart_token")
+  customerId     String?  @map("customer_id")
+  customer       Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName   String   @default("") @map("customer_name")
+  phone          String   @default("")
+  email          String   @default("")
+  items          Json     @default("[]")
+  cartValue      Float    @default(0) @map("cart_value")
+  lastActivityAt DateTime @default(now()) @map("last_activity_at")
+  recoveryStatus String   @default("open") @map("recovery_status")
+  remindedAt     DateTime? @map("reminded_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@unique([storeId, cartToken])
+  @@index([storeId])
+  @@map("abandoned_carts")
+}
+
+model Payment {
+  id          String   @id
+  storeId     String   @map("store_id")
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderId     String   @map("order_id")
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider    String   @default("cod")
+  providerRef String   @default("") @map("provider_ref")
+  amount      Float    @default(0)
+  currency    String   @default("EGP")
+  status      String   @default("pending")
+  method      String   @default("COD")
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([storeId])
+  @@index([orderId])
+  @@map("payments")
+}
+
+model Refund {
+  id          String    @id
+  storeId     String    @map("store_id")
+  store       Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderId     String    @map("order_id")
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount      Float     @default(0)
+  reason      String    @default("")
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  processedAt DateTime? @map("processed_at")
+
+  @@index([storeId])
+  @@index([orderId])
+  @@map("refunds")
+}
+
+model Review {
+  id            String   @id
+  storeId       String   @map("store_id")
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productId     String   @map("product_id")
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customerId    String?  @map("customer_id")
+  customer      Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName  String   @default("") @map("customer_name")
+  rating        Int      @default(5)
+  content       String   @default("")
+  status        String   @default("pending")
+  merchantReply String   @default("") @map("merchant_reply")
+  reported      Boolean  @default(false)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([storeId])
+  @@index([productId])
+  @@map("reviews")
+}
+
+model Notification {
+  id         String   @id
+  storeId    String   @map("store_id")
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  merchantId String?  @map("merchant_id")
+  merchant   Merchant? @relation(fields: [merchantId], references: [id], onDelete: SetNull)
+  type       String   @default("system")
+  title      String
+  body       String   @default("")
+  read       Boolean  @default(false)
+  link       String   @default("")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([storeId])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id
+  storeId    String?  @map("store_id")
+  store      Store?   @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  merchantId String?  @map("merchant_id")
+  merchant   Merchant? @relation(fields: [merchantId], references: [id], onDelete: SetNull)
+  action     String
+  entity     String   @default("")
+  entityId   String   @default("") @map("entity_id")
+  metadata   Json     @default("{}")
+  ip         String   @default("")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([storeId])
+  @@index([merchantId])
+  @@map("audit_logs")
+}
+
+model MediaAsset {
+  id         String   @id
+  storeId    String   @map("store_id")
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  fileName   String   @map("file_name")
+  mimeType   String   @map("mime_type")
+  size       Int
+  url        String
+  storageKey String   @map("storage_key")
+  provider   String   @default("local")
+  width      Int?
+  height     Int?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([storeId])
+  @@map("media_assets")
+}
+
+model LoyaltyRule {
+  id              String   @id
+  storeId         String   @map("store_id")
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name            String
+  type            String   @default("earn")
+  points          Int      @default(1)
+  perAmount       Float    @default(1) @map("per_amount")
+  minOrderValue   Float    @default(0) @map("min_order_value")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([storeId])
+  @@map("loyalty_rules")
+}
+
+model LoyaltyAccount {
+  id         String   @id
+  storeId    String   @map("store_id")
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customerId String   @unique @map("customer_id")
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  points     Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  transactions LoyaltyTransaction[]
+
+  @@index([storeId])
+  @@map("loyalty_accounts")
+}
+
+model LoyaltyTransaction {
+  id         String   @id
+  storeId    String   @map("store_id")
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  accountId  String   @map("account_id")
+  account    LoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  points     Int
+  type       String   @default("earn")
+  note       String   @default("")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([storeId])
+  @@index([accountId])
+  @@map("loyalty_transactions")
+}
+
+model Supplier {
+  id             String   @id
+  storeId        String   @map("store_id")
+  store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name           String
+  contactName    String   @default("") @map("contact_name")
+  email          String   @default("")
+  phone          String   @default("")
+  integrationKey String?  @map("integration_key")
+  status         String   @default("active")
+  notes          String   @default("")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  products DropshipProduct[]
+
+  @@index([storeId])
+  @@map("suppliers")
+}
+
+model DropshipProduct {
+  id                String   @id
+  storeId           String   @map("store_id")
+  store             Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productId         String   @map("product_id")
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  supplierId        String   @map("supplier_id")
+  supplier          Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  costPrice         Float    @default(0) @map("cost_price")
+  suggestedPrice    Float    @default(0) @map("suggested_price")
+  fulfillmentStatus String   @default("manual") @map("fulfillment_status")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@unique([storeId, productId])
+  @@index([storeId])
+  @@map("dropship_products")
 }
 
 model Lead {

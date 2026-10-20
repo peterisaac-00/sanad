@@ -11,13 +11,7 @@ export function uid(prefix: string): string {
 
 /** Wipe all data (FK-safe order). Call in beforeEach for isolation. */
 export async function truncateAll(): Promise<void> {
-  await prisma.session.deleteMany();
-  await prisma.orderItem.deleteMany();
-  await prisma.order.deleteMany();
-  await prisma.product.deleteMany();
-  await prisma.lead.deleteMany();
-  await prisma.merchant.deleteMany();
-  await prisma.store.deleteMany();
+  await prisma.$executeRawUnsafe('TRUNCATE "merchants", "stores" CASCADE');
 }
 
 /** Register a fresh merchant+store; returns an authenticated agent + records. */
@@ -34,4 +28,28 @@ export async function registerMerchant(tag = "") {
 
 export async function closeDb(): Promise<void> {
   await prisma.$disconnect();
+}
+
+/**
+ * Finish the onboarding wizard through the real API so the store becomes
+ * publicly visible (`onboardingCompleted` + `publishedAt`).
+ */
+export async function publishStore(
+  session: Pick<Awaited<ReturnType<typeof registerMerchant>>, "agent">,
+  overrides: Record<string, unknown> = {}
+) {
+  const patch = await session.agent
+    .patch("/api/onboarding")
+    .send({
+      step: 5,
+      businessType: "other",
+      templateKey: "general",
+      description: "متجر اختبار",
+      whatsapp: "201000000000",
+      codEnabled: true,
+      ...overrides,
+    });
+  if (patch.status !== 200) throw new Error(`onboarding patch ${patch.status}: ${JSON.stringify(patch.body)}`);
+  const res = await session.agent.post("/api/onboarding/complete").expect(200);
+  return res.body.store;
 }
