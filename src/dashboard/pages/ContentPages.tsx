@@ -1,18 +1,16 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   ExternalLink,
-  Eye,
   FileText,
   Megaphone,
   Newspaper,
-  Palette,
   Pencil,
   Plus,
   RefreshCw,
   Trash2,
 } from "lucide-react";
 import { api, mediaUrl } from "../../lib/api";
-import { date, dateTime, money, number, percent, safeError, TEMPLATES } from "../../lib/format";
+import { date, dateTime, money, number, percent, safeError } from "../../lib/format";
 import { useAsync } from "../../lib/useAsync";
 import {
   Alert,
@@ -34,7 +32,6 @@ import {
   cn,
 } from "../../components/ui";
 import { ImageUploader } from "../../components/ImageUploader";
-import { StorePreview } from "../../components/StorePreview";
 import { Link } from "../../lib/router";
 import { useDashboard } from "../DashboardShell";
 import { ActivePill, dateInputToIso, isoToDateInput, TableShell, Td, Th } from "../common";
@@ -757,196 +754,6 @@ export function AffiliatesPage() {
         onConfirm={remove}
         onClose={() => setDeleting(null)}
       />
-    </div>
-  );
-}
-
-/* -------------------------------- design -------------------------------- */
-
-const FONTS = ["Cairo", "IBM Plex Sans Arabic", "Tajawal", "Almarai"];
-
-interface DesignDraft {
-  primaryColor: string;
-  secondaryColor: string;
-  textColor: string;
-  themeMode: "light" | "dark" | "system";
-  arabicFont: string;
-  templateKey: string;
-  logoUrl: string;
-  coverUrl: string;
-}
-
-export function DesignPage() {
-  const { subdomain } = useDashboard();
-  const toast = useToast();
-  const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
-  const [saving, setSaving] = useState(false);
-  const [draft, setDraft] = useState<DesignDraft | null>(null);
-
-  const { data, loading, error, reload } = useAsync(() => api.settings.design(subdomain), [subdomain]);
-
-  React.useEffect(() => {
-    if (!data?.store || draft) return;
-    const branding = data.branding ?? {};
-    setDraft({
-      primaryColor: branding.primaryColor || "#047857",
-      secondaryColor: branding.secondaryColor || "#0F2A24",
-      textColor: branding.textColor || "#0F172A",
-      themeMode: branding.themeMode === "dark" ? "dark" : branding.themeMode === "system" ? "system" : "light",
-      arabicFont: branding.arabicFont || "IBM Plex Sans Arabic",
-      templateKey: branding.templateKey || data.store.templateKey || "general",
-      logoUrl: data.store.logoUrl || "",
-      coverUrl: data.store.coverUrl || "",
-    });
-  }, [data, draft]);
-
-  const save = async (saveAsDraft: boolean) => {
-    if (!draft) return;
-    setSaving(true);
-    try {
-      const result = await api.settings.updateDesign(subdomain, {
-        primaryColor: draft.primaryColor,
-        secondaryColor: draft.secondaryColor,
-        textColor: draft.textColor,
-        themeMode: draft.themeMode,
-        arabicFont: draft.arabicFont,
-        templateKey: draft.templateKey,
-        logoUrl: draft.logoUrl,
-        coverUrl: draft.coverUrl,
-        saveAsDraft,
-      });
-      toast.success(result.draft ? "تم حفظ التغييرات كمسودة." : "تم نشر التصميم على المتجر.");
-      reload();
-    } catch (err: any) {
-      toast.error(safeError(err));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading && !data) {
-    return <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40" />)}</div>;
-  }
-
-  const store = data?.store;
-  const branding = data?.branding;
-  const templates: string[] = data?.templates ?? Object.keys(TEMPLATES);
-
-  const previewStore = {
-    ...store,
-    ...(draft ? { logoUrl: draft.logoUrl, coverUrl: draft.coverUrl, templateKey: draft.templateKey, description: store?.description } : {}),
-  };
-  const previewBranding = draft ? { ...branding, ...draft } : branding;
-
-  return (
-    <div className="space-y-5">
-      <PageHeader
-        eyebrow="المحتوى والتصميم"
-        title="التصميم"
-        description="خصص هوية متجرك: القالب، الألوان، الخط العربي والشعار، مع معاينة فورية قبل النشر."
-        actions={
-          <>
-            <Button variant="outline" loading={saving} onClick={() => save(true)}>حفظ كمسودة</Button>
-            <Button loading={saving} onClick={() => save(false)}>نشر التصميم</Button>
-          </>
-        }
-      />
-
-      {error ? <Alert tone="error" title="تعذر تحميل التصميم">{safeError(error)}</Alert> : null}
-
-      {draft ? (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-          <div className="space-y-4">
-            <Card className="p-4">
-              <div className="mb-3 flex items-center gap-1.5 text-xs font-bold text-ink"><Palette className="h-3.5 w-3.5 text-brand" /> القالب</div>
-              <div className="grid gap-2 sm:grid-cols-3">
-                {templates.map((key) => {
-                  const template = TEMPLATES[key] ?? { label: key, description: "", emoji: "🛍️", accent: "#047857" };
-                  const active = draft.templateKey === key;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setDraft({ ...draft, templateKey: key, primaryColor: key === "general" ? draft.primaryColor : template.accent })}
-                      className={cn(
-                        "rounded-brand border p-3 text-start transition",
-                        active ? "border-brand-line bg-brand/10" : "border-line bg-surface hover:border-line"
-                      )}
-                    >
-                      <div className="text-lg">{template.emoji}</div>
-                      <div className="mt-1 text-xs font-bold text-ink">{template.label}</div>
-                      <div className="mt-0.5 line-clamp-2 text-[10px] leading-4 text-subtle">{template.description}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            </Card>
-
-            <Card className="p-4">
-              <div className="mb-3 text-xs font-bold text-ink">الألوان والوضع</div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="اللون الأساسي">
-                  <div className="flex items-center gap-2">
-                    <input type="color" value={draft.primaryColor} onChange={(e) => setDraft({ ...draft, primaryColor: e.target.value })} className="h-10 w-14 cursor-pointer rounded-brand-sm border border-line bg-canvas" />
-                    <Input value={draft.primaryColor} onChange={(e) => setDraft({ ...draft, primaryColor: e.target.value })} dir="ltr" className="font-mono" />
-                  </div>
-                </Field>
-                <Field label="اللون الثانوي">
-                  <div className="flex items-center gap-2">
-                    <input type="color" value={draft.secondaryColor} onChange={(e) => setDraft({ ...draft, secondaryColor: e.target.value })} className="h-10 w-14 cursor-pointer rounded-brand-sm border border-line bg-canvas" />
-                    <Input value={draft.secondaryColor} onChange={(e) => setDraft({ ...draft, secondaryColor: e.target.value })} dir="ltr" className="font-mono" />
-                  </div>
-                </Field>
-                <Field label="وضع المتجر">
-                  <Select value={draft.themeMode} onChange={(e) => setDraft({ ...draft, themeMode: e.target.value as DesignDraft["themeMode"] })}>
-                    <option value="dark">داكن</option>
-                    <option value="light">فاتح</option>
-                    <option value="system">حسب جهاز العميل</option>
-                  </Select>
-                </Field>
-                <Field label="الخط العربي">
-                  <Select value={draft.arabicFont} onChange={(e) => setDraft({ ...draft, arabicFont: e.target.value })}>
-                    {FONTS.map((font) => <option key={font} value={font}>{font}</option>)}
-                  </Select>
-                </Field>
-              </div>
-            </Card>
-
-            <Card className="p-4">
-              <div className="mb-3 text-xs font-bold text-ink">الشعار والغلاف</div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <ImageUploader value={draft.logoUrl} onChange={(url) => setDraft({ ...draft, logoUrl: url })} label="شعار المتجر" />
-                <ImageUploader value={draft.coverUrl} onChange={(url) => setDraft({ ...draft, coverUrl: url })} label="صورة الغلاف" aspect="aspect-square" />
-              </div>
-            </Card>
-          </div>
-
-          <div className="space-y-3">
-            <Card className="p-4">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-ink"><Eye className="h-3.5 w-3.5 text-brand" /> معاينة مباشرة</div>
-                <div className="flex items-center gap-2">
-                  <div className="flex rounded-brand-sm border border-line p-0.5">
-                    <button onClick={() => setDevice("desktop")} className={cn("rounded-brand-sm px-3 py-1.5 text-[11px] font-semibold transition", device === "desktop" ? "bg-brand text-on-brand" : "text-subtle hover:text-ink")}>سطح المكتب</button>
-                    <button onClick={() => setDevice("mobile")} className={cn("rounded-brand-sm px-3 py-1.5 text-[11px] font-semibold transition", device === "mobile" ? "bg-brand text-on-brand" : "text-subtle hover:text-ink")}>الجوال</button>
-                  </div>
-                  <Link href={`/store/${subdomain}`} target="_blank" className="rounded-brand-sm border border-line px-2.5 py-1.5 text-[11px] font-semibold text-ink-soft hover:border-brand-line">
-                    فتح المتجر
-                  </Link>
-                </div>
-              </div>
-              <StorePreview store={previewStore} branding={previewBranding} device={device} />
-              <div className="mt-3 text-[10px] leading-5 text-subtle">
-                المعاينة تعرض الهوية والقالب. المنتجات الفعلية تظهر من بيانات متجرك عند فتح الرابط.
-              </div>
-            </Card>
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-brand border border-line bg-card px-4 py-3 text-[11px] text-subtle">
-              <span>«حفظ كمسودة» يحفظ التغييرات دون نشرها للعملاء.</span>
-              <span className="font-mono text-subtle" dir="ltr">{data?.preview_url ?? `/store/${subdomain}`}</span>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

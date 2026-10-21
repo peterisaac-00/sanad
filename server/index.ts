@@ -395,8 +395,6 @@ app.patch(
           ...(b.countryCode !== undefined ? { countryCode: b.countryCode } : {}),
           ...(b.storeCurrency !== undefined ? { currency: b.storeCurrency } : {}),
           ...(b.description !== undefined ? { description: b.description } : {}),
-          ...(b.logoUrl !== undefined ? { logoUrl: b.logoUrl } : {}),
-          ...(b.coverUrl !== undefined ? { coverUrl: b.coverUrl } : {}),
           ...(b.supportEmail !== undefined ? { supportEmail: b.supportEmail } : {}),
           ...(b.seoTitle !== undefined ? { seoTitle: b.seoTitle } : {}),
           ...(b.seoDescription !== undefined ? { seoDescription: b.seoDescription } : {}),

@@ -12,7 +12,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import { api } from "../../lib/api";
+import { api, mediaUrl } from "../../lib/api";
 import { COUNTRIES_DATA } from "../../data/countries";
 import { CURRENCIES, dateTime, number, safeError } from "../../lib/format";
 import { useAsync } from "../../lib/useAsync";
@@ -35,7 +35,6 @@ import {
   useToast,
   cn,
 } from "../../components/ui";
-import { ImageUploader } from "../../components/ImageUploader";
 import { useDashboard } from "../DashboardShell";
 import { useSession } from "../../lib/session";
 import { TableShell, Td, Th } from "../common";
@@ -80,8 +79,6 @@ export function SettingsPage() {
       countryCode: s.countryCode ?? "EG",
       storeCurrency: s.currency ?? "EGP",
       description: s.description ?? "",
-      logoUrl: s.logoUrl ?? "",
-      coverUrl: s.coverUrl ?? "",
       supportEmail: s.supportEmail ?? "",
       seoTitle: s.seoTitle ?? "",
       seoDescription: s.seoDescription ?? "",
@@ -107,8 +104,6 @@ export function SettingsPage() {
         countryCode: form.countryCode,
         storeCurrency: form.storeCurrency,
         description: form.description,
-        logoUrl: form.logoUrl,
-        coverUrl: form.coverUrl,
         supportEmail: form.supportEmail.trim(),
         seoTitle: form.seoTitle.trim(),
         seoDescription: form.seoDescription.trim(),
@@ -326,8 +321,23 @@ export function SettingsPage() {
                 <Field label="وصف المتجر" className="sm:col-span-2">
                   <Textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
                 </Field>
-                <ImageUploader value={form.logoUrl} onChange={(url) => setForm({ ...form, logoUrl: url })} label="شعار المتجر" />
-                <ImageUploader value={form.coverUrl} onChange={(url) => setForm({ ...form, coverUrl: url })} label="صورة الغلاف" />
+                <div className="sm:col-span-2 rounded-brand border border-line bg-surface px-3 py-2.5">
+                  <div className="flex flex-wrap items-center gap-3">
+                    {data?.store?.logoUrl || data?.store?.coverUrl ? (
+                      <div className="flex items-center gap-2">
+                        {data.store.logoUrl ? (
+                          <img src={mediaUrl(data.store.logoUrl)} alt="شعار المتجر" className="h-10 w-10 rounded-brand-sm border border-line object-cover" />
+                        ) : null}
+                        {data.store.coverUrl ? (
+                          <img src={mediaUrl(data.store.coverUrl)} alt="غلاف المتجر" className="h-10 w-16 rounded-brand-sm border border-line object-cover" />
+                        ) : null}
+                      </div>
+                    ) : null}
+                    <p className="flex-1 text-[11px] leading-5 text-subtle">
+                      الهوية البصرية — الشعار والغلاف والألوان والقالب — تُضبط مرة واحدة أثناء إنشاء المتجر، ولا يمكن تعديلها بعد النشر.
+                    </p>
+                  </div>
+                </div>
               </div>
             </Card>
 

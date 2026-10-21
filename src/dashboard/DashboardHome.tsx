@@ -110,7 +110,6 @@ export function DashboardHome() {
   }
 
   const checklist = [
-    { done: Boolean(store.onboardingCompleted), title: "انشر متجرك", description: "أكمل خطوات التهيئة ليظهر رابط متجرك للعملاء.", href: "/onboarding" },
     { done: Number(kpis?.products_count ?? 0) > 0, title: "أضف أول منتج", description: "أدخل منتجاتك بأسعار ومخزون حقيقيين.", href: "/dashboard/products" },
     { done: Number(kpis?.customers_count ?? 0) > 0, title: "استقبل أول عميل", description: "شارك رابط متجرك وابدأ استقبال الطلبات.", href: `/store/${subdomain}` },
     { done: Number(kpis?.total_orders ?? 0) > 0, title: "جهّز طلبك الأول", description: "أكد الطلب وغيّر حالته إلى قيد التجهيز.", href: "/dashboard/orders" },
@@ -133,12 +132,6 @@ export function DashboardHome() {
           </>
         }
       />
-
-      {!store.onboardingCompleted ? (
-        <Alert tone="warning" title="متجرك ما زال مسودة">
-          يمكنك إدارة المنتجات والطلبات الآن، لكن رابط المتجر لن يكون جاهزاً للعملاء حتى تكمل التهيئة وتنشر المتجر. <Link href="/onboarding" className="font-bold underline">أكمل التهيئة</Link>
-        </Alert>
-      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="إيرادات اليوم" value={money(todayRevenue, store.currency)} hint={`${number(kpis?.orders_today ?? 0)} طلب اليوم`} icon={<CalendarDays className="h-4 w-4" />} accent="brand" />

@@ -79,6 +79,18 @@ onboardingRouter.patch(
       const taken = await prisma.store.findUnique({ where: { subdomain: body.subdomain }, select: { id: true } });
       if (taken && taken.id !== store.id) throw new ApiError(409, "SUBDOMAIN_TAKEN", "This store address is already taken.");
     }
+    // Visual identity is chosen once, during onboarding. Publishing freezes it:
+    // the dashboard has no design editor, and the API enforces the same rule.
+    const brandingTouched =
+      body.templateKey !== undefined ||
+      (body.branding !== undefined && Object.keys(body.branding).length > 0);
+    if (store.onboardingCompleted && brandingTouched) {
+      throw new ApiError(
+        409,
+        "BRANDING_LOCKED",
+        "تم ضبط هوية المتجر (الشعار والألوان والقالب) أثناء الإنشاء، ولا يمكن تعديلها بعد النشر."
+      );
+    }
     if (body.onlinePaymentEnabled === true && !paymentService.configured) {
       throw new ApiError(
         409,

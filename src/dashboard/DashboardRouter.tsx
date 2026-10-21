@@ -10,7 +10,7 @@ import { CustomersPage } from "./pages/CustomersPages";
 import { ShippingPage } from "./pages/ShippingPage";
 import { CouponsPage } from "./pages/CouponsPage";
 import { AbandonedCartsPage, UpsellsPage, RelatedProductsPage } from "./pages/GrowthPages";
-import { AffiliatesPage, BlogPage, DesignPage, PagesPage } from "./pages/ContentPages";
+import { AffiliatesPage, BlogPage, PagesPage } from "./pages/ContentPages";
 import { LoyaltyPage } from "./pages/LoyaltyPage";
 import { AssistantPage } from "./pages/AssistantPage";
 import { WalletPage, DropshippingPage } from "./pages/WalletPage";
@@ -47,7 +47,6 @@ export function DashboardRouter() {
   if (path === "/dashboard/affiliates") return <AffiliatesPage />;
   if (path === "/dashboard/loyalty") return <LoyaltyPage />;
   if (path === "/dashboard/assistant") return <AssistantPage />;
-  if (path === "/dashboard/design") return <DesignPage />;
   if (path === "/dashboard/pages") return <PagesPage />;
   if (path === "/dashboard/blog") return <BlogPage />;
   if (path === "/dashboard/wallet") return <WalletPage />;

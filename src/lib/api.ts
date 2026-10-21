@@ -486,12 +486,6 @@ export const api = {
     get: (subdomain: string) => req<any>(`/api/stores/${enc(subdomain)}/settings`),
     update: (subdomain: string, body: Record<string, unknown>) =>
       req<{ store: any }>(`/api/stores/${enc(subdomain)}/settings`, { method: "PATCH", body: JSON.stringify(body) }),
-    design: (subdomain: string) => req<any>(`/api/stores/${enc(subdomain)}/design`),
-    updateDesign: (subdomain: string, body: Record<string, unknown>) =>
-      req<{ branding: any; draft: boolean; preview_url: string }>(`/api/stores/${enc(subdomain)}/design`, {
-        method: "PATCH",
-        body: JSON.stringify(body),
-      }),
     notificationPrefs: (subdomain: string, body: Record<string, unknown>) =>
       req<{ notificationPrefs: any }>(`/api/stores/${enc(subdomain)}/notification-preferences`, {
         method: "PATCH",

@@ -54,7 +54,7 @@ const CHECKLIST: { title: string; items: ChecklistItem[] }[] = [
 ];
 
 const GUIDES = [
-  { title: "دليل البداية السريعة", description: "من تسجيل الحساب حتى أول طلب مؤكد، خطوة بخطوة.", minutes: 5, href: "/onboarding", icon: PlayCircle, tone: "from-brand/20" },
+  { title: "دليل البداية السريعة", description: "من أول منتج حتى أول طلب مؤكد، خطوة بخطوة.", minutes: 5, href: "/dashboard/products", icon: PlayCircle, tone: "from-brand/20" },
   { title: "إدارة الطلبات والشحن", description: "حالات الطلب، التحصيل، الشحن اليدوي ومناطق الشحن.", minutes: 7, href: "/dashboard/orders", icon: BookOpen, tone: "from-info/20" },
   { title: "التسويق والنمو", description: "الكوبونات، السلات المتروكة، الولاء والتسويق بالعمولة.", minutes: 8, href: "/dashboard/coupons", icon: Lightbulb, tone: "from-success/20" },
   { title: "المنتجات والكتالوج", description: "أفضل ممارسات الصور والأوصاف والأسعار والمتغيرات.", minutes: 6, href: "/dashboard/products", icon: GraduationCap, tone: "from-warning/20" },

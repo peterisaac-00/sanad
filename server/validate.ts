@@ -664,22 +664,6 @@ export const onboardingPatchSchema = z.strictObject({
   }).optional(),
 });
 
-export const designPatchSchema = z.strictObject({
-  primaryColor: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-  secondaryColor: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-  textColor: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-  themeMode: z.enum(["light", "dark", "system"]).optional(),
-  arabicFont: z.enum(["Cairo", "IBM Plex Sans Arabic", "Tajawal", "Almarai"]).optional(),
-  templateKey: z.enum(["fashion", "electronics", "restaurant", "beauty", "general", "services"]).optional(),
-  headerConfig: z.record(z.string(), z.unknown()).optional(),
-  footerConfig: z.record(z.string(), z.unknown()).optional(),
-  heroConfig: z.record(z.string(), z.unknown()).optional(),
-  homepageSections: z.array(z.record(z.string(), z.unknown())).max(30).optional(),
-  logoUrl: z.string().trim().max(2000).optional(),
-  coverUrl: z.string().trim().max(2000).optional(),
-  saveAsDraft: z.boolean().default(false),
-}).refine((v) => Object.keys(v).length > 1, { message: "at least one design field must be provided" });
-
 export const notificationPrefsSchema = z.strictObject({
   newOrders: z.boolean().optional(),
   lowStock: z.boolean().optional(),
@@ -718,8 +702,6 @@ export const storeUpdateSchema = z
     countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, { message: "countryCode must be a 2-letter code" }).optional(),
     storeCurrency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, { message: "storeCurrency must be a 3-letter code" }).optional(),
     description: z.string().trim().max(3000).optional(),
-    logoUrl: z.string().trim().max(2000).optional(),
-    coverUrl: z.string().trim().max(2000).optional(),
     supportEmail: z.string().trim().max(254).optional(),
     seoTitle: z.string().trim().max(200).optional(),
     seoDescription: z.string().trim().max(400).optional(),

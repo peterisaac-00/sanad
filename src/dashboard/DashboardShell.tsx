@@ -18,7 +18,6 @@ import {
   Menu,
   Newspaper,
   Package,
-  Palette,
   Percent,
   Settings,
   ShoppingBag,
@@ -89,9 +88,8 @@ const NAV_GROUPS: Array<{
     ],
   },
   {
-    label: "المحتوى والتصميم",
+    label: "المحتوى",
     items: [
-      { label: "التصميم", path: "/dashboard/design", icon: Palette },
       { label: "الصفحات", path: "/dashboard/pages", icon: FileText },
       { label: "المدونة", path: "/dashboard/blog", icon: Newspaper },
     ],
@@ -107,8 +105,8 @@ const NAV_GROUPS: Array<{
   },
 ];
 
-// Flattened for counting, mobile navigation and page titles. The product
-// requirement is 22 destinations; every one of them is a real route.
+// Flattened for counting, mobile navigation and page titles. Every entry is a
+// real route; branding is intentionally not one of them (set once at onboarding).
 const NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items.map((item) => ({ ...item, group: group.label })));
 
 const BOTTOM_NAV = [
@@ -160,10 +158,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       navigate(`/auth/login?next=${encodeURIComponent(path)}`, { replace: true });
       return;
     }
-    if (!session.store) navigate("/onboarding", { replace: true });
-    else if (!session.store.onboardingCompleted && path === "/dashboard") {
-      // Dashboard remains usable while the store is a draft; the banner below
-      // explains why the public link is not live yet. No forced redirect loop.
+    // The console only opens after the store is designed and published. Draft
+    // merchants belong in onboarding, so the "complete setup" prompt can never
+    // appear and there is no way to skip the remaining steps.
+    if (!session.store || !session.store.onboardingCompleted) {
+      navigate("/onboarding", { replace: true });
     }
   }, [loading, session, path]);
 
@@ -262,6 +261,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Never paint the console (not even for one frame) before onboarding is done;
+  // the redirect effect above sends the merchant back to finish setup.
+  if (!store.onboardingCompleted) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-canvas">
+        <Spinner label="جارٍ تحويلك لإكمال تهيئة المتجر…" />
+      </div>
+    );
+  }
+
   const storeInitial = (store.storeName ?? "س").trim().charAt(0);
 
   return (
@@ -287,12 +296,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               </div>
               <ExternalLink className="h-3.5 w-3.5 text-subtle group-hover:text-brand" />
             </Link>
-            {!store.onboardingCompleted ? (
-              <Link href="/onboarding" className="mt-2 flex items-center justify-between rounded-brand-sm border border-warning-line bg-warning-soft px-2.5 py-1.5 text-[10px] font-semibold text-warning">
-                <span>المتجر مسودة — أكمل التهيئة</span>
-                <span>←</span>
-              </Link>
-            ) : null}
           </div>
 
           <div className="min-h-0 flex-1">{nav}</div>
@@ -431,15 +434,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </header>
-
-          {!store.onboardingCompleted ? (
-            <div className="border-b border-warning-line bg-warning-soft px-4 py-2.5 sm:px-6">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                <span className="text-warning">متجرك لم يُنشر بعد. العملاء لن يروه في نتائج البحث حتى تنشر صفحة البيع.</span>
-                <Link href="/onboarding" className="font-bold text-warning underline-offset-4 hover:underline">أكمل التهيئة والنشر ←</Link>
-              </div>
-            </div>
-          ) : null}
 
           <main className="mx-auto w-full max-w-[1440px] px-4 pb-28 pt-5 sm:px-6 lg:pb-10">{children}</main>
 

@@ -7,7 +7,6 @@ import { ApiError, asyncHandler } from "../errors.js";
 import { requireAuth, requireStoreOwnership } from "../middleware.js";
 import {
   deleteAccountSchema,
-  designPatchSchema,
   domainBodySchema,
   idParamSchema,
   notificationPrefsSchema,
@@ -74,8 +73,6 @@ settingsRouter.patch(
         ...(b.countryCode !== undefined ? { countryCode: b.countryCode } : {}),
         ...(b.storeCurrency !== undefined ? { currency: b.storeCurrency } : {}),
         ...(b.description !== undefined ? { description: b.description } : {}),
-        ...(b.logoUrl !== undefined ? { logoUrl: b.logoUrl } : {}),
-        ...(b.coverUrl !== undefined ? { coverUrl: b.coverUrl } : {}),
         ...(b.supportEmail !== undefined ? { supportEmail: b.supportEmail } : {}),
         ...(b.seoTitle !== undefined ? { seoTitle: b.seoTitle } : {}),
         ...(b.seoDescription !== undefined ? { seoDescription: b.seoDescription } : {}),
@@ -95,100 +92,6 @@ settingsRouter.patch(
       ip: req.ip,
     });
     res.json({ store });
-  })
-);
-
-// ---- design ----
-settingsRouter.get(
-  "/api/stores/:subdomain/design",
-  asyncHandler(requireAuth),
-  validateParams(subdomainParamSchema),
-  asyncHandler(requireStoreOwnership),
-  asyncHandler(async (req, res) => {
-    const storeId = req.ownedStore!.id;
-    const [store, branding] = await Promise.all([
-      prisma.store.findUnique({ where: { id: storeId } }),
-      prisma.storeBranding.findUnique({ where: { storeId } }),
-    ]);
-    res.json({
-      store,
-      branding,
-      templates: ["fashion", "electronics", "restaurant", "beauty", "general", "services"],
-      preview_url: `/store/${req.ownedStore!.subdomain}`,
-    });
-  })
-);
-
-settingsRouter.patch(
-  "/api/stores/:subdomain/design",
-  asyncHandler(requireAuth),
-  validateParams(subdomainParamSchema),
-  asyncHandler(requireStoreOwnership),
-  validateBody(designPatchSchema),
-  asyncHandler(async (req, res) => {
-    const storeId = req.ownedStore!.id;
-    const b = req.body;
-    const current = await prisma.storeBranding.findUnique({ where: { storeId } });
-    if (!current) throw new ApiError(404, "BRANDING_NOT_FOUND", "Store branding not found.");
-    const draftMode = b.saveAsDraft === true;
-    const draftConfig = {
-      ...(current.draftConfig as Record<string, unknown>),
-      ...(b.primaryColor !== undefined ? { primaryColor: b.primaryColor } : {}),
-      ...(b.secondaryColor !== undefined ? { secondaryColor: b.secondaryColor } : {}),
-      ...(b.textColor !== undefined ? { textColor: b.textColor } : {}),
-      ...(b.themeMode !== undefined ? { themeMode: b.themeMode } : {}),
-      ...(b.arabicFont !== undefined ? { arabicFont: b.arabicFont } : {}),
-      ...(b.templateKey !== undefined ? { templateKey: b.templateKey } : {}),
-      ...(b.headerConfig !== undefined ? { headerConfig: b.headerConfig } : {}),
-      ...(b.footerConfig !== undefined ? { footerConfig: b.footerConfig } : {}),
-      ...(b.heroConfig !== undefined ? { heroConfig: b.heroConfig } : {}),
-      ...(b.homepageSections !== undefined ? { homepageSections: b.homepageSections } : {}),
-      ...(b.logoUrl !== undefined ? { logoUrl: b.logoUrl } : {}),
-      ...(b.coverUrl !== undefined ? { coverUrl: b.coverUrl } : {}),
-    };
-    const data: Prisma.StoreBrandingUpdateInput = {
-      draftConfig: draftConfig as Prisma.InputJsonValue,
-      ...(!draftMode
-        ? {
-            ...(b.primaryColor !== undefined ? { primaryColor: b.primaryColor } : {}),
-            ...(b.secondaryColor !== undefined ? { secondaryColor: b.secondaryColor } : {}),
-            ...(b.textColor !== undefined ? { textColor: b.textColor } : {}),
-            ...(b.themeMode !== undefined ? { themeMode: b.themeMode } : {}),
-            ...(b.arabicFont !== undefined ? { arabicFont: b.arabicFont } : {}),
-            ...(b.templateKey !== undefined ? { templateKey: b.templateKey } : {}),
-            ...(b.headerConfig !== undefined ? { headerConfig: b.headerConfig as Prisma.InputJsonValue } : {}),
-            ...(b.footerConfig !== undefined ? { footerConfig: b.footerConfig as Prisma.InputJsonValue } : {}),
-            ...(b.heroConfig !== undefined ? { heroConfig: b.heroConfig as Prisma.InputJsonValue } : {}),
-            ...(b.homepageSections !== undefined
-              ? { homepageSections: b.homepageSections as Prisma.InputJsonValue }
-              : {}),
-            publishedAt: new Date(),
-          }
-        : {}),
-    };
-    const branding = await prisma.$transaction(async (tx) => {
-      const updated = await tx.storeBranding.update({ where: { storeId }, data });
-      if (!draftMode) {
-        await tx.store.update({
-          where: { id: storeId },
-          data: {
-            ...(b.templateKey !== undefined ? { templateKey: b.templateKey } : {}),
-            ...(b.logoUrl !== undefined ? { logoUrl: b.logoUrl } : {}),
-            ...(b.coverUrl !== undefined ? { coverUrl: b.coverUrl } : {}),
-          },
-        });
-      }
-      return updated;
-    });
-    await writeAudit({
-      storeId,
-      merchantId: req.auth!.merchantId,
-      action: draftMode ? "design.draft_saved" : "design.published",
-      entity: "store_branding",
-      entityId: branding.id,
-      ip: req.ip,
-    });
-    res.json({ branding, draft: draftMode, preview_url: `/store/${req.ownedStore!.subdomain}` });
   })
 );
 

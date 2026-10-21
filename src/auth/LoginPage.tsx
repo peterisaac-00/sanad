@@ -17,8 +17,10 @@ export function LoginPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // A draft store has no console yet, regardless of the ?next= hint: finish
+  // onboarding (design + publish) before any dashboard destination is allowed.
   const destination = (store: any) =>
-    safeNextPath(nextParam, store?.onboardingCompleted ? "/dashboard" : "/onboarding");
+    store?.onboardingCompleted ? safeNextPath(nextParam, "/dashboard") : "/onboarding";
 
   useEffect(() => {
     if (!loading && session) navigate(destination(session.store), { replace: true });

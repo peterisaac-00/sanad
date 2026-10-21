@@ -156,10 +156,12 @@ export function OnboardingPage() {
 
   useEffect(() => {
     if (!loading && !session) navigate("/auth/login?next=/onboarding", { replace: true });
-    if (!loading && session && session.store?.onboardingCompleted && !published) {
-      // Already published stores can still tweak their design, but onboarding is done.
+    if (!loading && session && session.store?.onboardingCompleted && !published && !publishing) {
+      // Identity is set once during onboarding. Published stores manage
+      // everything else from the dashboard, which has no design editor.
+      navigate("/dashboard", { replace: true });
     }
-  }, [loading, session, published]);
+  }, [loading, session, published, publishing]);
 
   useEffect(() => {
     if (!session) return;
@@ -246,15 +248,13 @@ export function OnboardingPage() {
     dirtyRef.current = true;
   };
 
-  const saveAndExit = async () => {
+  const saveDraft = async () => {
     const saved = await save(false);
     if (!saved) return;
-    // A draft save may have changed the store address; the dashboard resolves
-    // every API path from the session's store, so refresh before leaving or it
-    // would keep calling the old subdomain (and answer STORE_NOT_FOUND).
+    // A draft save may have changed the store address; keep the in-memory
+    // session in sync so later steps target the right store.
     await refresh();
-    toast.success("تم حفظ مسودة متجرك. يمكنك المتابعة في أي وقت.");
-    navigate("/dashboard");
+    toast.success("تم حفظ مسودة متجرك. يمكنك إغلاق الصفحة والمتابعة لاحقاً.");
   };
 
   const publish = async () => {
@@ -264,10 +264,10 @@ export function OnboardingPage() {
     setPublishing(true);
     try {
       const result = await api.onboarding.complete();
-      setPublished(result);
-      // Publishing is what freezes the subdomain; pull the canonical store into
-      // the session so client-side navigation to /dashboard uses the new one.
+      // Pull the canonical store into the session before showing the success
+      // modal, so its dashboard links never target a still-draft snapshot.
       await refresh();
+      setPublished(result);
       toast.success("تم نشر متجرك بنجاح.");
     } catch (err: any) {
       setFormError(safeError(err));
@@ -293,7 +293,6 @@ export function OnboardingPage() {
           <Alert tone="error" title="تعذر تحميل بيانات المتجر">{loadError}</Alert>
           <div className="mt-4 flex gap-2">
             <Button onClick={() => window.location.reload()}>إعادة المحاولة</Button>
-            <Button variant="ghost" onClick={() => navigate("/dashboard")}>لوحة التحكم</Button>
           </div>
         </div>
       </div>
@@ -326,16 +325,16 @@ export function OnboardingPage() {
     <div dir="rtl" className="min-h-screen bg-canvas font-arabic text-ink">
       <div className="relative z-10 mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:py-8">
         <header className="flex flex-wrap items-center justify-between gap-3">
-          <Link href="/dashboard"><BrandLogo /></Link>
+          <BrandLogo />
           <div className="flex items-center gap-2">
             <span className="hidden items-center gap-1.5 text-[11px] text-subtle sm:flex">
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 text-success" />}
               {saving ? "جارٍ حفظ المسودة…" : savedAt ? "تم حفظ المسودة تلقائياً" : "الحفظ التلقائي مفعّل"}
             </span>
             <ThemeToggle compact />
-            <Button variant="outline" size="sm" onClick={saveAndExit} loading={saving}>
+            <Button variant="outline" size="sm" onClick={saveDraft} loading={saving}>
               <Save className="h-3.5 w-3.5" />
-              حفظ ومتابعة لاحقاً
+              حفظ المسودة
             </Button>
           </div>
         </header>
@@ -393,7 +392,7 @@ export function OnboardingPage() {
             <div className="mb-4 flex items-center gap-2 text-[11px] text-subtle">
               <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> 5 خطوات قصيرة</span>
               <span>·</span>
-              <span>يمكنك الرجوع والتعديل في أي وقت</span>
+              <span>يمكنك الرجوع والتعديل قبل النشر</span>
             </div>
 
             {formError ? <Alert tone="error" className="mb-4">{formError}</Alert> : null}
@@ -536,7 +535,7 @@ export function OnboardingPage() {
 
               {step === 3 ? (
                 <div className="space-y-5">
-                  <StepTitle icon={Sparkles} title="اختر قالب متجرك" subtitle="كل القوالب متجاوبة بالكامل وتدعم العربية RTL. يمكنك تغييرها لاحقاً من صفحة التصميم." />
+                  <StepTitle icon={Sparkles} title="اختر قالب متجرك" subtitle="كل القوالب متجاوبة بالكامل وتدعم العربية RTL. الهوية والقالب يُثبَّتان بعد النشر." />
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {Object.entries(TEMPLATES).map(([key, template]) => (
                       <button
@@ -641,7 +640,7 @@ export function OnboardingPage() {
                   </div>
 
                   <div className="rounded-brand border border-success-line bg-success-soft p-4 text-[11px] leading-6 text-success">
-                    عند النشر سيتم تفعيل رابط المتجر، وستستطيع إضافة المنتجات واستقبال الطلبات. يمكنك إيقاف التعديل على الرابط بعد النشر.
+                    عند النشر سيتم تفعيل رابط المتجر، وستستطيع إضافة المنتجات واستقبال الطلبات. تُثبَّت هوية المتجر (الشعار والألوان والقالب) والرابط بعد النشر.
                   </div>
                 </div>
               ) : null}
@@ -668,9 +667,8 @@ export function OnboardingPage() {
               </div>
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-[10px] text-subtle">
-              <span>بياناتك محفوظة داخل حسابك ولا تظهر لأي متجر آخر.</span>
-              <Link href="/dashboard" className="hover:text-ink-soft">تخطي إلى لوحة التحكم مؤقتاً</Link>
+            <div className="mt-3 px-1 text-[10px] text-subtle">
+              بياناتك محفوظة داخل حسابك ولا تظهر لأي متجر آخر. تُفتح لوحة التحكم بعد إكمال التهيئة ونشر المتجر.
             </div>
           </main>
         </div>

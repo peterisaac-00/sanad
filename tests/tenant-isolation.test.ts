@@ -36,7 +36,6 @@ describe("new dashboard endpoints: tenant isolation", () => {
       "summary",
       "reports",
       "settings",
-      "design",
       "audit-logs",
       "domains",
       "team",
@@ -133,10 +132,6 @@ describe("new dashboard endpoints: tenant isolation", () => {
     await b.agent
       .patch(`/api/stores/${a.subdomain}/settings`)
       .send({ storeName: "hijacked" })
-      .expect(403);
-    await b.agent
-      .patch(`/api/stores/${a.subdomain}/design`)
-      .send({ primaryColor: "#000000", themeMode: "dark" })
       .expect(403);
     await b.agent
       .patch(`/api/stores/${a.subdomain}/notification-preferences`)
