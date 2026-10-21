@@ -139,7 +139,7 @@ function payloadOf(form: FormState, step: number) {
 }
 
 export function OnboardingPage() {
-  const { session, loading } = useSession();
+  const { session, loading, refresh } = useSession();
   const toast = useToast();
   const [data, setData] = useState<any>(null);
   const [form, setForm] = useState<FormState | null>(null);
@@ -249,6 +249,10 @@ export function OnboardingPage() {
   const saveAndExit = async () => {
     const saved = await save(false);
     if (!saved) return;
+    // A draft save may have changed the store address; the dashboard resolves
+    // every API path from the session's store, so refresh before leaving or it
+    // would keep calling the old subdomain (and answer STORE_NOT_FOUND).
+    await refresh();
     toast.success("تم حفظ مسودة متجرك. يمكنك المتابعة في أي وقت.");
     navigate("/dashboard");
   };
@@ -261,6 +265,9 @@ export function OnboardingPage() {
     try {
       const result = await api.onboarding.complete();
       setPublished(result);
+      // Publishing is what freezes the subdomain; pull the canonical store into
+      // the session so client-side navigation to /dashboard uses the new one.
+      await refresh();
       toast.success("تم نشر متجرك بنجاح.");
     } catch (err: any) {
       setFormError(safeError(err));

@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   ArrowLeft,
   ArrowRight,
-  TrendingUp,
   Truck,
   ShieldCheck,
   Globe,
@@ -30,14 +29,12 @@ interface HomeViewProps {
   currentLang: Language;
   onNavigate: (viewId: string) => void;
   onOpenStoreModal: () => void;
-  onOpenDemoModal: () => void;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
   currentLang,
   onNavigate,
-  onOpenStoreModal,
-  onOpenDemoModal
+  onOpenStoreModal
 }) => {
   const t = UI_TRANSLATIONS[currentLang];
 
@@ -100,14 +97,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <Store className="w-4 h-4" />
                 <span>{t.cta_start_store}</span>
                 {currentLang === 'ar' ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
-              </button>
-
-              <button
-                onClick={onOpenDemoModal}
-                className="w-full sm:w-auto px-6 py-3.5 bg-secondary text-on-secondary hover:brightness-110 active:brightness-95 font-semibold text-sm rounded-brand transition-all cursor-pointer flex items-center justify-center gap-2"
-              >
-                <TrendingUp className="w-4 h-4 text-brand-on-dark" />
-                <span>{t.cta_interactive_demo}</span>
               </button>
             </div>
 
@@ -410,13 +399,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <Store className="w-4 h-4" />
             <span>{t.cta_start_store}</span>
             {currentLang === 'ar' ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
-          </button>
-
-          <button
-            onClick={onOpenDemoModal}
-            className="w-full sm:w-auto px-6 py-3.5 border border-line hover:border-subtle/40 text-ink font-semibold text-sm rounded-brand transition-colors cursor-pointer"
-          >
-            {t.cta_interactive_demo}
           </button>
         </div>
       </section>

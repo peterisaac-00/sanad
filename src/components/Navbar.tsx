@@ -26,7 +26,6 @@ interface NavbarProps {
   onOpenStoreModal: () => void;
   onOpenLoginModal: () => void;
   onOpenDashboard: () => void;
-  onOpenDemoModal: () => void;
   session: { merchant: any; store: any } | null;
   onLogout: () => void;
 }
@@ -39,7 +38,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenStoreModal,
   onOpenLoginModal,
   onOpenDashboard,
-  onOpenDemoModal,
   session,
   onLogout
 }) => {
@@ -75,13 +73,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           <div className="mx-auto flex items-center gap-3 md:mx-0">
-            <button
-              onClick={onOpenDemoModal}
-              className="cursor-pointer text-xs font-medium text-brand-on-dark underline underline-offset-2 transition-colors hover:text-white"
-            >
-              {t.cta_interactive_demo}
-            </button>
-            <span className="text-white/30">|</span>
             {/* Language Switcher */}
             <button
               onClick={() => onLanguageChange(currentLang === 'ar' ? 'en' : 'ar')}
@@ -341,14 +332,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           <div className="pt-2 flex flex-col gap-2">
-            <button
-              onClick={onOpenDemoModal}
-              className="w-full py-2.5 px-3 bg-secondary text-on-secondary rounded-brand-sm text-xs font-semibold text-center flex items-center justify-center gap-1.5"
-            >
-              <TrendingUp className="w-4 h-4 text-brand-on-dark" />
-              <span>{t.cta_interactive_demo}</span>
-            </button>
-
             {session ? (
               <>
                 <button

@@ -166,7 +166,6 @@ export function MarketingApp() {
             currentLang={currentLang}
             onNavigate={handleNavigate}
             onOpenStoreModal={goToStart}
-            onOpenDemoModal={() => setIsDemoModalOpen(true)}
           />
         );
     }
@@ -182,7 +181,6 @@ export function MarketingApp() {
         onOpenStoreModal={goToStart}
         onOpenLoginModal={goToLogin}
         onOpenDashboard={() => navigate('/dashboard')}
-        onOpenDemoModal={() => setIsDemoModalOpen(true)}
         session={session}
         onLogout={handleLogout}
       />

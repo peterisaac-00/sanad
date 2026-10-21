@@ -53,10 +53,10 @@ const TEMPLATES: TemplateStore[] = [
     hero_subtitle_en: 'Fast nationwide shipping with Cash on Delivery and inspection options.',
     primary_color: 'bg-secondary',
     sample_products: [
-      { title_ar: 'قميص كتان طبيعي فاخر', title_en: 'Natural Linen Shirt', price_egp: 750, price_sar: 57, badge_ar: 'الأكثر طلباً', image_accent: 'bg-stone-200' },
-      { title_ar: 'عباية حرير مطرزة يدوياً', title_en: 'Embroidered Silk Abaya', price_egp: 1850, price_sar: 140, badge_ar: 'كمية محدودة', image_accent: 'bg-stone-300' },
-      { title_ar: 'حذاء كاجوال جلد طبيعي', title_en: 'Casual Leather Loafers', price_egp: 980, price_sar: 74, image_accent: 'bg-stone-200' },
-      { title_ar: 'فستان صيفي مطبوع', title_en: 'Summer Printed Dress', price_egp: 890, price_sar: 68, image_accent: 'bg-stone-100' }
+      { title_ar: 'قميص كتان طبيعي فاخر', title_en: 'Natural Linen Shirt', price_egp: 750, price_sar: 57, badge_ar: 'الأكثر طلباً', image_accent: 'bg-line' },
+      { title_ar: 'عباية حرير مطرزة يدوياً', title_en: 'Embroidered Silk Abaya', price_egp: 1850, price_sar: 140, badge_ar: 'كمية محدودة', image_accent: 'bg-surface' },
+      { title_ar: 'حذاء كاجوال جلد طبيعي', title_en: 'Casual Leather Loafers', price_egp: 980, price_sar: 74, image_accent: 'bg-line' },
+      { title_ar: 'فستان صيفي مطبوع', title_en: 'Summer Printed Dress', price_egp: 890, price_sar: 68, image_accent: 'bg-surface' }
     ]
   },
   {

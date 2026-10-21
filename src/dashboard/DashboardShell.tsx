@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import {
   BadgePercent,
   BarChart3,
@@ -130,7 +130,7 @@ function pageTitle(path: string) {
 }
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
-  const { session, loading, logout } = useSession();
+  const { session, loading, logout, refresh } = useSession();
   const { theme } = useTheme();
   const path = usePath();
   const toast = useToast();
@@ -139,10 +139,20 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unread, setUnread] = useState(0);
+  const revalidated = useRef(false);
 
   const store = session?.store;
   const subdomain = store?.subdomain ?? "";
   const section = pageTitle(path);
+
+  // The session snapshot lives in memory and survives client-side navigation,
+  // so a store renamed elsewhere (publishing during onboarding) would keep every
+  // console request pointed at the old subdomain. Re-read it once per mount.
+  useEffect(() => {
+    if (loading || !store || revalidated.current) return;
+    revalidated.current = true;
+    void refresh();
+  }, [loading, store, refresh]);
 
   useEffect(() => {
     if (loading) return;
