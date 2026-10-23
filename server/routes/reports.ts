@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { asyncHandler } from "../errors.js";
 import { requireAuth, requireStoreOwnership } from "../middleware.js";
-import { subdomainParamSchema, validateParams, validateQuery } from "../validate.js";
+import { EXCLUDED_REVENUE_STATUSES, subdomainParamSchema, validateParams, validateQuery } from "../validate.js";
 
 export const reportsRouter = Router();
 
@@ -45,20 +45,40 @@ reportsRouter.get(
       prisma.product.count({ where: { storeId } }),
       prisma.customer.count({ where: { storeId } }),
       prisma.abandonedCart.findMany({ where: { storeId, createdAt: range } }),
-      prisma.couponUsage.findMany({ where: { storeId, createdAt: range }, include: { coupon: true } }),
-      prisma.affiliateAttribution.findMany({ where: { storeId, createdAt: range } }),
-      prisma.walletTransaction.aggregate({ where: { storeId, status: "completed", type: { in: ["fee", "withdrawal"] } }, _sum: { amount: true } }),
+      prisma.couponUsage.findMany({
+        where: {
+          storeId,
+          createdAt: range,
+          order: { status: { notIn: [...EXCLUDED_REVENUE_STATUSES] } },
+        },
+        include: { coupon: true },
+      }),
+      prisma.affiliateAttribution.findMany({
+        where: {
+          storeId,
+          createdAt: range,
+          order: { status: { notIn: [...EXCLUDED_REVENUE_STATUSES] } },
+        },
+      }),
+      // Expenses must be scoped to the same selected period as revenue,
+      // otherwise estimatedNet changes when the report range changes.
+      prisma.walletTransaction.aggregate({
+        where: { storeId, status: "completed", type: { in: ["fee", "withdrawal"] }, createdAt: range },
+        _sum: { amount: true },
+      }),
     ]);
 
-    const valid = orders.filter((o) => o.status !== "cancelled" && o.status !== "returned");
+    const valid = orders.filter((o) => !EXCLUDED_REVENUE_STATUSES.includes(o.status as (typeof EXCLUDED_REVENUE_STATUSES)[number]));
     const revenue = valid.reduce((s, o) => s + o.amountEgp, 0);
     const buckets = new Map<string, { revenue: number; orders: number; discounts: number }>();
     for (const order of orders) {
       const key = bucketKey(order.createdAt, groupBy);
       const entry = buckets.get(key) ?? { revenue: 0, orders: 0, discounts: 0 };
       entry.orders += 1;
-      if (order.status !== "cancelled" && order.status !== "returned") entry.revenue += order.amountEgp;
-      entry.discounts += order.discount;
+      if (!EXCLUDED_REVENUE_STATUSES.includes(order.status as (typeof EXCLUDED_REVENUE_STATUSES)[number])) {
+        entry.revenue += order.amountEgp;
+        entry.discounts += order.discount;
+      }
       buckets.set(key, entry);
     }
     const productMap = new Map<string, { name: string; qty: number; revenue: number }>();
@@ -95,8 +115,8 @@ reportsRouter.get(
         validOrders: valid.length,
         revenue,
         averageOrderValue: valid.length ? Math.round(revenue / valid.length) : 0,
-        discounts: orders.reduce((s, o) => s + o.discount, 0),
-        shippingCollected: orders.reduce((s, o) => s + o.shippingFee, 0),
+        discounts: valid.reduce((s, o) => s + o.discount, 0),
+        shippingCollected: valid.reduce((s, o) => s + o.shippingFee, 0),
         cancelled: orders.filter((o) => o.status === "cancelled").length,
         returned: orders.filter((o) => o.status === "returned").length,
         products,

@@ -216,6 +216,13 @@ export const ORDER_STATUSES = [
 
 export const PAYMENT_STATUSES = ["unpaid", "paid", "partially_refunded", "refunded", "failed"] as const;
 
+/**
+ * Orders in these terminal loss states never count as revenue, discounts or
+ * shipping collected. Keep this list in one place so dashboard, reports and
+ * exports cannot drift apart.
+ */
+export const EXCLUDED_REVENUE_STATUSES = ["cancelled", "returned"] as const;
+
 export const orderListQuerySchema = z.strictObject({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
@@ -275,6 +282,19 @@ export const orderNoteSchema = z.strictObject({
 });
 
 export const orderPaymentStatusSchema = z.strictObject({ paymentStatus: z.enum(PAYMENT_STATUSES) });
+
+/**
+ * Payment status is a separate ledger from fulfilment status. A paid order
+ * cannot silently become unpaid again; refund states are driven by the refund
+ * workflow. Setting the current status is a no-op (idempotent retry).
+ */
+export const PAYMENT_TRANSITIONS: Record<string, string[]> = {
+  unpaid: ["paid", "failed"],
+  failed: ["unpaid", "paid"],
+  paid: ["refunded"],
+  partially_refunded: ["refunded"],
+  refunded: [],
+};
 
 export const refundSchema = z.strictObject({
   amount: z.number().min(0.01).max(1e12),

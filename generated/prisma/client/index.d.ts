@@ -5338,6 +5338,7 @@ export namespace Prisma {
     events: number
     payments: number
     refunds: number
+    loyaltyTransactions: number
   }
 
   export type OrderCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -5345,6 +5346,7 @@ export namespace Prisma {
     events?: boolean | OrderCountOutputTypeCountEventsArgs
     payments?: boolean | OrderCountOutputTypeCountPaymentsArgs
     refunds?: boolean | OrderCountOutputTypeCountRefundsArgs
+    loyaltyTransactions?: boolean | OrderCountOutputTypeCountLoyaltyTransactionsArgs
   }
 
   // Custom InputTypes
@@ -5384,6 +5386,13 @@ export namespace Prisma {
    */
   export type OrderCountOutputTypeCountRefundsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: RefundWhereInput
+  }
+
+  /**
+   * OrderCountOutputType without action
+   */
+  export type OrderCountOutputTypeCountLoyaltyTransactionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LoyaltyTransactionWhereInput
   }
 
 
@@ -23654,6 +23663,7 @@ export namespace Prisma {
     paymentStatus: string | null
     status: string | null
     stockRestored: boolean | null
+    idempotencyKey: string | null
     courier: string | null
     notes: string | null
     internalNotes: string | null
@@ -23684,6 +23694,7 @@ export namespace Prisma {
     paymentStatus: string | null
     status: string | null
     stockRestored: boolean | null
+    idempotencyKey: string | null
     courier: string | null
     notes: string | null
     internalNotes: string | null
@@ -23714,6 +23725,7 @@ export namespace Prisma {
     paymentStatus: number
     status: number
     stockRestored: number
+    idempotencyKey: number
     courier: number
     notes: number
     internalNotes: number
@@ -23762,6 +23774,7 @@ export namespace Prisma {
     paymentStatus?: true
     status?: true
     stockRestored?: true
+    idempotencyKey?: true
     courier?: true
     notes?: true
     internalNotes?: true
@@ -23792,6 +23805,7 @@ export namespace Prisma {
     paymentStatus?: true
     status?: true
     stockRestored?: true
+    idempotencyKey?: true
     courier?: true
     notes?: true
     internalNotes?: true
@@ -23822,6 +23836,7 @@ export namespace Prisma {
     paymentStatus?: true
     status?: true
     stockRestored?: true
+    idempotencyKey?: true
     courier?: true
     notes?: true
     internalNotes?: true
@@ -23939,6 +23954,7 @@ export namespace Prisma {
     paymentStatus: string
     status: string
     stockRestored: boolean
+    idempotencyKey: string | null
     courier: string
     notes: string
     internalNotes: string
@@ -23988,6 +24004,7 @@ export namespace Prisma {
     paymentStatus?: boolean
     status?: boolean
     stockRestored?: boolean
+    idempotencyKey?: boolean
     courier?: boolean
     notes?: boolean
     internalNotes?: boolean
@@ -24001,6 +24018,7 @@ export namespace Prisma {
     refunds?: boolean | Order$refundsArgs<ExtArgs>
     couponUsage?: boolean | Order$couponUsageArgs<ExtArgs>
     affiliateAttribution?: boolean | Order$affiliateAttributionArgs<ExtArgs>
+    loyaltyTransactions?: boolean | Order$loyaltyTransactionsArgs<ExtArgs>
     _count?: boolean | OrderCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["order"]>
 
@@ -24027,6 +24045,7 @@ export namespace Prisma {
     paymentStatus?: boolean
     status?: boolean
     stockRestored?: boolean
+    idempotencyKey?: boolean
     courier?: boolean
     notes?: boolean
     internalNotes?: boolean
@@ -24059,6 +24078,7 @@ export namespace Prisma {
     paymentStatus?: boolean
     status?: boolean
     stockRestored?: boolean
+    idempotencyKey?: boolean
     courier?: boolean
     notes?: boolean
     internalNotes?: boolean
@@ -24091,6 +24111,7 @@ export namespace Prisma {
     paymentStatus?: boolean
     status?: boolean
     stockRestored?: boolean
+    idempotencyKey?: boolean
     courier?: boolean
     notes?: boolean
     internalNotes?: boolean
@@ -24098,7 +24119,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type OrderOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "storeId" | "orderNumber" | "customerId" | "customerName" | "customerPhone" | "customerEmail" | "address" | "city" | "governorate" | "itemsSummary" | "amountText" | "amountEgp" | "subtotal" | "discount" | "shippingFee" | "couponCode" | "shippingZoneId" | "paymentMethod" | "paymentStatus" | "status" | "stockRestored" | "courier" | "notes" | "internalNotes" | "createdAt" | "updatedAt", ExtArgs["result"]["order"]>
+  export type OrderOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "storeId" | "orderNumber" | "customerId" | "customerName" | "customerPhone" | "customerEmail" | "address" | "city" | "governorate" | "itemsSummary" | "amountText" | "amountEgp" | "subtotal" | "discount" | "shippingFee" | "couponCode" | "shippingZoneId" | "paymentMethod" | "paymentStatus" | "status" | "stockRestored" | "idempotencyKey" | "courier" | "notes" | "internalNotes" | "createdAt" | "updatedAt", ExtArgs["result"]["order"]>
   export type OrderInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     store?: boolean | StoreDefaultArgs<ExtArgs>
     customer?: boolean | Order$customerArgs<ExtArgs>
@@ -24108,6 +24129,7 @@ export namespace Prisma {
     refunds?: boolean | Order$refundsArgs<ExtArgs>
     couponUsage?: boolean | Order$couponUsageArgs<ExtArgs>
     affiliateAttribution?: boolean | Order$affiliateAttributionArgs<ExtArgs>
+    loyaltyTransactions?: boolean | Order$loyaltyTransactionsArgs<ExtArgs>
     _count?: boolean | OrderCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type OrderIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -24130,6 +24152,7 @@ export namespace Prisma {
       refunds: Prisma.$RefundPayload<ExtArgs>[]
       couponUsage: Prisma.$CouponUsagePayload<ExtArgs> | null
       affiliateAttribution: Prisma.$AffiliateAttributionPayload<ExtArgs> | null
+      loyaltyTransactions: Prisma.$LoyaltyTransactionPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -24154,6 +24177,7 @@ export namespace Prisma {
       paymentStatus: string
       status: string
       stockRestored: boolean
+      idempotencyKey: string | null
       courier: string
       notes: string
       internalNotes: string
@@ -24561,6 +24585,7 @@ export namespace Prisma {
     refunds<T extends Order$refundsArgs<ExtArgs> = {}>(args?: Subset<T, Order$refundsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RefundPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     couponUsage<T extends Order$couponUsageArgs<ExtArgs> = {}>(args?: Subset<T, Order$couponUsageArgs<ExtArgs>>): Prisma__CouponUsageClient<$Result.GetResult<Prisma.$CouponUsagePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     affiliateAttribution<T extends Order$affiliateAttributionArgs<ExtArgs> = {}>(args?: Subset<T, Order$affiliateAttributionArgs<ExtArgs>>): Prisma__AffiliateAttributionClient<$Result.GetResult<Prisma.$AffiliateAttributionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    loyaltyTransactions<T extends Order$loyaltyTransactionsArgs<ExtArgs> = {}>(args?: Subset<T, Order$loyaltyTransactionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LoyaltyTransactionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -24612,6 +24637,7 @@ export namespace Prisma {
     readonly paymentStatus: FieldRef<"Order", 'String'>
     readonly status: FieldRef<"Order", 'String'>
     readonly stockRestored: FieldRef<"Order", 'Boolean'>
+    readonly idempotencyKey: FieldRef<"Order", 'String'>
     readonly courier: FieldRef<"Order", 'String'>
     readonly notes: FieldRef<"Order", 'String'>
     readonly internalNotes: FieldRef<"Order", 'String'>
@@ -25168,6 +25194,30 @@ export namespace Prisma {
      */
     include?: AffiliateAttributionInclude<ExtArgs> | null
     where?: AffiliateAttributionWhereInput
+  }
+
+  /**
+   * Order.loyaltyTransactions
+   */
+  export type Order$loyaltyTransactionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LoyaltyTransaction
+     */
+    select?: LoyaltyTransactionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LoyaltyTransaction
+     */
+    omit?: LoyaltyTransactionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LoyaltyTransactionInclude<ExtArgs> | null
+    where?: LoyaltyTransactionWhereInput
+    orderBy?: LoyaltyTransactionOrderByWithRelationInput | LoyaltyTransactionOrderByWithRelationInput[]
+    cursor?: LoyaltyTransactionWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: LoyaltyTransactionScalarFieldEnum | LoyaltyTransactionScalarFieldEnum[]
   }
 
   /**
@@ -52504,6 +52554,7 @@ export namespace Prisma {
     id: string | null
     storeId: string | null
     accountId: string | null
+    orderId: string | null
     points: number | null
     type: string | null
     note: string | null
@@ -52514,6 +52565,7 @@ export namespace Prisma {
     id: string | null
     storeId: string | null
     accountId: string | null
+    orderId: string | null
     points: number | null
     type: string | null
     note: string | null
@@ -52524,6 +52576,7 @@ export namespace Prisma {
     id: number
     storeId: number
     accountId: number
+    orderId: number
     points: number
     type: number
     note: number
@@ -52544,6 +52597,7 @@ export namespace Prisma {
     id?: true
     storeId?: true
     accountId?: true
+    orderId?: true
     points?: true
     type?: true
     note?: true
@@ -52554,6 +52608,7 @@ export namespace Prisma {
     id?: true
     storeId?: true
     accountId?: true
+    orderId?: true
     points?: true
     type?: true
     note?: true
@@ -52564,6 +52619,7 @@ export namespace Prisma {
     id?: true
     storeId?: true
     accountId?: true
+    orderId?: true
     points?: true
     type?: true
     note?: true
@@ -52661,6 +52717,7 @@ export namespace Prisma {
     id: string
     storeId: string
     accountId: string
+    orderId: string | null
     points: number
     type: string
     note: string
@@ -52690,60 +52747,70 @@ export namespace Prisma {
     id?: boolean
     storeId?: boolean
     accountId?: boolean
+    orderId?: boolean
     points?: boolean
     type?: boolean
     note?: boolean
     createdAt?: boolean
     store?: boolean | StoreDefaultArgs<ExtArgs>
     account?: boolean | LoyaltyAccountDefaultArgs<ExtArgs>
+    order?: boolean | LoyaltyTransaction$orderArgs<ExtArgs>
   }, ExtArgs["result"]["loyaltyTransaction"]>
 
   export type LoyaltyTransactionSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     storeId?: boolean
     accountId?: boolean
+    orderId?: boolean
     points?: boolean
     type?: boolean
     note?: boolean
     createdAt?: boolean
     store?: boolean | StoreDefaultArgs<ExtArgs>
     account?: boolean | LoyaltyAccountDefaultArgs<ExtArgs>
+    order?: boolean | LoyaltyTransaction$orderArgs<ExtArgs>
   }, ExtArgs["result"]["loyaltyTransaction"]>
 
   export type LoyaltyTransactionSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     storeId?: boolean
     accountId?: boolean
+    orderId?: boolean
     points?: boolean
     type?: boolean
     note?: boolean
     createdAt?: boolean
     store?: boolean | StoreDefaultArgs<ExtArgs>
     account?: boolean | LoyaltyAccountDefaultArgs<ExtArgs>
+    order?: boolean | LoyaltyTransaction$orderArgs<ExtArgs>
   }, ExtArgs["result"]["loyaltyTransaction"]>
 
   export type LoyaltyTransactionSelectScalar = {
     id?: boolean
     storeId?: boolean
     accountId?: boolean
+    orderId?: boolean
     points?: boolean
     type?: boolean
     note?: boolean
     createdAt?: boolean
   }
 
-  export type LoyaltyTransactionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "storeId" | "accountId" | "points" | "type" | "note" | "createdAt", ExtArgs["result"]["loyaltyTransaction"]>
+  export type LoyaltyTransactionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "storeId" | "accountId" | "orderId" | "points" | "type" | "note" | "createdAt", ExtArgs["result"]["loyaltyTransaction"]>
   export type LoyaltyTransactionInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     store?: boolean | StoreDefaultArgs<ExtArgs>
     account?: boolean | LoyaltyAccountDefaultArgs<ExtArgs>
+    order?: boolean | LoyaltyTransaction$orderArgs<ExtArgs>
   }
   export type LoyaltyTransactionIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     store?: boolean | StoreDefaultArgs<ExtArgs>
     account?: boolean | LoyaltyAccountDefaultArgs<ExtArgs>
+    order?: boolean | LoyaltyTransaction$orderArgs<ExtArgs>
   }
   export type LoyaltyTransactionIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     store?: boolean | StoreDefaultArgs<ExtArgs>
     account?: boolean | LoyaltyAccountDefaultArgs<ExtArgs>
+    order?: boolean | LoyaltyTransaction$orderArgs<ExtArgs>
   }
 
   export type $LoyaltyTransactionPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -52751,11 +52818,13 @@ export namespace Prisma {
     objects: {
       store: Prisma.$StorePayload<ExtArgs>
       account: Prisma.$LoyaltyAccountPayload<ExtArgs>
+      order: Prisma.$OrderPayload<ExtArgs> | null
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
       storeId: string
       accountId: string
+      orderId: string | null
       points: number
       type: string
       note: string
@@ -53156,6 +53225,7 @@ export namespace Prisma {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     store<T extends StoreDefaultArgs<ExtArgs> = {}>(args?: Subset<T, StoreDefaultArgs<ExtArgs>>): Prisma__StoreClient<$Result.GetResult<Prisma.$StorePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     account<T extends LoyaltyAccountDefaultArgs<ExtArgs> = {}>(args?: Subset<T, LoyaltyAccountDefaultArgs<ExtArgs>>): Prisma__LoyaltyAccountClient<$Result.GetResult<Prisma.$LoyaltyAccountPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    order<T extends LoyaltyTransaction$orderArgs<ExtArgs> = {}>(args?: Subset<T, LoyaltyTransaction$orderArgs<ExtArgs>>): Prisma__OrderClient<$Result.GetResult<Prisma.$OrderPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -53188,6 +53258,7 @@ export namespace Prisma {
     readonly id: FieldRef<"LoyaltyTransaction", 'String'>
     readonly storeId: FieldRef<"LoyaltyTransaction", 'String'>
     readonly accountId: FieldRef<"LoyaltyTransaction", 'String'>
+    readonly orderId: FieldRef<"LoyaltyTransaction", 'String'>
     readonly points: FieldRef<"LoyaltyTransaction", 'Int'>
     readonly type: FieldRef<"LoyaltyTransaction", 'String'>
     readonly note: FieldRef<"LoyaltyTransaction", 'String'>
@@ -53590,6 +53661,25 @@ export namespace Prisma {
      * Limit how many LoyaltyTransactions to delete.
      */
     limit?: number
+  }
+
+  /**
+   * LoyaltyTransaction.order
+   */
+  export type LoyaltyTransaction$orderArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Order
+     */
+    select?: OrderSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Order
+     */
+    omit?: OrderOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: OrderInclude<ExtArgs> | null
+    where?: OrderWhereInput
   }
 
   /**
@@ -58367,6 +58457,7 @@ export namespace Prisma {
     paymentStatus: 'paymentStatus',
     status: 'status',
     stockRestored: 'stockRestored',
+    idempotencyKey: 'idempotencyKey',
     courier: 'courier',
     notes: 'notes',
     internalNotes: 'internalNotes',
@@ -58766,6 +58857,7 @@ export namespace Prisma {
     id: 'id',
     storeId: 'storeId',
     accountId: 'accountId',
+    orderId: 'orderId',
     points: 'points',
     type: 'type',
     note: 'note',
@@ -60426,6 +60518,7 @@ export namespace Prisma {
     paymentStatus?: StringFilter<"Order"> | string
     status?: StringFilter<"Order"> | string
     stockRestored?: BoolFilter<"Order"> | boolean
+    idempotencyKey?: StringNullableFilter<"Order"> | string | null
     courier?: StringFilter<"Order"> | string
     notes?: StringFilter<"Order"> | string
     internalNotes?: StringFilter<"Order"> | string
@@ -60439,6 +60532,7 @@ export namespace Prisma {
     refunds?: RefundListRelationFilter
     couponUsage?: XOR<CouponUsageNullableScalarRelationFilter, CouponUsageWhereInput> | null
     affiliateAttribution?: XOR<AffiliateAttributionNullableScalarRelationFilter, AffiliateAttributionWhereInput> | null
+    loyaltyTransactions?: LoyaltyTransactionListRelationFilter
   }
 
   export type OrderOrderByWithRelationInput = {
@@ -60464,6 +60558,7 @@ export namespace Prisma {
     paymentStatus?: SortOrder
     status?: SortOrder
     stockRestored?: SortOrder
+    idempotencyKey?: SortOrderInput | SortOrder
     courier?: SortOrder
     notes?: SortOrder
     internalNotes?: SortOrder
@@ -60477,11 +60572,13 @@ export namespace Prisma {
     refunds?: RefundOrderByRelationAggregateInput
     couponUsage?: CouponUsageOrderByWithRelationInput
     affiliateAttribution?: AffiliateAttributionOrderByWithRelationInput
+    loyaltyTransactions?: LoyaltyTransactionOrderByRelationAggregateInput
   }
 
   export type OrderWhereUniqueInput = Prisma.AtLeast<{
     id?: string
     storeId_orderNumber?: OrderStoreIdOrderNumberCompoundUniqueInput
+    storeId_idempotencyKey?: OrderStoreIdIdempotencyKeyCompoundUniqueInput
     AND?: OrderWhereInput | OrderWhereInput[]
     OR?: OrderWhereInput[]
     NOT?: OrderWhereInput | OrderWhereInput[]
@@ -60506,6 +60603,7 @@ export namespace Prisma {
     paymentStatus?: StringFilter<"Order"> | string
     status?: StringFilter<"Order"> | string
     stockRestored?: BoolFilter<"Order"> | boolean
+    idempotencyKey?: StringNullableFilter<"Order"> | string | null
     courier?: StringFilter<"Order"> | string
     notes?: StringFilter<"Order"> | string
     internalNotes?: StringFilter<"Order"> | string
@@ -60519,7 +60617,8 @@ export namespace Prisma {
     refunds?: RefundListRelationFilter
     couponUsage?: XOR<CouponUsageNullableScalarRelationFilter, CouponUsageWhereInput> | null
     affiliateAttribution?: XOR<AffiliateAttributionNullableScalarRelationFilter, AffiliateAttributionWhereInput> | null
-  }, "id" | "storeId_orderNumber">
+    loyaltyTransactions?: LoyaltyTransactionListRelationFilter
+  }, "id" | "storeId_orderNumber" | "storeId_idempotencyKey">
 
   export type OrderOrderByWithAggregationInput = {
     id?: SortOrder
@@ -60544,6 +60643,7 @@ export namespace Prisma {
     paymentStatus?: SortOrder
     status?: SortOrder
     stockRestored?: SortOrder
+    idempotencyKey?: SortOrderInput | SortOrder
     courier?: SortOrder
     notes?: SortOrder
     internalNotes?: SortOrder
@@ -60582,6 +60682,7 @@ export namespace Prisma {
     paymentStatus?: StringWithAggregatesFilter<"Order"> | string
     status?: StringWithAggregatesFilter<"Order"> | string
     stockRestored?: BoolWithAggregatesFilter<"Order"> | boolean
+    idempotencyKey?: StringNullableWithAggregatesFilter<"Order"> | string | null
     courier?: StringWithAggregatesFilter<"Order"> | string
     notes?: StringWithAggregatesFilter<"Order"> | string
     internalNotes?: StringWithAggregatesFilter<"Order"> | string
@@ -62641,45 +62742,53 @@ export namespace Prisma {
     id?: StringFilter<"LoyaltyTransaction"> | string
     storeId?: StringFilter<"LoyaltyTransaction"> | string
     accountId?: StringFilter<"LoyaltyTransaction"> | string
+    orderId?: StringNullableFilter<"LoyaltyTransaction"> | string | null
     points?: IntFilter<"LoyaltyTransaction"> | number
     type?: StringFilter<"LoyaltyTransaction"> | string
     note?: StringFilter<"LoyaltyTransaction"> | string
     createdAt?: DateTimeFilter<"LoyaltyTransaction"> | Date | string
     store?: XOR<StoreScalarRelationFilter, StoreWhereInput>
     account?: XOR<LoyaltyAccountScalarRelationFilter, LoyaltyAccountWhereInput>
+    order?: XOR<OrderNullableScalarRelationFilter, OrderWhereInput> | null
   }
 
   export type LoyaltyTransactionOrderByWithRelationInput = {
     id?: SortOrder
     storeId?: SortOrder
     accountId?: SortOrder
+    orderId?: SortOrderInput | SortOrder
     points?: SortOrder
     type?: SortOrder
     note?: SortOrder
     createdAt?: SortOrder
     store?: StoreOrderByWithRelationInput
     account?: LoyaltyAccountOrderByWithRelationInput
+    order?: OrderOrderByWithRelationInput
   }
 
   export type LoyaltyTransactionWhereUniqueInput = Prisma.AtLeast<{
     id?: string
+    accountId_orderId_type?: LoyaltyTransactionAccountIdOrderIdTypeCompoundUniqueInput
     AND?: LoyaltyTransactionWhereInput | LoyaltyTransactionWhereInput[]
     OR?: LoyaltyTransactionWhereInput[]
     NOT?: LoyaltyTransactionWhereInput | LoyaltyTransactionWhereInput[]
     storeId?: StringFilter<"LoyaltyTransaction"> | string
     accountId?: StringFilter<"LoyaltyTransaction"> | string
+    orderId?: StringNullableFilter<"LoyaltyTransaction"> | string | null
     points?: IntFilter<"LoyaltyTransaction"> | number
     type?: StringFilter<"LoyaltyTransaction"> | string
     note?: StringFilter<"LoyaltyTransaction"> | string
     createdAt?: DateTimeFilter<"LoyaltyTransaction"> | Date | string
     store?: XOR<StoreScalarRelationFilter, StoreWhereInput>
     account?: XOR<LoyaltyAccountScalarRelationFilter, LoyaltyAccountWhereInput>
-  }, "id">
+    order?: XOR<OrderNullableScalarRelationFilter, OrderWhereInput> | null
+  }, "id" | "accountId_orderId_type">
 
   export type LoyaltyTransactionOrderByWithAggregationInput = {
     id?: SortOrder
     storeId?: SortOrder
     accountId?: SortOrder
+    orderId?: SortOrderInput | SortOrder
     points?: SortOrder
     type?: SortOrder
     note?: SortOrder
@@ -62698,6 +62807,7 @@ export namespace Prisma {
     id?: StringWithAggregatesFilter<"LoyaltyTransaction"> | string
     storeId?: StringWithAggregatesFilter<"LoyaltyTransaction"> | string
     accountId?: StringWithAggregatesFilter<"LoyaltyTransaction"> | string
+    orderId?: StringNullableWithAggregatesFilter<"LoyaltyTransaction"> | string | null
     points?: IntWithAggregatesFilter<"LoyaltyTransaction"> | number
     type?: StringWithAggregatesFilter<"LoyaltyTransaction"> | string
     note?: StringWithAggregatesFilter<"LoyaltyTransaction"> | string
@@ -64678,6 +64788,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -64691,6 +64802,7 @@ export namespace Prisma {
     refunds?: RefundCreateNestedManyWithoutOrderInput
     couponUsage?: CouponUsageCreateNestedOneWithoutOrderInput
     affiliateAttribution?: AffiliateAttributionCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionCreateNestedManyWithoutOrderInput
   }
 
   export type OrderUncheckedCreateInput = {
@@ -64716,6 +64828,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -64727,6 +64840,7 @@ export namespace Prisma {
     refunds?: RefundUncheckedCreateNestedManyWithoutOrderInput
     couponUsage?: CouponUsageUncheckedCreateNestedOneWithoutOrderInput
     affiliateAttribution?: AffiliateAttributionUncheckedCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedCreateNestedManyWithoutOrderInput
   }
 
   export type OrderUpdateInput = {
@@ -64750,6 +64864,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -64763,6 +64878,7 @@ export namespace Prisma {
     refunds?: RefundUpdateManyWithoutOrderNestedInput
     couponUsage?: CouponUsageUpdateOneWithoutOrderNestedInput
     affiliateAttribution?: AffiliateAttributionUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUpdateManyWithoutOrderNestedInput
   }
 
   export type OrderUncheckedUpdateInput = {
@@ -64788,6 +64904,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -64799,6 +64916,7 @@ export namespace Prisma {
     refunds?: RefundUncheckedUpdateManyWithoutOrderNestedInput
     couponUsage?: CouponUsageUncheckedUpdateOneWithoutOrderNestedInput
     affiliateAttribution?: AffiliateAttributionUncheckedUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedUpdateManyWithoutOrderNestedInput
   }
 
   export type OrderCreateManyInput = {
@@ -64824,6 +64942,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -64852,6 +64971,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -64882,6 +65002,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -67085,12 +67206,14 @@ export namespace Prisma {
     createdAt?: Date | string
     store: StoreCreateNestedOneWithoutLoyaltyTransactionsInput
     account: LoyaltyAccountCreateNestedOneWithoutTransactionsInput
+    order?: OrderCreateNestedOneWithoutLoyaltyTransactionsInput
   }
 
   export type LoyaltyTransactionUncheckedCreateInput = {
     id: string
     storeId: string
     accountId: string
+    orderId?: string | null
     points: number
     type?: string
     note?: string
@@ -67105,12 +67228,14 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     store?: StoreUpdateOneRequiredWithoutLoyaltyTransactionsNestedInput
     account?: LoyaltyAccountUpdateOneRequiredWithoutTransactionsNestedInput
+    order?: OrderUpdateOneWithoutLoyaltyTransactionsNestedInput
   }
 
   export type LoyaltyTransactionUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     storeId?: StringFieldUpdateOperationsInput | string
     accountId?: StringFieldUpdateOperationsInput | string
+    orderId?: NullableStringFieldUpdateOperationsInput | string | null
     points?: IntFieldUpdateOperationsInput | number
     type?: StringFieldUpdateOperationsInput | string
     note?: StringFieldUpdateOperationsInput | string
@@ -67121,6 +67246,7 @@ export namespace Prisma {
     id: string
     storeId: string
     accountId: string
+    orderId?: string | null
     points: number
     type?: string
     note?: string
@@ -67139,6 +67265,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     storeId?: StringFieldUpdateOperationsInput | string
     accountId?: StringFieldUpdateOperationsInput | string
+    orderId?: NullableStringFieldUpdateOperationsInput | string | null
     points?: IntFieldUpdateOperationsInput | number
     type?: StringFieldUpdateOperationsInput | string
     note?: StringFieldUpdateOperationsInput | string
@@ -68870,6 +68997,11 @@ export namespace Prisma {
     orderNumber: number
   }
 
+  export type OrderStoreIdIdempotencyKeyCompoundUniqueInput = {
+    storeId: string
+    idempotencyKey: string
+  }
+
   export type OrderCountOrderByAggregateInput = {
     id?: SortOrder
     storeId?: SortOrder
@@ -68893,6 +69025,7 @@ export namespace Prisma {
     paymentStatus?: SortOrder
     status?: SortOrder
     stockRestored?: SortOrder
+    idempotencyKey?: SortOrder
     courier?: SortOrder
     notes?: SortOrder
     internalNotes?: SortOrder
@@ -68931,6 +69064,7 @@ export namespace Prisma {
     paymentStatus?: SortOrder
     status?: SortOrder
     stockRestored?: SortOrder
+    idempotencyKey?: SortOrder
     courier?: SortOrder
     notes?: SortOrder
     internalNotes?: SortOrder
@@ -68961,6 +69095,7 @@ export namespace Prisma {
     paymentStatus?: SortOrder
     status?: SortOrder
     stockRestored?: SortOrder
+    idempotencyKey?: SortOrder
     courier?: SortOrder
     notes?: SortOrder
     internalNotes?: SortOrder
@@ -70188,10 +70323,22 @@ export namespace Prisma {
     isNot?: LoyaltyAccountWhereInput
   }
 
+  export type OrderNullableScalarRelationFilter = {
+    is?: OrderWhereInput | null
+    isNot?: OrderWhereInput | null
+  }
+
+  export type LoyaltyTransactionAccountIdOrderIdTypeCompoundUniqueInput = {
+    accountId: string
+    orderId: string
+    type: string
+  }
+
   export type LoyaltyTransactionCountOrderByAggregateInput = {
     id?: SortOrder
     storeId?: SortOrder
     accountId?: SortOrder
+    orderId?: SortOrder
     points?: SortOrder
     type?: SortOrder
     note?: SortOrder
@@ -70206,6 +70353,7 @@ export namespace Prisma {
     id?: SortOrder
     storeId?: SortOrder
     accountId?: SortOrder
+    orderId?: SortOrder
     points?: SortOrder
     type?: SortOrder
     note?: SortOrder
@@ -70216,6 +70364,7 @@ export namespace Prisma {
     id?: SortOrder
     storeId?: SortOrder
     accountId?: SortOrder
+    orderId?: SortOrder
     points?: SortOrder
     type?: SortOrder
     note?: SortOrder
@@ -73046,6 +73195,13 @@ export namespace Prisma {
     connect?: AffiliateAttributionWhereUniqueInput
   }
 
+  export type LoyaltyTransactionCreateNestedManyWithoutOrderInput = {
+    create?: XOR<LoyaltyTransactionCreateWithoutOrderInput, LoyaltyTransactionUncheckedCreateWithoutOrderInput> | LoyaltyTransactionCreateWithoutOrderInput[] | LoyaltyTransactionUncheckedCreateWithoutOrderInput[]
+    connectOrCreate?: LoyaltyTransactionCreateOrConnectWithoutOrderInput | LoyaltyTransactionCreateOrConnectWithoutOrderInput[]
+    createMany?: LoyaltyTransactionCreateManyOrderInputEnvelope
+    connect?: LoyaltyTransactionWhereUniqueInput | LoyaltyTransactionWhereUniqueInput[]
+  }
+
   export type OrderItemUncheckedCreateNestedManyWithoutOrderInput = {
     create?: XOR<OrderItemCreateWithoutOrderInput, OrderItemUncheckedCreateWithoutOrderInput> | OrderItemCreateWithoutOrderInput[] | OrderItemUncheckedCreateWithoutOrderInput[]
     connectOrCreate?: OrderItemCreateOrConnectWithoutOrderInput | OrderItemCreateOrConnectWithoutOrderInput[]
@@ -73084,6 +73240,13 @@ export namespace Prisma {
     create?: XOR<AffiliateAttributionCreateWithoutOrderInput, AffiliateAttributionUncheckedCreateWithoutOrderInput>
     connectOrCreate?: AffiliateAttributionCreateOrConnectWithoutOrderInput
     connect?: AffiliateAttributionWhereUniqueInput
+  }
+
+  export type LoyaltyTransactionUncheckedCreateNestedManyWithoutOrderInput = {
+    create?: XOR<LoyaltyTransactionCreateWithoutOrderInput, LoyaltyTransactionUncheckedCreateWithoutOrderInput> | LoyaltyTransactionCreateWithoutOrderInput[] | LoyaltyTransactionUncheckedCreateWithoutOrderInput[]
+    connectOrCreate?: LoyaltyTransactionCreateOrConnectWithoutOrderInput | LoyaltyTransactionCreateOrConnectWithoutOrderInput[]
+    createMany?: LoyaltyTransactionCreateManyOrderInputEnvelope
+    connect?: LoyaltyTransactionWhereUniqueInput | LoyaltyTransactionWhereUniqueInput[]
   }
 
   export type StoreUpdateOneRequiredWithoutOrdersNestedInput = {
@@ -73180,6 +73343,20 @@ export namespace Prisma {
     update?: XOR<XOR<AffiliateAttributionUpdateToOneWithWhereWithoutOrderInput, AffiliateAttributionUpdateWithoutOrderInput>, AffiliateAttributionUncheckedUpdateWithoutOrderInput>
   }
 
+  export type LoyaltyTransactionUpdateManyWithoutOrderNestedInput = {
+    create?: XOR<LoyaltyTransactionCreateWithoutOrderInput, LoyaltyTransactionUncheckedCreateWithoutOrderInput> | LoyaltyTransactionCreateWithoutOrderInput[] | LoyaltyTransactionUncheckedCreateWithoutOrderInput[]
+    connectOrCreate?: LoyaltyTransactionCreateOrConnectWithoutOrderInput | LoyaltyTransactionCreateOrConnectWithoutOrderInput[]
+    upsert?: LoyaltyTransactionUpsertWithWhereUniqueWithoutOrderInput | LoyaltyTransactionUpsertWithWhereUniqueWithoutOrderInput[]
+    createMany?: LoyaltyTransactionCreateManyOrderInputEnvelope
+    set?: LoyaltyTransactionWhereUniqueInput | LoyaltyTransactionWhereUniqueInput[]
+    disconnect?: LoyaltyTransactionWhereUniqueInput | LoyaltyTransactionWhereUniqueInput[]
+    delete?: LoyaltyTransactionWhereUniqueInput | LoyaltyTransactionWhereUniqueInput[]
+    connect?: LoyaltyTransactionWhereUniqueInput | LoyaltyTransactionWhereUniqueInput[]
+    update?: LoyaltyTransactionUpdateWithWhereUniqueWithoutOrderInput | LoyaltyTransactionUpdateWithWhereUniqueWithoutOrderInput[]
+    updateMany?: LoyaltyTransactionUpdateManyWithWhereWithoutOrderInput | LoyaltyTransactionUpdateManyWithWhereWithoutOrderInput[]
+    deleteMany?: LoyaltyTransactionScalarWhereInput | LoyaltyTransactionScalarWhereInput[]
+  }
+
   export type OrderItemUncheckedUpdateManyWithoutOrderNestedInput = {
     create?: XOR<OrderItemCreateWithoutOrderInput, OrderItemUncheckedCreateWithoutOrderInput> | OrderItemCreateWithoutOrderInput[] | OrderItemUncheckedCreateWithoutOrderInput[]
     connectOrCreate?: OrderItemCreateOrConnectWithoutOrderInput | OrderItemCreateOrConnectWithoutOrderInput[]
@@ -73254,6 +73431,20 @@ export namespace Prisma {
     delete?: AffiliateAttributionWhereInput | boolean
     connect?: AffiliateAttributionWhereUniqueInput
     update?: XOR<XOR<AffiliateAttributionUpdateToOneWithWhereWithoutOrderInput, AffiliateAttributionUpdateWithoutOrderInput>, AffiliateAttributionUncheckedUpdateWithoutOrderInput>
+  }
+
+  export type LoyaltyTransactionUncheckedUpdateManyWithoutOrderNestedInput = {
+    create?: XOR<LoyaltyTransactionCreateWithoutOrderInput, LoyaltyTransactionUncheckedCreateWithoutOrderInput> | LoyaltyTransactionCreateWithoutOrderInput[] | LoyaltyTransactionUncheckedCreateWithoutOrderInput[]
+    connectOrCreate?: LoyaltyTransactionCreateOrConnectWithoutOrderInput | LoyaltyTransactionCreateOrConnectWithoutOrderInput[]
+    upsert?: LoyaltyTransactionUpsertWithWhereUniqueWithoutOrderInput | LoyaltyTransactionUpsertWithWhereUniqueWithoutOrderInput[]
+    createMany?: LoyaltyTransactionCreateManyOrderInputEnvelope
+    set?: LoyaltyTransactionWhereUniqueInput | LoyaltyTransactionWhereUniqueInput[]
+    disconnect?: LoyaltyTransactionWhereUniqueInput | LoyaltyTransactionWhereUniqueInput[]
+    delete?: LoyaltyTransactionWhereUniqueInput | LoyaltyTransactionWhereUniqueInput[]
+    connect?: LoyaltyTransactionWhereUniqueInput | LoyaltyTransactionWhereUniqueInput[]
+    update?: LoyaltyTransactionUpdateWithWhereUniqueWithoutOrderInput | LoyaltyTransactionUpdateWithWhereUniqueWithoutOrderInput[]
+    updateMany?: LoyaltyTransactionUpdateManyWithWhereWithoutOrderInput | LoyaltyTransactionUpdateManyWithWhereWithoutOrderInput[]
+    deleteMany?: LoyaltyTransactionScalarWhereInput | LoyaltyTransactionScalarWhereInput[]
   }
 
   export type OrderCreateNestedOneWithoutItemsInput = {
@@ -74118,6 +74309,12 @@ export namespace Prisma {
     connect?: LoyaltyAccountWhereUniqueInput
   }
 
+  export type OrderCreateNestedOneWithoutLoyaltyTransactionsInput = {
+    create?: XOR<OrderCreateWithoutLoyaltyTransactionsInput, OrderUncheckedCreateWithoutLoyaltyTransactionsInput>
+    connectOrCreate?: OrderCreateOrConnectWithoutLoyaltyTransactionsInput
+    connect?: OrderWhereUniqueInput
+  }
+
   export type StoreUpdateOneRequiredWithoutLoyaltyTransactionsNestedInput = {
     create?: XOR<StoreCreateWithoutLoyaltyTransactionsInput, StoreUncheckedCreateWithoutLoyaltyTransactionsInput>
     connectOrCreate?: StoreCreateOrConnectWithoutLoyaltyTransactionsInput
@@ -74132,6 +74329,16 @@ export namespace Prisma {
     upsert?: LoyaltyAccountUpsertWithoutTransactionsInput
     connect?: LoyaltyAccountWhereUniqueInput
     update?: XOR<XOR<LoyaltyAccountUpdateToOneWithWhereWithoutTransactionsInput, LoyaltyAccountUpdateWithoutTransactionsInput>, LoyaltyAccountUncheckedUpdateWithoutTransactionsInput>
+  }
+
+  export type OrderUpdateOneWithoutLoyaltyTransactionsNestedInput = {
+    create?: XOR<OrderCreateWithoutLoyaltyTransactionsInput, OrderUncheckedCreateWithoutLoyaltyTransactionsInput>
+    connectOrCreate?: OrderCreateOrConnectWithoutLoyaltyTransactionsInput
+    upsert?: OrderUpsertWithoutLoyaltyTransactionsInput
+    disconnect?: OrderWhereInput | boolean
+    delete?: OrderWhereInput | boolean
+    connect?: OrderWhereUniqueInput
+    update?: XOR<XOR<OrderUpdateToOneWithWhereWithoutLoyaltyTransactionsInput, OrderUpdateWithoutLoyaltyTransactionsInput>, OrderUncheckedUpdateWithoutLoyaltyTransactionsInput>
   }
 
   export type StoreCreateNestedOneWithoutSuppliersInput = {
@@ -74838,6 +75045,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -74850,6 +75058,7 @@ export namespace Prisma {
     refunds?: RefundCreateNestedManyWithoutOrderInput
     couponUsage?: CouponUsageCreateNestedOneWithoutOrderInput
     affiliateAttribution?: AffiliateAttributionCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionCreateNestedManyWithoutOrderInput
   }
 
   export type OrderUncheckedCreateWithoutStoreInput = {
@@ -74874,6 +75083,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -74885,6 +75095,7 @@ export namespace Prisma {
     refunds?: RefundUncheckedCreateNestedManyWithoutOrderInput
     couponUsage?: CouponUsageUncheckedCreateNestedOneWithoutOrderInput
     affiliateAttribution?: AffiliateAttributionUncheckedCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedCreateNestedManyWithoutOrderInput
   }
 
   export type OrderCreateOrConnectWithoutStoreInput = {
@@ -75765,11 +75976,13 @@ export namespace Prisma {
     note?: string
     createdAt?: Date | string
     account: LoyaltyAccountCreateNestedOneWithoutTransactionsInput
+    order?: OrderCreateNestedOneWithoutLoyaltyTransactionsInput
   }
 
   export type LoyaltyTransactionUncheckedCreateWithoutStoreInput = {
     id: string
     accountId: string
+    orderId?: string | null
     points: number
     type?: string
     note?: string
@@ -76173,6 +76386,7 @@ export namespace Prisma {
     paymentStatus?: StringFilter<"Order"> | string
     status?: StringFilter<"Order"> | string
     stockRestored?: BoolFilter<"Order"> | boolean
+    idempotencyKey?: StringNullableFilter<"Order"> | string | null
     courier?: StringFilter<"Order"> | string
     notes?: StringFilter<"Order"> | string
     internalNotes?: StringFilter<"Order"> | string
@@ -76986,6 +77200,7 @@ export namespace Prisma {
     id?: StringFilter<"LoyaltyTransaction"> | string
     storeId?: StringFilter<"LoyaltyTransaction"> | string
     accountId?: StringFilter<"LoyaltyTransaction"> | string
+    orderId?: StringNullableFilter<"LoyaltyTransaction"> | string | null
     points?: IntFilter<"LoyaltyTransaction"> | number
     type?: StringFilter<"LoyaltyTransaction"> | string
     note?: StringFilter<"LoyaltyTransaction"> | string
@@ -80921,6 +81136,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -80933,6 +81149,7 @@ export namespace Prisma {
     refunds?: RefundCreateNestedManyWithoutOrderInput
     couponUsage?: CouponUsageCreateNestedOneWithoutOrderInput
     affiliateAttribution?: AffiliateAttributionCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionCreateNestedManyWithoutOrderInput
   }
 
   export type OrderUncheckedCreateWithoutCustomerInput = {
@@ -80957,6 +81174,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -80968,6 +81186,7 @@ export namespace Prisma {
     refunds?: RefundUncheckedCreateNestedManyWithoutOrderInput
     couponUsage?: CouponUsageUncheckedCreateNestedOneWithoutOrderInput
     affiliateAttribution?: AffiliateAttributionUncheckedCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedCreateNestedManyWithoutOrderInput
   }
 
   export type OrderCreateOrConnectWithoutCustomerInput = {
@@ -82113,6 +82332,36 @@ export namespace Prisma {
     create: XOR<AffiliateAttributionCreateWithoutOrderInput, AffiliateAttributionUncheckedCreateWithoutOrderInput>
   }
 
+  export type LoyaltyTransactionCreateWithoutOrderInput = {
+    id: string
+    points: number
+    type?: string
+    note?: string
+    createdAt?: Date | string
+    store: StoreCreateNestedOneWithoutLoyaltyTransactionsInput
+    account: LoyaltyAccountCreateNestedOneWithoutTransactionsInput
+  }
+
+  export type LoyaltyTransactionUncheckedCreateWithoutOrderInput = {
+    id: string
+    storeId: string
+    accountId: string
+    points: number
+    type?: string
+    note?: string
+    createdAt?: Date | string
+  }
+
+  export type LoyaltyTransactionCreateOrConnectWithoutOrderInput = {
+    where: LoyaltyTransactionWhereUniqueInput
+    create: XOR<LoyaltyTransactionCreateWithoutOrderInput, LoyaltyTransactionUncheckedCreateWithoutOrderInput>
+  }
+
+  export type LoyaltyTransactionCreateManyOrderInputEnvelope = {
+    data: LoyaltyTransactionCreateManyOrderInput | LoyaltyTransactionCreateManyOrderInput[]
+    skipDuplicates?: boolean
+  }
+
   export type StoreUpsertWithoutOrdersInput = {
     update: XOR<StoreUpdateWithoutOrdersInput, StoreUncheckedUpdateWithoutOrdersInput>
     create: XOR<StoreCreateWithoutOrdersInput, StoreUncheckedCreateWithoutOrdersInput>
@@ -82431,6 +82680,22 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type LoyaltyTransactionUpsertWithWhereUniqueWithoutOrderInput = {
+    where: LoyaltyTransactionWhereUniqueInput
+    update: XOR<LoyaltyTransactionUpdateWithoutOrderInput, LoyaltyTransactionUncheckedUpdateWithoutOrderInput>
+    create: XOR<LoyaltyTransactionCreateWithoutOrderInput, LoyaltyTransactionUncheckedCreateWithoutOrderInput>
+  }
+
+  export type LoyaltyTransactionUpdateWithWhereUniqueWithoutOrderInput = {
+    where: LoyaltyTransactionWhereUniqueInput
+    data: XOR<LoyaltyTransactionUpdateWithoutOrderInput, LoyaltyTransactionUncheckedUpdateWithoutOrderInput>
+  }
+
+  export type LoyaltyTransactionUpdateManyWithWhereWithoutOrderInput = {
+    where: LoyaltyTransactionScalarWhereInput
+    data: XOR<LoyaltyTransactionUpdateManyMutationInput, LoyaltyTransactionUncheckedUpdateManyWithoutOrderInput>
+  }
+
   export type OrderCreateWithoutItemsInput = {
     id: string
     orderNumber: number
@@ -82452,6 +82717,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -82464,6 +82730,7 @@ export namespace Prisma {
     refunds?: RefundCreateNestedManyWithoutOrderInput
     couponUsage?: CouponUsageCreateNestedOneWithoutOrderInput
     affiliateAttribution?: AffiliateAttributionCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionCreateNestedManyWithoutOrderInput
   }
 
   export type OrderUncheckedCreateWithoutItemsInput = {
@@ -82489,6 +82756,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -82499,6 +82767,7 @@ export namespace Prisma {
     refunds?: RefundUncheckedCreateNestedManyWithoutOrderInput
     couponUsage?: CouponUsageUncheckedCreateNestedOneWithoutOrderInput
     affiliateAttribution?: AffiliateAttributionUncheckedCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedCreateNestedManyWithoutOrderInput
   }
 
   export type OrderCreateOrConnectWithoutItemsInput = {
@@ -82625,6 +82894,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -82637,6 +82907,7 @@ export namespace Prisma {
     refunds?: RefundUpdateManyWithoutOrderNestedInput
     couponUsage?: CouponUsageUpdateOneWithoutOrderNestedInput
     affiliateAttribution?: AffiliateAttributionUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUpdateManyWithoutOrderNestedInput
   }
 
   export type OrderUncheckedUpdateWithoutItemsInput = {
@@ -82662,6 +82933,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -82672,6 +82944,7 @@ export namespace Prisma {
     refunds?: RefundUncheckedUpdateManyWithoutOrderNestedInput
     couponUsage?: CouponUsageUncheckedUpdateOneWithoutOrderNestedInput
     affiliateAttribution?: AffiliateAttributionUncheckedUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedUpdateManyWithoutOrderNestedInput
   }
 
   export type ProductUpsertWithoutOrderItemsInput = {
@@ -82935,6 +83208,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -82947,6 +83221,7 @@ export namespace Prisma {
     refunds?: RefundCreateNestedManyWithoutOrderInput
     couponUsage?: CouponUsageCreateNestedOneWithoutOrderInput
     affiliateAttribution?: AffiliateAttributionCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionCreateNestedManyWithoutOrderInput
   }
 
   export type OrderUncheckedCreateWithoutEventsInput = {
@@ -82972,6 +83247,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -82982,6 +83258,7 @@ export namespace Prisma {
     refunds?: RefundUncheckedCreateNestedManyWithoutOrderInput
     couponUsage?: CouponUsageUncheckedCreateNestedOneWithoutOrderInput
     affiliateAttribution?: AffiliateAttributionUncheckedCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedCreateNestedManyWithoutOrderInput
   }
 
   export type OrderCreateOrConnectWithoutEventsInput = {
@@ -83174,6 +83451,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -83186,6 +83464,7 @@ export namespace Prisma {
     refunds?: RefundUpdateManyWithoutOrderNestedInput
     couponUsage?: CouponUsageUpdateOneWithoutOrderNestedInput
     affiliateAttribution?: AffiliateAttributionUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUpdateManyWithoutOrderNestedInput
   }
 
   export type OrderUncheckedUpdateWithoutEventsInput = {
@@ -83211,6 +83490,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -83221,6 +83501,7 @@ export namespace Prisma {
     refunds?: RefundUncheckedUpdateManyWithoutOrderNestedInput
     couponUsage?: CouponUsageUncheckedUpdateOneWithoutOrderNestedInput
     affiliateAttribution?: AffiliateAttributionUncheckedUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedUpdateManyWithoutOrderNestedInput
   }
 
   export type StoreCreateWithoutShippingZonesInput = {
@@ -84522,6 +84803,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -84534,6 +84816,7 @@ export namespace Prisma {
     payments?: PaymentCreateNestedManyWithoutOrderInput
     refunds?: RefundCreateNestedManyWithoutOrderInput
     affiliateAttribution?: AffiliateAttributionCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionCreateNestedManyWithoutOrderInput
   }
 
   export type OrderUncheckedCreateWithoutCouponUsageInput = {
@@ -84559,6 +84842,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -84569,6 +84853,7 @@ export namespace Prisma {
     payments?: PaymentUncheckedCreateNestedManyWithoutOrderInput
     refunds?: RefundUncheckedCreateNestedManyWithoutOrderInput
     affiliateAttribution?: AffiliateAttributionUncheckedCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedCreateNestedManyWithoutOrderInput
   }
 
   export type OrderCreateOrConnectWithoutCouponUsageInput = {
@@ -84849,6 +85134,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -84861,6 +85147,7 @@ export namespace Prisma {
     payments?: PaymentUpdateManyWithoutOrderNestedInput
     refunds?: RefundUpdateManyWithoutOrderNestedInput
     affiliateAttribution?: AffiliateAttributionUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUpdateManyWithoutOrderNestedInput
   }
 
   export type OrderUncheckedUpdateWithoutCouponUsageInput = {
@@ -84886,6 +85173,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -84896,6 +85184,7 @@ export namespace Prisma {
     payments?: PaymentUncheckedUpdateManyWithoutOrderNestedInput
     refunds?: RefundUncheckedUpdateManyWithoutOrderNestedInput
     affiliateAttribution?: AffiliateAttributionUncheckedUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedUpdateManyWithoutOrderNestedInput
   }
 
   export type CustomerUpsertWithoutCouponsInput = {
@@ -87404,6 +87693,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -87416,6 +87706,7 @@ export namespace Prisma {
     payments?: PaymentCreateNestedManyWithoutOrderInput
     refunds?: RefundCreateNestedManyWithoutOrderInput
     couponUsage?: CouponUsageCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionCreateNestedManyWithoutOrderInput
   }
 
   export type OrderUncheckedCreateWithoutAffiliateAttributionInput = {
@@ -87441,6 +87732,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -87451,6 +87743,7 @@ export namespace Prisma {
     payments?: PaymentUncheckedCreateNestedManyWithoutOrderInput
     refunds?: RefundUncheckedCreateNestedManyWithoutOrderInput
     couponUsage?: CouponUsageUncheckedCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedCreateNestedManyWithoutOrderInput
   }
 
   export type OrderCreateOrConnectWithoutAffiliateAttributionInput = {
@@ -87680,6 +87973,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -87692,6 +87986,7 @@ export namespace Prisma {
     payments?: PaymentUpdateManyWithoutOrderNestedInput
     refunds?: RefundUpdateManyWithoutOrderNestedInput
     couponUsage?: CouponUsageUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUpdateManyWithoutOrderNestedInput
   }
 
   export type OrderUncheckedUpdateWithoutAffiliateAttributionInput = {
@@ -87717,6 +88012,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -87727,6 +88023,7 @@ export namespace Prisma {
     payments?: PaymentUncheckedUpdateManyWithoutOrderNestedInput
     refunds?: RefundUncheckedUpdateManyWithoutOrderNestedInput
     couponUsage?: CouponUsageUncheckedUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedUpdateManyWithoutOrderNestedInput
   }
 
   export type StoreCreateWithoutWalletInput = {
@@ -88983,6 +89280,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -88995,6 +89293,7 @@ export namespace Prisma {
     refunds?: RefundCreateNestedManyWithoutOrderInput
     couponUsage?: CouponUsageCreateNestedOneWithoutOrderInput
     affiliateAttribution?: AffiliateAttributionCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionCreateNestedManyWithoutOrderInput
   }
 
   export type OrderUncheckedCreateWithoutPaymentsInput = {
@@ -89020,6 +89319,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -89030,6 +89330,7 @@ export namespace Prisma {
     refunds?: RefundUncheckedCreateNestedManyWithoutOrderInput
     couponUsage?: CouponUsageUncheckedCreateNestedOneWithoutOrderInput
     affiliateAttribution?: AffiliateAttributionUncheckedCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedCreateNestedManyWithoutOrderInput
   }
 
   export type OrderCreateOrConnectWithoutPaymentsInput = {
@@ -89222,6 +89523,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -89234,6 +89536,7 @@ export namespace Prisma {
     refunds?: RefundUpdateManyWithoutOrderNestedInput
     couponUsage?: CouponUsageUpdateOneWithoutOrderNestedInput
     affiliateAttribution?: AffiliateAttributionUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUpdateManyWithoutOrderNestedInput
   }
 
   export type OrderUncheckedUpdateWithoutPaymentsInput = {
@@ -89259,6 +89562,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -89269,6 +89573,7 @@ export namespace Prisma {
     refunds?: RefundUncheckedUpdateManyWithoutOrderNestedInput
     couponUsage?: CouponUsageUncheckedUpdateOneWithoutOrderNestedInput
     affiliateAttribution?: AffiliateAttributionUncheckedUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedUpdateManyWithoutOrderNestedInput
   }
 
   export type StoreCreateWithoutRefundsInput = {
@@ -89439,6 +89744,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -89451,6 +89757,7 @@ export namespace Prisma {
     payments?: PaymentCreateNestedManyWithoutOrderInput
     couponUsage?: CouponUsageCreateNestedOneWithoutOrderInput
     affiliateAttribution?: AffiliateAttributionCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionCreateNestedManyWithoutOrderInput
   }
 
   export type OrderUncheckedCreateWithoutRefundsInput = {
@@ -89476,6 +89783,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -89486,6 +89794,7 @@ export namespace Prisma {
     payments?: PaymentUncheckedCreateNestedManyWithoutOrderInput
     couponUsage?: CouponUsageUncheckedCreateNestedOneWithoutOrderInput
     affiliateAttribution?: AffiliateAttributionUncheckedCreateNestedOneWithoutOrderInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedCreateNestedManyWithoutOrderInput
   }
 
   export type OrderCreateOrConnectWithoutRefundsInput = {
@@ -89678,6 +89987,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -89690,6 +90000,7 @@ export namespace Prisma {
     payments?: PaymentUpdateManyWithoutOrderNestedInput
     couponUsage?: CouponUsageUpdateOneWithoutOrderNestedInput
     affiliateAttribution?: AffiliateAttributionUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUpdateManyWithoutOrderNestedInput
   }
 
   export type OrderUncheckedUpdateWithoutRefundsInput = {
@@ -89715,6 +90026,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -89725,6 +90037,7 @@ export namespace Prisma {
     payments?: PaymentUncheckedUpdateManyWithoutOrderNestedInput
     couponUsage?: CouponUsageUncheckedUpdateOneWithoutOrderNestedInput
     affiliateAttribution?: AffiliateAttributionUncheckedUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedUpdateManyWithoutOrderNestedInput
   }
 
   export type StoreCreateWithoutReviewsInput = {
@@ -91854,11 +92167,13 @@ export namespace Prisma {
     note?: string
     createdAt?: Date | string
     store: StoreCreateNestedOneWithoutLoyaltyTransactionsInput
+    order?: OrderCreateNestedOneWithoutLoyaltyTransactionsInput
   }
 
   export type LoyaltyTransactionUncheckedCreateWithoutAccountInput = {
     id: string
     storeId: string
+    orderId?: string | null
     points: number
     type?: string
     note?: string
@@ -92257,6 +92572,85 @@ export namespace Prisma {
     create: XOR<LoyaltyAccountCreateWithoutTransactionsInput, LoyaltyAccountUncheckedCreateWithoutTransactionsInput>
   }
 
+  export type OrderCreateWithoutLoyaltyTransactionsInput = {
+    id: string
+    orderNumber: number
+    customerName?: string
+    customerPhone?: string
+    customerEmail?: string
+    address?: string
+    city?: string
+    governorate?: string
+    itemsSummary?: string
+    amountText?: string
+    amountEgp?: number
+    subtotal?: number
+    discount?: number
+    shippingFee?: number
+    couponCode?: string
+    shippingZoneId?: string | null
+    paymentMethod?: string
+    paymentStatus?: string
+    status?: string
+    stockRestored?: boolean
+    idempotencyKey?: string | null
+    courier?: string
+    notes?: string
+    internalNotes?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    store: StoreCreateNestedOneWithoutOrdersInput
+    customer?: CustomerCreateNestedOneWithoutOrdersInput
+    items?: OrderItemCreateNestedManyWithoutOrderInput
+    events?: OrderEventCreateNestedManyWithoutOrderInput
+    payments?: PaymentCreateNestedManyWithoutOrderInput
+    refunds?: RefundCreateNestedManyWithoutOrderInput
+    couponUsage?: CouponUsageCreateNestedOneWithoutOrderInput
+    affiliateAttribution?: AffiliateAttributionCreateNestedOneWithoutOrderInput
+  }
+
+  export type OrderUncheckedCreateWithoutLoyaltyTransactionsInput = {
+    id: string
+    storeId: string
+    orderNumber: number
+    customerId?: string | null
+    customerName?: string
+    customerPhone?: string
+    customerEmail?: string
+    address?: string
+    city?: string
+    governorate?: string
+    itemsSummary?: string
+    amountText?: string
+    amountEgp?: number
+    subtotal?: number
+    discount?: number
+    shippingFee?: number
+    couponCode?: string
+    shippingZoneId?: string | null
+    paymentMethod?: string
+    paymentStatus?: string
+    status?: string
+    stockRestored?: boolean
+    idempotencyKey?: string | null
+    courier?: string
+    notes?: string
+    internalNotes?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    items?: OrderItemUncheckedCreateNestedManyWithoutOrderInput
+    events?: OrderEventUncheckedCreateNestedManyWithoutOrderInput
+    payments?: PaymentUncheckedCreateNestedManyWithoutOrderInput
+    refunds?: RefundUncheckedCreateNestedManyWithoutOrderInput
+    couponUsage?: CouponUsageUncheckedCreateNestedOneWithoutOrderInput
+    affiliateAttribution?: AffiliateAttributionUncheckedCreateNestedOneWithoutOrderInput
+  }
+
+  export type OrderCreateOrConnectWithoutLoyaltyTransactionsInput = {
+    where: OrderWhereUniqueInput
+    create: XOR<OrderCreateWithoutLoyaltyTransactionsInput, OrderUncheckedCreateWithoutLoyaltyTransactionsInput>
+  }
+
   export type StoreUpsertWithoutLoyaltyTransactionsInput = {
     update: XOR<StoreUpdateWithoutLoyaltyTransactionsInput, StoreUncheckedUpdateWithoutLoyaltyTransactionsInput>
     create: XOR<StoreCreateWithoutLoyaltyTransactionsInput, StoreUncheckedCreateWithoutLoyaltyTransactionsInput>
@@ -92437,6 +92831,91 @@ export namespace Prisma {
     points?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type OrderUpsertWithoutLoyaltyTransactionsInput = {
+    update: XOR<OrderUpdateWithoutLoyaltyTransactionsInput, OrderUncheckedUpdateWithoutLoyaltyTransactionsInput>
+    create: XOR<OrderCreateWithoutLoyaltyTransactionsInput, OrderUncheckedCreateWithoutLoyaltyTransactionsInput>
+    where?: OrderWhereInput
+  }
+
+  export type OrderUpdateToOneWithWhereWithoutLoyaltyTransactionsInput = {
+    where?: OrderWhereInput
+    data: XOR<OrderUpdateWithoutLoyaltyTransactionsInput, OrderUncheckedUpdateWithoutLoyaltyTransactionsInput>
+  }
+
+  export type OrderUpdateWithoutLoyaltyTransactionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    orderNumber?: IntFieldUpdateOperationsInput | number
+    customerName?: StringFieldUpdateOperationsInput | string
+    customerPhone?: StringFieldUpdateOperationsInput | string
+    customerEmail?: StringFieldUpdateOperationsInput | string
+    address?: StringFieldUpdateOperationsInput | string
+    city?: StringFieldUpdateOperationsInput | string
+    governorate?: StringFieldUpdateOperationsInput | string
+    itemsSummary?: StringFieldUpdateOperationsInput | string
+    amountText?: StringFieldUpdateOperationsInput | string
+    amountEgp?: FloatFieldUpdateOperationsInput | number
+    subtotal?: FloatFieldUpdateOperationsInput | number
+    discount?: FloatFieldUpdateOperationsInput | number
+    shippingFee?: FloatFieldUpdateOperationsInput | number
+    couponCode?: StringFieldUpdateOperationsInput | string
+    shippingZoneId?: NullableStringFieldUpdateOperationsInput | string | null
+    paymentMethod?: StringFieldUpdateOperationsInput | string
+    paymentStatus?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
+    courier?: StringFieldUpdateOperationsInput | string
+    notes?: StringFieldUpdateOperationsInput | string
+    internalNotes?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    store?: StoreUpdateOneRequiredWithoutOrdersNestedInput
+    customer?: CustomerUpdateOneWithoutOrdersNestedInput
+    items?: OrderItemUpdateManyWithoutOrderNestedInput
+    events?: OrderEventUpdateManyWithoutOrderNestedInput
+    payments?: PaymentUpdateManyWithoutOrderNestedInput
+    refunds?: RefundUpdateManyWithoutOrderNestedInput
+    couponUsage?: CouponUsageUpdateOneWithoutOrderNestedInput
+    affiliateAttribution?: AffiliateAttributionUpdateOneWithoutOrderNestedInput
+  }
+
+  export type OrderUncheckedUpdateWithoutLoyaltyTransactionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    storeId?: StringFieldUpdateOperationsInput | string
+    orderNumber?: IntFieldUpdateOperationsInput | number
+    customerId?: NullableStringFieldUpdateOperationsInput | string | null
+    customerName?: StringFieldUpdateOperationsInput | string
+    customerPhone?: StringFieldUpdateOperationsInput | string
+    customerEmail?: StringFieldUpdateOperationsInput | string
+    address?: StringFieldUpdateOperationsInput | string
+    city?: StringFieldUpdateOperationsInput | string
+    governorate?: StringFieldUpdateOperationsInput | string
+    itemsSummary?: StringFieldUpdateOperationsInput | string
+    amountText?: StringFieldUpdateOperationsInput | string
+    amountEgp?: FloatFieldUpdateOperationsInput | number
+    subtotal?: FloatFieldUpdateOperationsInput | number
+    discount?: FloatFieldUpdateOperationsInput | number
+    shippingFee?: FloatFieldUpdateOperationsInput | number
+    couponCode?: StringFieldUpdateOperationsInput | string
+    shippingZoneId?: NullableStringFieldUpdateOperationsInput | string | null
+    paymentMethod?: StringFieldUpdateOperationsInput | string
+    paymentStatus?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
+    courier?: StringFieldUpdateOperationsInput | string
+    notes?: StringFieldUpdateOperationsInput | string
+    internalNotes?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    items?: OrderItemUncheckedUpdateManyWithoutOrderNestedInput
+    events?: OrderEventUncheckedUpdateManyWithoutOrderNestedInput
+    payments?: PaymentUncheckedUpdateManyWithoutOrderNestedInput
+    refunds?: RefundUncheckedUpdateManyWithoutOrderNestedInput
+    couponUsage?: CouponUsageUncheckedUpdateOneWithoutOrderNestedInput
+    affiliateAttribution?: AffiliateAttributionUncheckedUpdateOneWithoutOrderNestedInput
   }
 
   export type StoreCreateWithoutSuppliersInput = {
@@ -93835,6 +94314,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -94139,6 +94619,7 @@ export namespace Prisma {
   export type LoyaltyTransactionCreateManyStoreInput = {
     id: string
     accountId: string
+    orderId?: string | null
     points: number
     type?: string
     note?: string
@@ -94483,6 +94964,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -94495,6 +94977,7 @@ export namespace Prisma {
     refunds?: RefundUpdateManyWithoutOrderNestedInput
     couponUsage?: CouponUsageUpdateOneWithoutOrderNestedInput
     affiliateAttribution?: AffiliateAttributionUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUpdateManyWithoutOrderNestedInput
   }
 
   export type OrderUncheckedUpdateWithoutStoreInput = {
@@ -94519,6 +95002,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -94530,6 +95014,7 @@ export namespace Prisma {
     refunds?: RefundUncheckedUpdateManyWithoutOrderNestedInput
     couponUsage?: CouponUsageUncheckedUpdateOneWithoutOrderNestedInput
     affiliateAttribution?: AffiliateAttributionUncheckedUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedUpdateManyWithoutOrderNestedInput
   }
 
   export type OrderUncheckedUpdateManyWithoutStoreInput = {
@@ -94554,6 +95039,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -95470,11 +95956,13 @@ export namespace Prisma {
     note?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     account?: LoyaltyAccountUpdateOneRequiredWithoutTransactionsNestedInput
+    order?: OrderUpdateOneWithoutLoyaltyTransactionsNestedInput
   }
 
   export type LoyaltyTransactionUncheckedUpdateWithoutStoreInput = {
     id?: StringFieldUpdateOperationsInput | string
     accountId?: StringFieldUpdateOperationsInput | string
+    orderId?: NullableStringFieldUpdateOperationsInput | string | null
     points?: IntFieldUpdateOperationsInput | number
     type?: StringFieldUpdateOperationsInput | string
     note?: StringFieldUpdateOperationsInput | string
@@ -95484,6 +95972,7 @@ export namespace Prisma {
   export type LoyaltyTransactionUncheckedUpdateManyWithoutStoreInput = {
     id?: StringFieldUpdateOperationsInput | string
     accountId?: StringFieldUpdateOperationsInput | string
+    orderId?: NullableStringFieldUpdateOperationsInput | string | null
     points?: IntFieldUpdateOperationsInput | number
     type?: StringFieldUpdateOperationsInput | string
     note?: StringFieldUpdateOperationsInput | string
@@ -96400,6 +96889,7 @@ export namespace Prisma {
     paymentStatus?: string
     status?: string
     stockRestored?: boolean
+    idempotencyKey?: string | null
     courier?: string
     notes?: string
     internalNotes?: string
@@ -96499,6 +96989,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -96511,6 +97002,7 @@ export namespace Prisma {
     refunds?: RefundUpdateManyWithoutOrderNestedInput
     couponUsage?: CouponUsageUpdateOneWithoutOrderNestedInput
     affiliateAttribution?: AffiliateAttributionUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUpdateManyWithoutOrderNestedInput
   }
 
   export type OrderUncheckedUpdateWithoutCustomerInput = {
@@ -96535,6 +97027,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -96546,6 +97039,7 @@ export namespace Prisma {
     refunds?: RefundUncheckedUpdateManyWithoutOrderNestedInput
     couponUsage?: CouponUsageUncheckedUpdateOneWithoutOrderNestedInput
     affiliateAttribution?: AffiliateAttributionUncheckedUpdateOneWithoutOrderNestedInput
+    loyaltyTransactions?: LoyaltyTransactionUncheckedUpdateManyWithoutOrderNestedInput
   }
 
   export type OrderUncheckedUpdateManyWithoutCustomerInput = {
@@ -96570,6 +97064,7 @@ export namespace Prisma {
     paymentStatus?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     stockRestored?: BoolFieldUpdateOperationsInput | boolean
+    idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     courier?: StringFieldUpdateOperationsInput | string
     notes?: StringFieldUpdateOperationsInput | string
     internalNotes?: StringFieldUpdateOperationsInput | string
@@ -96737,6 +97232,16 @@ export namespace Prisma {
     processedAt?: Date | string | null
   }
 
+  export type LoyaltyTransactionCreateManyOrderInput = {
+    id: string
+    storeId: string
+    accountId: string
+    points: number
+    type?: string
+    note?: string
+    createdAt?: Date | string
+  }
+
   export type OrderItemUpdateWithoutOrderInput = {
     id?: StringFieldUpdateOperationsInput | string
     variantId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -96873,6 +97378,36 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     processedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type LoyaltyTransactionUpdateWithoutOrderInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    points?: IntFieldUpdateOperationsInput | number
+    type?: StringFieldUpdateOperationsInput | string
+    note?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    store?: StoreUpdateOneRequiredWithoutLoyaltyTransactionsNestedInput
+    account?: LoyaltyAccountUpdateOneRequiredWithoutTransactionsNestedInput
+  }
+
+  export type LoyaltyTransactionUncheckedUpdateWithoutOrderInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    storeId?: StringFieldUpdateOperationsInput | string
+    accountId?: StringFieldUpdateOperationsInput | string
+    points?: IntFieldUpdateOperationsInput | number
+    type?: StringFieldUpdateOperationsInput | string
+    note?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LoyaltyTransactionUncheckedUpdateManyWithoutOrderInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    storeId?: StringFieldUpdateOperationsInput | string
+    accountId?: StringFieldUpdateOperationsInput | string
+    points?: IntFieldUpdateOperationsInput | number
+    type?: StringFieldUpdateOperationsInput | string
+    note?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type ShippingRateCreateManyZoneInput = {
@@ -97054,6 +97589,7 @@ export namespace Prisma {
   export type LoyaltyTransactionCreateManyAccountInput = {
     id: string
     storeId: string
+    orderId?: string | null
     points: number
     type?: string
     note?: string
@@ -97067,11 +97603,13 @@ export namespace Prisma {
     note?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     store?: StoreUpdateOneRequiredWithoutLoyaltyTransactionsNestedInput
+    order?: OrderUpdateOneWithoutLoyaltyTransactionsNestedInput
   }
 
   export type LoyaltyTransactionUncheckedUpdateWithoutAccountInput = {
     id?: StringFieldUpdateOperationsInput | string
     storeId?: StringFieldUpdateOperationsInput | string
+    orderId?: NullableStringFieldUpdateOperationsInput | string | null
     points?: IntFieldUpdateOperationsInput | number
     type?: StringFieldUpdateOperationsInput | string
     note?: StringFieldUpdateOperationsInput | string
@@ -97081,6 +97619,7 @@ export namespace Prisma {
   export type LoyaltyTransactionUncheckedUpdateManyWithoutAccountInput = {
     id?: StringFieldUpdateOperationsInput | string
     storeId?: StringFieldUpdateOperationsInput | string
+    orderId?: NullableStringFieldUpdateOperationsInput | string | null
     points?: IntFieldUpdateOperationsInput | number
     type?: StringFieldUpdateOperationsInput | string
     note?: StringFieldUpdateOperationsInput | string

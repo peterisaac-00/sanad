@@ -385,6 +385,8 @@ model Order {
   paymentStatus  String    @default("unpaid") @map("payment_status")
   status         String    @default("pending")
   stockRestored  Boolean   @default(false) @map("stock_restored")
+  // Optional client-supplied key that makes checkout retries idempotent.
+  idempotencyKey String?   @map("idempotency_key")
   courier        String    @default("")
   notes          String    @default("")
   internalNotes  String    @default("") @map("internal_notes")
@@ -397,8 +399,10 @@ model Order {
   refunds              Refund[]
   couponUsage          CouponUsage?
   affiliateAttribution AffiliateAttribution?
+  loyaltyTransactions  LoyaltyTransaction[]
 
   @@unique([storeId, orderNumber])
+  @@unique([storeId, idempotencyKey])
   @@index([storeId])
   @@index([storeId, status])
   @@index([storeId, paymentStatus])
@@ -864,13 +868,17 @@ model LoyaltyTransaction {
   store     Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
   accountId String         @map("account_id")
   account   LoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  orderId   String?        @map("order_id")
+  order     Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
   points    Int
   type      String         @default("earn")
   note      String         @default("")
   createdAt DateTime       @default(now()) @map("created_at")
 
+  @@unique([accountId, orderId, type])
   @@index([storeId])
   @@index([accountId])
+  @@index([storeId, orderId])
   @@map("loyalty_transactions")
 }
 

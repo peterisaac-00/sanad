@@ -104,6 +104,18 @@ export const ORDER_TRANSITIONS: Record<string, string[]> = {
   returned: [],
 };
 
+/**
+ * Mirrors server/validate.ts. A paid order cannot silently become unpaid;
+ * refund states change only through the refund workflow.
+ */
+export const PAYMENT_TRANSITIONS: Record<string, string[]> = {
+  unpaid: ["paid", "failed"],
+  failed: ["unpaid", "paid"],
+  paid: ["refunded"],
+  partially_refunded: ["refunded"],
+  refunded: [],
+};
+
 export const BUSINESS_TYPES: Record<string, string> = {
   fashion: "أزياء وملابس",
   electronics: "إلكترونيات",

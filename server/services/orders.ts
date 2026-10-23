@@ -27,6 +27,77 @@ export async function allocateOrderNumber(storeId: string): Promise<number> {
   return rows[0].nextOrderNumber;
 }
 
+/**
+ * Loyalty is earned only when fulfilment reaches `delivered`. The order id is
+ * stored on the ledger row (unique per account/order/type) so retries and
+ * concurrent status updates can never double-grant or double-reverse points.
+ */
+async function grantLoyaltyForOrder(
+  tx: Prisma.TransactionClient,
+  order: { id: string; storeId: string; customerId: string | null; amountEgp: number; orderNumber: number }
+) {
+  if (!order.customerId) return;
+  const alreadyEarned = await tx.loyaltyTransaction.findFirst({
+    where: { orderId: order.id, type: "earn" },
+    select: { id: true },
+  });
+  if (alreadyEarned) return;
+
+  const rule = await tx.loyaltyRule.findFirst({
+    where: { storeId: order.storeId, type: "earn", isActive: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!rule || order.amountEgp < rule.minOrderValue) return;
+  const earned = Math.floor(order.amountEgp / Math.max(rule.perAmount, 0.01)) * rule.points;
+  if (earned <= 0) return;
+
+  const account = await tx.loyaltyAccount.upsert({
+    where: { customerId: order.customerId },
+    create: { id: newId("lac_"), storeId: order.storeId, customerId: order.customerId, points: 0 },
+    update: {},
+  });
+  await tx.loyaltyTransaction.create({
+    data: {
+      id: newId("ltx_"),
+      storeId: order.storeId,
+      accountId: account.id,
+      orderId: order.id,
+      points: earned,
+      type: "earn",
+      note: `طلب SND-${order.orderNumber}`,
+    },
+  });
+  await tx.loyaltyAccount.update({ where: { id: account.id }, data: { points: { increment: earned } } });
+}
+
+async function revokeLoyaltyForOrder(tx: Prisma.TransactionClient, orderId: string) {
+  const earn = await tx.loyaltyTransaction.findFirst({
+    where: { orderId, type: "earn" },
+    select: { id: true, accountId: true, points: true, storeId: true },
+  });
+  if (!earn) return;
+  const alreadyRevoked = await tx.loyaltyTransaction.findFirst({
+    where: { orderId, type: "revoke" },
+    select: { id: true },
+  });
+  if (alreadyRevoked) return;
+  await tx.loyaltyTransaction.create({
+    data: {
+      id: newId("ltx_"),
+      storeId: earn.storeId,
+      accountId: earn.accountId,
+      orderId,
+      points: -earn.points,
+      type: "revoke",
+      note: "إلغاء/إرجاع الطلب",
+    },
+  });
+  await tx.loyaltyAccount.update({
+    where: { id: earn.accountId },
+    data: { points: { decrement: earn.points } },
+  });
+}
+
 export async function addOrderEvent(
   tx: Prisma.TransactionClient | typeof prisma,
   input: {
@@ -89,19 +160,48 @@ export async function applyOrderStatus(input: {
       throw new ApiError(409, "ORDER_CONFLICT", "Order changed concurrently, please retry.");
     }
     if ((input.target === "cancelled" || input.target === "returned") && !current.stockRestored) {
+      const failures: Array<{ itemId: string; sku: string; qty: number; reason: string }> = [];
       for (const item of current.items) {
         if (item.variantId) {
-          await tx.productVariant
-            .update({ where: { id: item.variantId }, data: { stock: { increment: item.qty } } })
-            .catch(() => null);
+          const restored = await tx.productVariant.updateMany({
+            where: { id: item.variantId, storeId: current.storeId },
+            data: { stock: { increment: item.qty } },
+          });
+          if (restored.count !== 1) {
+            failures.push({ itemId: item.id, sku: item.sku, qty: item.qty, reason: "variant_not_found" });
+          }
         } else if (item.productId) {
-          await tx.product
-            .update({ where: { id: item.productId }, data: { stock: { increment: item.qty } } })
-            .catch(() => null);
+          const restored = await tx.product.updateMany({
+            where: { id: item.productId, storeId: current.storeId },
+            data: { stock: { increment: item.qty } },
+          });
+          if (restored.count !== 1) {
+            failures.push({ itemId: item.id, sku: item.sku, qty: item.qty, reason: "product_not_found" });
+          }
         }
+      }
+      if (failures.length) {
+        // The order must still move to its terminal status, but the merchant
+        // gets an explicit timeline event instead of a silent stock drift.
+        await addOrderEvent(tx, {
+          storeId: current.storeId,
+          orderId: current.id,
+          type: "stock_restore_failed",
+          message: `تعذر إرجاع المخزون لـ ${failures.length} عنصر (منتج محذوف أو غير موجود).`,
+          actor: input.actor ?? "system",
+          metadata: { failures },
+        });
       }
       await tx.order.update({ where: { id: current.id }, data: { stockRestored: true } });
     }
+
+    if (input.target === "delivered") {
+      await grantLoyaltyForOrder(tx, current);
+    }
+    if (input.target === "cancelled" || input.target === "returned") {
+      await revokeLoyaltyForOrder(tx, current.id);
+    }
+
     await addOrderEvent(tx, {
       storeId: current.storeId,
       orderId: current.id,

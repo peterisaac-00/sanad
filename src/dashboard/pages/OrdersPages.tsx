@@ -9,7 +9,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { api } from "../../lib/api";
-import { dateTime, money, number, ORDER_STATUS, ORDER_TRANSITIONS, PAYMENT_STATUS, safeError, timeAgo } from "../../lib/format";
+import { dateTime, money, number, ORDER_STATUS, ORDER_TRANSITIONS, PAYMENT_STATUS, PAYMENT_TRANSITIONS, safeError, timeAgo } from "../../lib/format";
 import { Link, navigate } from "../../lib/router";
 import { useAsync } from "../../lib/useAsync";
 import {
@@ -392,6 +392,10 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
   }, [order?.id, order?.status, order?.paymentStatus]);
 
   const transitions = useMemo(() => (order ? ORDER_TRANSITIONS[order.status] ?? [] : []), [order?.status]);
+  const paymentOptions = useMemo(
+    () => (order ? [order.paymentStatus, ...(PAYMENT_TRANSITIONS[order.paymentStatus] ?? [])] : []),
+    [order?.paymentStatus]
+  );
 
   if (loading && !data) {
     return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-96" /></div>;
@@ -516,10 +520,10 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
                   ))}
                 </Select>
               </Field>
-              <Field label="حالة الدفع">
-                <Select value={nextPayment} onChange={(e) => setNextPayment(e.target.value)}>
-                  {Object.entries(PAYMENT_STATUS).map(([key, meta]) => (
-                    <option key={key} value={key}>{meta.label}</option>
+              <Field label="حالة الدفع" hint={paymentOptions.length > 1 ? undefined : "الحالة نهائية — تُدار الاستردادات من قسم طلبات الاسترداد."}>
+                <Select value={nextPayment} onChange={(e) => setNextPayment(e.target.value)} disabled={paymentOptions.length <= 1}>
+                  {paymentOptions.map((key) => (
+                    <option key={key} value={key}>{PAYMENT_STATUS[key]?.label ?? key}</option>
                   ))}
                 </Select>
               </Field>

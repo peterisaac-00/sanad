@@ -2,13 +2,23 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { ApiError, asyncHandler } from "../errors.js";
 import { requireAuth, requireStoreOwnership } from "../middleware.js";
-import { subdomainParamSchema, validateParams } from "../validate.js";
+import { EXCLUDED_REVENUE_STATUSES, subdomainParamSchema, validateParams } from "../validate.js";
 
 export const dashboardRouter = Router();
 
 function dayKey(d: Date) {
-  return d.toISOString().slice(0, 10);
+  // Bucket by the server's local calendar day. Using toISOString() here would
+  // mix UTC dates with the local `startOfToday` boundary and misplace orders
+  // around midnight (and across DST changes).
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${month}-${day}`;
 }
+
+const revenueWhere = (storeId: string) => ({
+  storeId,
+  status: { notIn: [...EXCLUDED_REVENUE_STATUSES] },
+});
 
 dashboardRouter.get(
   "/api/stores/:subdomain/summary",
@@ -20,13 +30,14 @@ dashboardRouter.get(
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const since14 = new Date(startOfToday.getTime() - 13 * 86_400_000);
+    const since14 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 13);
 
     const [
       store,
       total,
       delivered,
       sales,
+      validOrders,
       methods,
       recent,
       productsCount,
@@ -40,12 +51,12 @@ dashboardRouter.get(
       todayOrders,
       monthSales,
       revenueOrders,
-      topItems,
     ] = await prisma.$transaction([
       prisma.store.findUnique({ where: { id: storeId } }),
       prisma.order.count({ where: { storeId } }),
       prisma.order.count({ where: { storeId, status: "delivered" } }),
-      prisma.order.aggregate({ where: { storeId }, _sum: { amountEgp: true } }),
+      prisma.order.aggregate({ where: revenueWhere(storeId), _sum: { amountEgp: true } }),
+      prisma.order.count({ where: revenueWhere(storeId) }),
       prisma.order.groupBy({ by: ["paymentMethod"], where: { storeId }, _count: { _all: true } }),
       prisma.order.findMany({ where: { storeId }, orderBy: { createdAt: "desc" }, take: 8, include: { items: true } }),
       prisma.product.count({ where: { storeId } }),
@@ -57,19 +68,32 @@ dashboardRouter.get(
       prisma.walletAccount.findUnique({ where: { storeId } }),
       prisma.order.groupBy({ by: ["status"], where: { storeId }, _count: { _all: true } }),
       prisma.order.count({ where: { storeId, createdAt: { gte: startOfToday } } }),
-      prisma.order.aggregate({ where: { storeId, createdAt: { gte: startOfMonth } }, _sum: { amountEgp: true } }),
+      prisma.order.aggregate({ where: { ...revenueWhere(storeId), createdAt: { gte: startOfMonth } }, _sum: { amountEgp: true } }),
       prisma.order.findMany({
         where: { storeId, createdAt: { gte: since14 } },
         select: { createdAt: true, amountEgp: true, status: true },
       }),
-      prisma.orderItem.groupBy({
-        by: ["productId", "name"],
-        where: { order: { storeId, status: { notIn: ["cancelled", "returned"] } }, productId: { not: null } },
-        _sum: { qty: true, unitPriceEgp: true },
-        orderBy: { _sum: { qty: "desc" } },
-        take: 5,
-      }),
     ]);
+
+    // groupBy cannot multiply qty × unit price, so aggregate top products in
+    // SQL where the multiplication is exact and the result set is already
+    // limited to the five best sellers.
+    const topItems = await prisma.$queryRaw<
+      Array<{ productId: string; name: string; qty: number; revenue: number }>
+    >`
+      SELECT oi."product_id" AS "productId",
+             MAX(oi."name") AS "name",
+             SUM(oi."qty")::int AS "qty",
+             SUM(oi."qty" * oi."unit_price_egp")::double precision AS "revenue"
+      FROM "order_items" oi
+      JOIN "orders" o ON o."id" = oi."order_id"
+      WHERE o."store_id" = ${storeId}
+        AND o."status" NOT IN ('cancelled', 'returned')
+        AND oi."product_id" IS NOT NULL
+      GROUP BY oi."product_id"
+      ORDER BY "qty" DESC
+      LIMIT 5
+    `;
 
     const totalSales = Math.round(sales._sum.amountEgp ?? 0);
     const codCount = methods
@@ -78,7 +102,7 @@ dashboardRouter.get(
 
     const byDay = new Map<string, { revenue: number; orders: number }>();
     for (let i = 0; i < 14; i++) {
-      const d = new Date(since14.getTime() + i * 86_400_000);
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 13 + i);
       byDay.set(dayKey(d), { revenue: 0, orders: 0 });
     }
     for (const o of revenueOrders) {
@@ -95,7 +119,9 @@ dashboardRouter.get(
         total_orders: total,
         delivered_orders: delivered,
         total_sales_egp: totalSales,
-        avg_order_egp: total ? Math.round(totalSales / total) : 0,
+        // AOV is revenue divided by orders that actually count as revenue,
+        // never by cancelled/returned orders.
+        avg_order_egp: validOrders ? Math.round(totalSales / validOrders) : 0,
         cod_share_percent: total ? Math.round((codCount / total) * 100) : 0,
         orders_today: todayOrders,
         pending_orders: pendingOrders,
@@ -112,8 +138,8 @@ dashboardRouter.get(
       top_products: topItems.map((row) => ({
         productId: row.productId,
         name: row.name,
-        qty: row._sum.qty ?? 0,
-        revenue: row._sum.unitPriceEgp ?? 0,
+        qty: Number(row.qty) || 0,
+        revenue: Math.round((Number(row.revenue) || 0) * 100) / 100,
       })),
       recent_orders: recent,
     });

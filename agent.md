@@ -1,0 +1,290 @@
+# Sanad Commerce — Phased Execution Plan
+
+**Source:** Review dated 2026-10-23  
+**Last updated:** 2026-10-23  
+**Scope:** Frontend, backend/API, database, accounting, security, routing, storefront, UX, production readiness.
+
+**Status key:** `[x]` implemented and verified · `[ ]` pending · `[ ] (partial)` part complete, remainder noted.
+
+**Rule:** a phase is complete only when its exit gate passes. Every fix requires code, regression coverage, and passing lint/build/tests.
+
+## Status at a Glance
+
+| Phase | Focus | Status |
+|---|---|---|
+| 1 | Financial correctness and transactional integrity | ✅ Complete |
+| 2 | Security, media, and data protection | ⏳ Next |
+| 3 | Feature truthfulness and integrations | ⏳ Pending |
+| 4 | Admin, RBAC, team, and custom domains | ⏳ Pending |
+| 5 | Storefront, SEO, performance, and currency model | ⏳ Pending |
+| 6 | UX, accessibility, retention, and launch readiness | ⏳ Pending |
+
+## Verification — 2026-10-23
+
+| Check | Result |
+|---|---|
+| Phase 1 suite: `npx vitest run tests/phase1-integrity.test.ts --pool=forks --maxWorkers=1` | ✅ 12/12 passing |
+| Full suite: `npm test` | ✅ 18 files, 67 tests passing |
+| `npm run lint` (`tsc --noEmit`) | ✅ Passing |
+| `npm run build` | ✅ Passing |
+| `npm run build:server` | ✅ Passing |
+
+**Database:** PostgreSQL 17.6 on `localhost:5432`; `tests/setup.ts` creates one test database per worker. CI must provide PostgreSQL as a service.  
+**Bundle:** ~1.43 MB minified / ~327 KB gzip. Functional, but needs code splitting in Phase 5.
+
+---
+
+# Phase 1 — Financial Correctness and Transactional Integrity ✅
+
+**Goal:** make revenue, inventory, refunds, payments, and loyalty trustworthy under concurrency and retries.  
+**Exit gate:** all financial paths are serialized or idempotent; dashboard and reports use one accounting definition; all tests pass.
+
+## Accounting
+
+- [x] **R3.1 — Exclude cancelled/returned orders from sales.** `dashboard.ts`: one `revenueWhere` filter now drives total sales, month sales, and AOV. AOV divides by valid orders, not all orders. Daily revenue uses local calendar days to avoid midnight/DST drift. **Verified:** a 100 valid + 200 cancelled + 300 returned scenario returns sales 100, AOV 100, month sales 100.
+- [x] **R3.2 — Top-product revenue is quantity × unit price.** `dashboard.ts`: replaced `groupBy` sum of unit prices with `SUM(qty * unit_price_egp)` and excluded lost orders. **Verified:** 3 × 100 cancelled order is ignored; 2 × 40 delivered order reports revenue 80.
+- [x] **R3.3 — `status_counts` follows active filters.** `orders.ts`: list, export, and counters share `OrderFilters`/`orderWhere`. Counters apply search, payment, and date filters but ignore the `status` filter so status pills remain navigable. **Verified:** filtered list and counter behavior both covered.
+- [x] **R3.9 — Report expenses stay inside the selected period.** `reports.ts`: added `createdAt: range` to wallet expense aggregation. **Verified:** 7 inside the range and 99 outside produce 7 expenses and net 93 in the test scenario.
+- [x] **R3.10 — Lost orders do not contribute discounts or shipping.** `reports.ts`: cancelled/returned orders are excluded from revenue, discounts, shipping, coupon figures, affiliate figures, and daily discount series. **Verified:** only the valid order’s 10 discount and 5 shipping are reported.
+
+## Transactions and Idempotency
+
+- [x] **R3.4 — Coupon limits hold under concurrency.** `checkout.ts`: PostgreSQL advisory locks serialize by store/coupon and by customer identity. Coupon limits and first-order rules are revalidated inside the transaction. `identity.ts` normalizes phone/email identity. **Verified:** five concurrent checkouts on a one-use coupon create one order, one usage, and one stock decrement.
+- [x] **R3.5 — Refunds cannot exceed the order total.** `orders.ts`: refund creation and processing lock the order, re-read aggregates inside the transaction, and validate against fresh totals. Double-processing returns 409. **Verified:** concurrent 60 + 60 refunds on a 100 order allow one and reject the other; remaining 40 can be refunded.
+- [x] **R3.6 — Loyalty is earned on delivery and reversed on loss.** `checkout.ts` no longer grants points. `orders.ts` grants on `delivered` and revokes on `cancelled`/`returned`. `LoyaltyTransaction.orderId` plus `@@unique([accountId, orderId, type])` makes the ledger idempotent. **Verified:** 10 points on delivery, no double grant, 0 points and a -10 revoke after return; cancellation before delivery creates no account.
+- [x] **R3.7 — Stock restoration is never silent.** `orders.ts`: store-scoped `updateMany` replacements; failures are collected and written to the order timeline as `stock_restore_failed` with SKU/qty/reason metadata. The status transition still completes, but the failure is auditable. **Verified:** code review and order-state tests. A dedicated double-restore regression test remains in Phase 6.
+- [x] **R3.8 — Manual payment status is a state machine.** `validate.ts` defines `PAYMENT_TRANSITIONS`; `orders.ts` locks the order, rejects invalid transitions with 409, treats repeated status as a no-op, reuses pending payments, and allows only one succeeded payment. The UI exposes only valid transitions. **Verified:** concurrent paid requests both return 200 but create one payment; paid → unpaid returns 409. Real provider references and webhooks remain in Phase 3.
+- [x] **R5.4 — Checkout supports `Idempotency-Key`.** A valid 8–128 character URL-safe key maps to `Order.idempotencyKey` with `@@unique([storeId, idempotencyKey])`. The service has a fast replay path plus unique-race fallback. The storefront keeps one key per checkout attempt and resets it after success. **Verified:** concurrent identical keys return the same order and decrement stock once; a new key creates a new order; a short key returns `INVALID_IDEMPOTENCY_KEY`.
+
+## Identity and Test Environment
+
+- [x] **R5.2a — Customer rows are deduplicated.** `identity.ts` strips non-digits and the `00` prefix from phones, lowercases/trims emails, and uses the result as an advisory-lock key. Checkout and manual orders use the same identity. **Verified:** `+20 100 123 4567` and `0020-100-123-4567` resolve to one customer (`201001234567`); per-customer coupon limits apply. Address deduplication is still pending as R5.2b.
+- [x] **R2.2 — Test environment runs.** PostgreSQL 17.6 is available, per-worker databases are created, migrations deploy, and the full suite passes. CI still needs a PostgreSQL service.
+
+## Phase 1 Files
+
+- **Schema/migration:** `prisma/schema.prisma`, `prisma/migrations/20261023150000_phase1_integrity/migration.sql`
+- **Backend:** `server/identity.ts`, `server/validate.ts`, `server/routes/dashboard.ts`, `server/routes/reports.ts`, `server/routes/orders.ts`, `server/routes/storefront.ts`, `server/services/checkout.ts`, `server/services/orders.ts`
+- **Frontend:** `src/lib/api.ts`, `src/lib/format.ts`, `src/storefront/StorefrontCheckoutPages.tsx`, `src/dashboard/pages/OrdersPages.tsx`
+- **Tests/config:** `tests/phase1-integrity.test.ts`, `vitest.config.ts`
+
+---
+
+# Phase 2 — Security and Media Hardening
+
+**Goal:** close XSS, CSRF, rate-limit, session, and PII exposure gaps.  
+**Exit gate:** the security test matrix passes; no active content is served from the app origin; rate limits work across replicas; PII is masked and audited.
+
+## Uploads and Media
+
+- [ ] **R4.1 — Block unsanitized SVG.** `media.ts`, `index.ts`: SVG is stored and served as-is from `/uploads`. Reject SVG by default; if required, sanitize it and serve media from an isolated domain with strict CSP and `nosniff`. **Done when** `<script>`/`onload` payloads cannot execute.
+- [ ] **R9.3 — Validate actual image content.** `media.ts`: validation trusts client MIME and base64 syntax. Check magic bytes, decode/re-encode, strip metadata, cap dimensions, and reject polyglot files. **Done when** a fake PNG or polyglot upload is rejected.
+
+## Request Integrity
+
+- [ ] **R4.2 — Reject mutations without Origin/Referer in production.** `middleware.ts`: missing both headers currently passes. Reject undocumented cross-origin mutations, or add double-submit CSRF tokens with `SameSite=Strict` where flows allow. **Done when** a browser POST without a source returns 403.
+- [ ] **R4.3 — Use distributed rate limiting.** `middleware.ts`, README: limits are per process and reset on restart. Move to Redis/shared storage and test behind a reverse proxy. **Done when** a limit hit on replica A blocks replica B.
+- [ ] **R4.5 — Define `trust proxy` explicitly.** Use known hops or proxy addresses, then verify `req.ip` in Docker/cloud. **Done when** client IPs cannot be spoofed through untrusted headers.
+
+## Accounts and Sessions
+
+- [ ] **R4.4 — Add verification, reset, 2FA, and session revocation.** No email verification, secure reset, or MFA. Add short-lived single-use reset tokens, 2FA for privileged accounts, and revoke all other sessions on password change. **Done when** old sessions fail after a password change and reset tokens cannot be reused.
+
+## Data Protection
+
+- [ ] **R4.6 — Protect exported PII.** Exports rely on session auth only. Add role-aware authorization, an audit event per export, streaming/rate limits, retention rules for carts and audit logs, and PII masking in logs. **Done when** a viewer cannot export PII and every export is attributable.
+- [ ] **R4.7 — Stop leaking DNS records and verification tokens.** `settings.ts`: return only `verified`, `status`, and instructions; do not echo all TXT records or the token. **Done when** the verification response contains neither.
+
+## Public Endpoint Abuse
+
+- [ ] **R7.8 — Harden order tracking.** `GET /api/storefront/:subdomain/orders/:orderNumber?phone=` uses sequential numbers plus phone lookup with only general write limits. Add a dedicated rate limit and preferably an OTP or signed tracking token; minimize returned PII. **Done when** enumeration attempts are blocked.
+- [ ] **R5.3 — Add abandoned-cart TTL and anti-abuse.** Add a retention job, reject empty carts without a customer signal, use distributed limits, and add CAPTCHA if abuse appears. **Done when** stale carts expire and the table cannot be flooded anonymously.
+
+---
+
+# Phase 3 — Feature Truthfulness and Integrations
+
+**Goal:** no UI may imply that an unimplemented feature works. Ship it, flag it, or hide it.  
+**Exit gate:** the feature inventory matches runtime behavior; no misleading toggles or paid-feature claims remain.
+
+## Feature Inventory
+
+- [ ] **R10.1 — Online payments.** UI toggles exist but no adapter does. Mark them unavailable and block selection, or implement a full adapter with webhooks and provider idempotency. **Done when** checkout cannot choose an unsupported method.
+- [ ] **R10.2 — Shipping carriers.** Zones/rates are manual; no carrier or tracking automation exists. Label shipping as manual or implement an adapter. **Done when** no copy promises automatic tracking.
+- [ ] **R10.3 — WhatsApp automation.** Only `wa.me` links work. Separate manual chat, configured integration, and message-sent states. **Done when** the UI does not imply automated sending.
+- [ ] **R10.4 — S3 storage.** `STORAGE_DRIVER=s3` exists but the adapter does not. Implement it, hide it as coming soon, or fail startup explicitly when selected. **Done when** unsupported storage cannot be selected.
+- [ ] **R10.5 — Wallet deposit approval.** Pending deposits cannot be approved, so balances never complete a full cycle. Add an admin approve/reject workflow with audit, or hide deposits until Phase 4. **Done when** deposit → approval → balance update works end to end.
+- [ ] **R10.6 — Affiliate settlement.** Attribution and commission exist, but approval/payout does not. Add a settlement cycle or flag the feature and hide withdrawable balances. **Done when** no payout is implied without a settlement path.
+- [ ] **R8.3 — Learn center scope.** It is static guidance with internal links. Verify every link reaches a real workflow, or label it a short guide instead of a full help center. **Done when** no dead links or overstated claims remain.
+
+## Product Surface
+
+- [ ] **R5.1 — Manual orders are clearly external.** `POST /orders` trusts `amount_egp`, `amount_text`, and `items_summary` with no real items, stock link, or gross/discount/shipping split. Label it “manual external order” with a banner and currency metadata, or support real items with server-side totals. **Done when** merchants cannot mistake it for a normal inventory-linked order.
+- [ ] **R7.2 — Feature flags replace dead sidebar entries.** The sidebar exposes ~22 features, several without working integrations. Give every feature one state: available, needs setup, coming soon, or not in plan. Hide incomplete pages. **Done when** no page looks complete while its core workflow is missing.
+
+---
+
+# Phase 4 — Admin, RBAC, Team, and Custom Domains
+
+**Goal:** separate platform administration from merchant accounts, enforce roles server-side, and make custom domains functional.  
+**Exit gate:** team permissions are enforced by the API, custom domains open the correct store, and admin operations are audited.
+
+## Admin and Roles
+
+- [ ] **R6.1 — Build a real admin back-office.** Only `GET /api/admin/leads` exists. Add overview, stores, merchants, subscriptions, wallet approvals, support, reports, domain verification, audit/security events, store suspension, and feature flags. **Done when** each operation has permission checks and audit.
+- [ ] **R6.2 — Separate `PlatformAdmin` from `Merchant`.** The current `admin` role shares the merchant account model. Introduce a distinct admin identity, session scope, MFA, and audit policy. **Done when** admin and merchant sessions are not interchangeable.
+- [ ] **R6.3 — Implement TeamMember authentication and RBAC.** `TeamMember.role` is nominal: no invite acceptance, login, session link, or permission middleware. Add invitation/password/session flow, bind sessions to members, and enforce granular permissions on every mutation. **Done when** staff/viewer roles are denied privileged actions by the API, not just the UI.
+
+## Domains and Publishing
+
+- [ ] **R8.1 — Make custom domains work end to end.** `StoreDomain` and TXT verification exist, but no host resolver maps `req.hostname` to a store; TLS and canonical handling are missing. Add pre-SPA host resolution, canonical URLs, TLS provisioning, host-header poisoning protection, and an end-to-end test. **Done when** a verified domain opens the correct storefront.
+- [ ] **R8.2 — Clarify `/admin`.** Robots disallows it, but no route exists. Build it with R6.1 or document it as planned. **Done when** routing, robots, and copy agree.
+- [ ] **R7.1 — Unify onboarding and publishing states.** Dashboard access requires `onboardingCompleted`, registration creates an active store, and storefront uses a separate `published` flag. Use `draft → ready → published → suspended`, with a visible reason when unpublished. **Done when** owner and visitor see consistent state.
+
+**Dependencies:** R10.5 needs the admin wallet workflow; R4.6 export authorization depends on the RBAC model.
+
+---
+
+# Phase 5 — Storefront, SEO, Performance, and Currency Model
+
+**Goal:** improve crawlability and performance, and make currency data honest.  
+**Exit gate:** metadata is available without JS, bundle budgets pass, currency is explicit everywhere, and published stores have correct sitemaps/canonicals.
+
+## Data Model
+
+- [ ] **R3.11 — Rename misleading currency fields.** `amountEgp`/`unitPriceEgp` store whatever the store currency is, and checkout supports fewer currencies than the UI advertises. Migrate to `amount`/`unitPrice` with `currency`, or isolate legacy fields and block unsupported currencies. **Done when** SAR/AED values are never read as EGP.
+
+## Crawlability
+
+- [ ] **R9.1 — Add SSR/prerender to the storefront.** Titles and JSON-LD currently depend on client JS. Prerender or server-render home, product, blog, and page routes. **Done when** crawlers and social previews see metadata without executing JS.
+- [ ] **R8.4 — Generate dynamic sitemaps.** The current sitemap uses a fixed domain and hash URLs. Add a marketing sitemap plus per-store sitemap/robots for published stores only; use real `lastmod` values. **Done when** unpublished stores are excluded.
+- [ ] **R8.5 — Fix canonical coverage.** Canonical handling covers only some search cases. Define canonical URLs for category/sort/page, mark unwanted filters `noindex`, and add prev/next where appropriate. **Done when** sorting and pagination do not create duplicate canonicals.
+- [ ] **R8.6 — Return real 404s.** SPA fallback currently returns `index.html` for unknown assets and hosts. Return 404 for missing assets and unknown hosts. **Done when** `/missing.js` and unknown domains do not receive the SPA.
+
+## Performance
+
+- [ ] **R9.2 — Split the bundle.** Dashboard, marketing, and storefront ship together (~1.43 MB minified). Lazy-load surfaces, split vendor/feature chunks, analyze the bundle, and set an initial-load budget (e.g. ≤250 KB gzip). **Done when** each surface loads independently.
+- [ ] **R9.4 — Generate responsive image variants.** Images are stored and served at original size. Add thumbnails, responsive URLs, and dimension limits. **Done when** mobile storefront pages do not download desktop originals.
+
+---
+
+# Phase 6 — UX, Accessibility, Retention, and Launch Readiness
+
+**Goal:** finish daily-use UX, close accessibility gaps, clean data, and prove operational readiness.  
+**Exit gate:** no open P0/P1 items; E2E, accessibility, security, and restore drills pass.
+
+## UX and Accessibility
+
+- [ ] **R7.3 — Simplify mobile navigation.** Reduce five bottom items (with 9px labels) to 3–4 primary items plus a grouped drawer; use at least 11–12px text. **Done when** navigation is usable at 320px.
+- [ ] **R7.4 — Add a modal focus trap.** Move focus into the dialog, contain Tab, restore focus on close, and use `aria-labelledby` when a heading exists. **Done when** keyboard users cannot tab behind the modal.
+- [ ] **R7.5 — Standardize loading and disabled states.** Cover checkout, product save, settings, order status, coupons, and refunds. **Done when** double-clicks cannot create duplicate mutations.
+- [ ] **R7.6 — Standardize `rel="noopener noreferrer"`.** Apply it to every `target="_blank"` external link. **Done when** no external link lacks both protections.
+- [ ] **R7.7 — Revalidate stale carts.** Local storage snapshots can be outdated. Revalidate on cart open or after an interval; show price, stock, and unpublished-product changes before checkout. **Done when** users see changes before submitting.
+- [ ] **R7.9 — Test RTL and mixed text visually.** Cover long Arabic names, English SKUs, dashboard tables at 320px, mobile modals, and mixed currencies. **Done when** no clipping or overlap remains.
+- [ ] **R7.10 — Unify error taxonomy.** Map 401, 403, 404, 409, 429, and 5xx to specific user actions. **Done when** no surface shows only a generic failure.
+
+## Data Quality
+
+- [ ] **R5.2b — Deduplicate customer addresses.** Checkout creates a new `CustomerAddress` each time. Normalize and deduplicate by a deterministic key while keeping one default. **Done when** repeated checkout with the same address adds no row.
+- [ ] **R5.5 — Structure order events for translation.** Stop embedding English status names in Arabic messages. Store `event type + metadata` and translate in the UI. **Done when** the timeline renders localized statuses.
+- [ ] **R3.7 (remaining test) — Prove double-restore safety.** Concurrent cancel/return must not double stock, and a deleted product must emit `stock_restore_failed` once. **Done when** the regression test passes.
+
+## R11 — Launch Scope
+
+Before launch, these must work end to end:
+
+- [ ] Login and registration
+- [ ] Onboarding
+- [ ] Products, variants, and inventory
+- [ ] Storefront home, catalog, and product pages
+- [ ] Cart and COD checkout
+- [ ] Orders and status transitions
+- [ ] Customers
+- [ ] Shipping zones
+- [ ] Core settings
+- [ ] Order tracking
+- [ ] Audit and security basics
+- [ ] Backup/restore and monitoring
+
+## R13 — Test Matrix
+
+**API/load**
+- [ ] 100 concurrent checkouts on stock = 1
+- [ ] 100 concurrent checkouts on a one-use coupon
+- [ ] 10 concurrent refunds never exceed the order total
+- [ ] Currency change before checkout
+- [ ] Load tests for checkout, coupons, and refunds
+
+**Security**
+- [ ] SVG with script/event handler
+- [ ] Polyglot image/file
+- [ ] CSRF with missing/foreign Origin and Referer
+- [ ] Session cookie after password change
+- [ ] Cross-tenant IDs on every resource mutation
+- [ ] Export authorization and rate limits
+- [ ] Order-tracking enumeration
+- [ ] Host-header/custom-domain poisoning
+
+**UI/E2E**
+- [ ] 320 / 375 / 768 / desktop
+- [ ] RTL with mixed Arabic, English, and SKUs
+- [ ] Refresh on every deep link
+- [ ] Browser back/forward
+- [ ] Modal keyboard navigation
+- [ ] Slow network and 401/403/409/429/500 states
+- [ ] Stale cart with deleted or repriced products
+- [ ] Checkout double-click
+- [ ] Onboarding resume after reload
+
+**Operational**
+- [ ] Backup restore drill
+- [ ] Monitoring and alerting for errors, latency, failed payments, and stock failures
+- [ ] Audit/security events
+- [ ] Explicit launch approval
+
+Phase 1’s regression suite already covers the accounting, coupon, refund, payment, loyalty, idempotency, and customer-identity baseline.
+
+---
+
+## Appendix A — Deferred or Flagged Features
+
+1. Dropshipping — no supplier integrations.
+2. AI assistant — no configured provider.
+3. Affiliates — requires approval/payout cycle (R10.6).
+4. Loyalty — earn/revoke is fixed; confirm redemption policy before launch.
+5. Upsells/related products — no measurement.
+6. Blog — only if acquisition/SEO is a current priority.
+7. Wallet — requires admin approval flow (R10.5).
+8. Team management — requires authentication/RBAC (R6.3).
+9. Custom domains — requires host routing/TLS (R8.1).
+10. Learn center — keep as a short guide until R8.3 is complete.
+
+## Appendix B — R12 Priority Map
+
+**P0 — before commercial launch**
+- [x] Revenue, AOV, top products, and status counts
+- [x] Concurrent coupons and refunds
+- [x] Loyalty grant/revoke
+- [ ] SVG and magic-byte validation (Phase 2)
+- [ ] Checkout/payment idempotency: checkout and manual payments complete; real provider remains Phase 3
+- [x] PostgreSQL and full test run
+- [ ] Password-change session invalidation (Phase 2)
+- [ ] Disable or document unimplemented toggles (Phase 3)
+
+**P1 — before expansion**
+- [ ] Redis rate limiting (Phase 2)
+- [ ] Email verification, reset, and 2FA (Phase 2)
+- [ ] Team authentication and RBAC (Phase 4)
+- [ ] Admin back-office (Phase 4)
+- [ ] Custom domains end to end (Phase 4)
+- [ ] Dynamic sitemap and SSR/prerender (Phase 5)
+- [ ] Image processing and thumbnails (Phase 5)
+- [ ] Cart/audit retention (Phase 2/6)
+
+**P2 — UX and performance**
+- [ ] Code splitting and lazy routes (Phase 5)
+- [ ] Modal focus trap (Phase 6)
+- [ ] Stale-cart revalidation (Phase 6)
+- [ ] Mobile navigation and font sizes (Phase 6)
+- [ ] Unified error/loading states (Phase 6)
+- [ ] Visual regression and E2E tests (Phase 6)

@@ -41,8 +41,8 @@ function parseError(status: number, data: unknown): ApiRequestError {
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
     ...init,
+    headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
   });
   if (res.status === 204) return {} as T;
   const data = await res.json().catch(() => ({}));
@@ -224,9 +224,10 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify({ status }),
       }),
-    checkout: (subdomain: string, body: CheckoutInput) =>
+    checkout: (subdomain: string, body: CheckoutInput, idempotencyKey?: string) =>
       req<{ order: any; shipping: any; whatsapp_url: string | null }>(`/api/stores/${enc(subdomain)}/checkout`, {
         method: "POST",
+        headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
         body: JSON.stringify(body),
       }),
     exportUrl: (subdomain: string, opts?: Record<string, string | undefined>) =>

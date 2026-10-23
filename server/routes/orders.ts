@@ -12,6 +12,7 @@ import {
   orderNoteSchema,
   orderPaymentStatusSchema,
   orderStatusSchema,
+  PAYMENT_TRANSITIONS,
   refundProcessSchema,
   refundSchema,
   subdomainParamSchema,
@@ -19,6 +20,7 @@ import {
   validateParams,
   validateQuery,
 } from "../validate.js";
+import { customerIdentity, normalizePhone } from "../identity.js";
 import {
   ORDER_DETAIL_INCLUDE,
   addOrderEvent,
@@ -39,6 +41,39 @@ function isoRange(from?: string, to?: string): Prisma.DateTimeFilter | undefined
   return range;
 }
 
+interface OrderFilters {
+  status?: string;
+  paymentStatus?: string;
+  paymentMethod?: string;
+  governorate?: string;
+  from?: string;
+  to?: string;
+  search?: string;
+}
+
+/**
+ * One source of truth for list, export and status counters. Counters are
+ * computed with every filter EXCEPT status so the pills can be used to switch
+ * between statuses without showing stale store-wide totals.
+ */
+function orderWhere(storeId: string, filters: OrderFilters, includeStatus = true): Prisma.OrderWhereInput {
+  const where: Prisma.OrderWhereInput = { storeId };
+  if (includeStatus && filters.status) where.status = filters.status;
+  if (filters.paymentStatus) where.paymentStatus = filters.paymentStatus;
+  if (filters.paymentMethod) where.paymentMethod = filters.paymentMethod;
+  if (filters.governorate) where.governorate = filters.governorate;
+  if (filters.search) {
+    where.OR = [
+      { customerName: { contains: filters.search, mode: "insensitive" } },
+      { customerPhone: { contains: filters.search } },
+      { itemsSummary: { contains: filters.search } },
+    ];
+  }
+  const range = isoRange(filters.from, filters.to);
+  if (range) where.createdAt = range;
+  return where;
+}
+
 async function scopedOrder(storeId: string, orderId: string) {
   const order = await prisma.order.findFirst({
     where: { id: orderId, storeId },
@@ -46,6 +81,11 @@ async function scopedOrder(storeId: string, orderId: string) {
   });
   if (!order) throw new ApiError(404, "ORDER_NOT_FOUND", "Order not found.");
   return order;
+}
+
+/** Serialise money mutations (refunds, payment status) for one order. */
+async function lockOrder(tx: Prisma.TransactionClient, orderId: string): Promise<void> {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`order:${orderId}`}, 0))`;
 }
 
 // IMPORTANT: static routes must precede /orders/:id.
@@ -65,20 +105,15 @@ ordersRouter.get(
       to?: string;
       search?: string;
     };
-    const where: Prisma.OrderWhereInput = { storeId: req.ownedStore!.id };
-    if (status) where.status = status;
-    if (paymentStatus) where.paymentStatus = paymentStatus;
-    if (paymentMethod) where.paymentMethod = paymentMethod;
-    if (governorate) where.governorate = governorate;
-    if (search) {
-      where.OR = [
-        { customerName: { contains: search, mode: "insensitive" } },
-        { customerPhone: { contains: search } },
-        { itemsSummary: { contains: search } },
-      ];
-    }
-    const range = isoRange(from, to);
-    if (range) where.createdAt = range;
+    const where = orderWhere(req.ownedStore!.id, {
+      status,
+      paymentStatus,
+      paymentMethod,
+      governorate,
+      from,
+      to,
+      search,
+    });
     const rows = await prisma.order.findMany({ where, orderBy: { createdAt: "desc" }, take: 10000 });
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="orders-${Date.now()}.csv"`);
@@ -132,20 +167,9 @@ ordersRouter.get(
         to?: string;
         search?: string;
       };
-    const where: Prisma.OrderWhereInput = { storeId: req.ownedStore!.id };
-    if (status) where.status = status;
-    if (paymentStatus) where.paymentStatus = paymentStatus;
-    if (paymentMethod) where.paymentMethod = paymentMethod;
-    if (governorate) where.governorate = governorate;
-    if (search) {
-      where.OR = [
-        { customerName: { contains: search, mode: "insensitive" } },
-        { customerPhone: { contains: search } },
-        { itemsSummary: { contains: search } },
-      ];
-    }
-    const range = isoRange(from, to);
-    if (range) where.createdAt = range;
+    const filters: OrderFilters = { status, paymentStatus, paymentMethod, governorate, from, to, search };
+    const where = orderWhere(req.ownedStore!.id, filters);
+    const countsWhere = orderWhere(req.ownedStore!.id, filters, false);
     const [total, rows, counts] = await prisma.$transaction([
       prisma.order.count({ where }),
       prisma.order.findMany({
@@ -155,7 +179,7 @@ ordersRouter.get(
         take: pageSize,
         include: { items: true, customer: true },
       }),
-      prisma.order.groupBy({ by: ["status"], where: { storeId: req.ownedStore!.id }, _count: { _all: true } }),
+      prisma.order.groupBy({ by: ["status"], where: countsWhere, _count: { _all: true } }),
     ]);
     res.json({
       orders: rows,
@@ -222,25 +246,72 @@ ordersRouter.patch(
   validateBody(orderPaymentStatusSchema),
   asyncHandler(async (req, res) => {
     const storeId = req.ownedStore!.id;
-    const current = await scopedOrder(storeId, req.params.id);
     const paymentStatus = req.body.paymentStatus as string;
+    const existing = await scopedOrder(storeId, req.params.id);
     const store = await prisma.store.findUnique({ where: { id: storeId }, select: { currency: true } });
+
     const updated = await prisma.$transaction(async (tx) => {
-      await tx.order.update({ where: { id: current.id }, data: { paymentStatus } });
+      await lockOrder(tx, existing.id);
+      const current = await tx.order.findFirst({ where: { id: existing.id, storeId } });
+      if (!current) throw new ApiError(404, "ORDER_NOT_FOUND", "Order not found.");
+
+      // A retry that asks for the current status is a no-op, not a duplicate
+      // payment ledger entry.
+      if (current.paymentStatus === paymentStatus) {
+        return tx.order.findUnique({ where: { id: current.id }, include: ORDER_DETAIL_INCLUDE });
+      }
+      const allowed = PAYMENT_TRANSITIONS[current.paymentStatus] ?? [];
+      if (!allowed.includes(paymentStatus)) {
+        throw new ApiError(
+          409,
+          "INVALID_PAYMENT_TRANSITION",
+          `Cannot move payment from '${current.paymentStatus}' to '${paymentStatus}'.`
+        );
+      }
+
       if (paymentStatus === "paid") {
-        await tx.payment.create({
-          data: {
-            id: newId("pay_"),
-            storeId,
-            orderId: current.id,
-            provider: "manual",
-            amount: current.amountEgp,
-            currency: store?.currency ?? "EGP",
-            status: "succeeded",
-            method: current.paymentMethod,
-          },
+        // Reuse the pending COD/provider payment when present; otherwise
+        // create one manual ledger entry. Never create a second succeeded
+        // payment for the same order.
+        const succeeded = await tx.payment.findFirst({
+          where: { orderId: current.id, status: "succeeded" },
+          select: { id: true },
+        });
+        if (!succeeded) {
+          const pending = await tx.payment.findFirst({
+            where: { orderId: current.id, status: "pending" },
+            orderBy: { createdAt: "desc" },
+          });
+          if (pending) {
+            await tx.payment.update({
+              where: { id: pending.id },
+              data: { status: "succeeded", providerRef: pending.providerRef || `manual:${req.auth!.merchantId}` },
+            });
+          } else {
+            await tx.payment.create({
+              data: {
+                id: newId("pay_"),
+                storeId,
+                orderId: current.id,
+                provider: "manual",
+                providerRef: `manual:${req.auth!.merchantId}`,
+                amount: current.amountEgp,
+                currency: store?.currency ?? "EGP",
+                status: "succeeded",
+                method: current.paymentMethod,
+              },
+            });
+          }
+        }
+      }
+      if (paymentStatus === "failed") {
+        await tx.payment.updateMany({
+          where: { orderId: current.id, status: "pending" },
+          data: { status: "failed" },
         });
       }
+
+      await tx.order.update({ where: { id: current.id }, data: { paymentStatus } });
       await addOrderEvent(tx, {
         storeId,
         orderId: current.id,
@@ -256,7 +327,7 @@ ordersRouter.patch(
       merchantId: req.auth!.merchantId,
       action: "order.payment_status_changed",
       entity: "order",
-      entityId: current.id,
+      entityId: existing.id,
       metadata: { paymentStatus },
       ip: req.ip,
     });
@@ -319,13 +390,23 @@ ordersRouter.post(
     const storeId = req.ownedStore!.id;
     const order = await scopedOrder(storeId, req.params.id);
     const { amount, reason } = req.body as { amount: number; reason: string };
-    const reserved = order.refunds
-      .filter((r) => r.status !== "cancelled")
-      .reduce((sum, r) => sum + r.amount, 0);
-    if (reserved + amount > order.amountEgp + 0.001) {
-      throw new ApiError(400, "REFUND_EXCEEDS_ORDER", "Refund total cannot exceed the order amount.");
-    }
     const refund = await prisma.$transaction(async (tx) => {
+      // The aggregate + insert must be atomic; otherwise two concurrent
+      // requests can both observe the same old total and over-refund.
+      await lockOrder(tx, order.id);
+      const fresh = await tx.order.findFirst({
+        where: { id: order.id, storeId },
+        select: { id: true, amountEgp: true },
+      });
+      if (!fresh) throw new ApiError(404, "ORDER_NOT_FOUND", "Order not found.");
+      const reservedAgg = await tx.refund.aggregate({
+        where: { orderId: order.id, status: { not: "cancelled" } },
+        _sum: { amount: true },
+      });
+      const reserved = reservedAgg._sum.amount ?? 0;
+      if (reserved + amount > fresh.amountEgp + 0.001) {
+        throw new ApiError(400, "REFUND_EXCEEDS_ORDER", "Refund total cannot exceed the order amount.");
+      }
       const created = await tx.refund.create({
         data: { id: newId("rfd_"), storeId, orderId: order.id, amount, reason, status: "pending" },
       });
@@ -361,30 +442,46 @@ ordersRouter.patch(
   asyncHandler(async (req, res) => {
     const storeId = req.ownedStore!.id;
     const order = await scopedOrder(storeId, req.params.id);
-    const refund = order.refunds.find((r) => r.id === req.params.childId);
-    if (!refund) throw new ApiError(404, "REFUND_NOT_FOUND", "Refund not found.");
-    if (refund.status !== "pending") throw new ApiError(409, "REFUND_ALREADY_FINAL", "Refund was already finalised.");
     const status = req.body.status as "processed" | "cancelled";
-    if (status === "processed" && !["paid", "partially_refunded"].includes(order.paymentStatus)) {
-      throw new ApiError(409, "REFUND_REQUIRES_PAYMENT", "Mark the order as paid before processing a refund.");
-    }
     const updated = await prisma.$transaction(async (tx) => {
+      // Serialise with other refund / payment mutations on this order, then
+      // read the child row and payment state from inside the lock. Using the
+      // pre-transaction snapshot would let a concurrent request finalise the
+      // same refund twice or compute a stale processed total.
+      await lockOrder(tx, order.id);
+      const refund = await tx.refund.findFirst({
+        where: { id: req.params.childId, orderId: order.id, storeId },
+      });
+      if (!refund) throw new ApiError(404, "REFUND_NOT_FOUND", "Refund not found.");
+      if (refund.status !== "pending") {
+        throw new ApiError(409, "REFUND_ALREADY_FINAL", "Refund was already finalised.");
+      }
+      const current = await tx.order.findFirst({
+        where: { id: order.id, storeId },
+        select: { id: true, amountEgp: true, paymentStatus: true },
+      });
+      if (!current) throw new ApiError(404, "ORDER_NOT_FOUND", "Order not found.");
+      if (status === "processed" && !["paid", "partially_refunded"].includes(current.paymentStatus)) {
+        throw new ApiError(409, "REFUND_REQUIRES_PAYMENT", "Mark the order as paid before processing a refund.");
+      }
       const row = await tx.refund.update({
         where: { id: refund.id },
         data: { status, processedAt: status === "processed" ? new Date() : null },
       });
       if (status === "processed") {
-        const processedTotal = order.refunds
-          .filter((r) => r.status === "processed" || r.id === refund.id)
-          .reduce((sum, r) => sum + r.amount, 0);
+        const processedAgg = await tx.refund.aggregate({
+          where: { orderId: current.id, status: "processed" },
+          _sum: { amount: true },
+        });
+        const processedTotal = processedAgg._sum.amount ?? 0;
         await tx.order.update({
-          where: { id: order.id },
-          data: { paymentStatus: processedTotal >= order.amountEgp - 0.001 ? "refunded" : "partially_refunded" },
+          where: { id: current.id },
+          data: { paymentStatus: processedTotal >= current.amountEgp - 0.001 ? "refunded" : "partially_refunded" },
         });
       }
       await addOrderEvent(tx, {
         storeId,
-        orderId: order.id,
+        orderId: current.id,
         type: "refund_" + status,
         message: status === "processed" ? "تم تنفيذ الاسترداد" : "تم إلغاء طلب الاسترداد",
         actor: req.auth!.email,
@@ -421,28 +518,41 @@ ordersRouter.post(
       internal_notes: string;
     };
     const orderNumber = await allocateOrderNumber(storeId);
+    const phone = normalizePhone(b.customer_phone);
+    const email = String(b.customer_email ?? "").trim().toLowerCase();
+    const identity = customerIdentity({ phone, email });
     try {
       const order = await prisma.$transaction(async (tx) => {
+        // Serialise customer upserts with storefront checkout so a manual
+        // order and a simultaneous online order cannot create two rows for
+        // the same shopper.
+        if (identity) {
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`customer:${storeId}:${identity}`}, 0))`;
+        }
         let customerId: string | null = null;
-        if (b.customer_phone || b.customer_email) {
+        if (phone || email) {
+          const identityFilters: Prisma.CustomerWhereInput[] = [];
+          if (phone) identityFilters.push({ phone });
+          if (email) identityFilters.push({ email });
           const existing = await tx.customer.findFirst({
-            where: {
-              storeId,
-              ...(b.customer_phone ? { phone: b.customer_phone } : { email: b.customer_email }),
-            },
+            where: { storeId, OR: identityFilters },
           });
           const customer = existing
             ? await tx.customer.update({
                 where: { id: existing.id },
-                data: { name: b.customer_name || existing.name },
+                data: {
+                  name: b.customer_name || existing.name,
+                  ...(email && !existing.email ? { email } : {}),
+                  ...(phone && !existing.phone ? { phone } : {}),
+                },
               })
             : await tx.customer.create({
                 data: {
                   id: newId("cus_"),
                   storeId,
                   name: b.customer_name,
-                  phone: b.customer_phone,
-                  email: b.customer_email,
+                  phone,
+                  email,
                 },
               });
           customerId = customer.id;
@@ -454,8 +564,8 @@ ordersRouter.post(
             orderNumber,
             customerId,
             customerName: b.customer_name,
-            customerPhone: b.customer_phone,
-            customerEmail: b.customer_email,
+            customerPhone: phone,
+            customerEmail: email,
             address: b.address,
             city: b.city,
             governorate: b.governorate,

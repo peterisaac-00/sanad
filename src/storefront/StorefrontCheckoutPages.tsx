@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Check,
@@ -237,6 +237,16 @@ const EMPTY_FORM: CheckoutForm = {
   notes: "",
 };
 
+/**
+ * One key per checkout attempt. Retrying after a network timeout must not
+ * create a second order, so the key survives failed submissions and is only
+ * regenerated once an order has been confirmed.
+ */
+function newCheckoutKey(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `chk_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+}
+
 export function StorefrontCheckoutPage() {
   const {
     subdomain,
@@ -262,6 +272,7 @@ export function StorefrontCheckoutPage() {
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteError, setQuoteError] = useState("");
   const [trackedPhone, setTrackedPhone] = useState("");
+  const checkoutKey = useRef("");
 
   const billable = effectiveSubtotal(subtotal, coupon);
   const discount = Math.min(coupon?.discount ?? 0, subtotal);
@@ -354,6 +365,7 @@ export function StorefrontCheckoutPage() {
     setSubmitting(true);
     try {
       trackCart({ name: form.customer_name, phone: form.customer_phone, email: form.customer_email, force: true });
+      if (!checkoutKey.current) checkoutKey.current = newCheckoutKey();
       const result = await api.orders.checkout(subdomain, {
         customer_name: form.customer_name.trim(),
         customer_phone: form.customer_phone.trim(),
@@ -371,7 +383,8 @@ export function StorefrontCheckoutPage() {
         items: cart.map((item) =>
           item.variantId ? { variantId: item.variantId, qty: item.qty } : { sku: item.sku, qty: item.qty }
         ),
-      });
+      }, checkoutKey.current);
+      checkoutKey.current = "";
       const phone = encodeURIComponent(form.customer_phone.trim());
       clearCart();
       navigate(`${base}/order/${result.order.orderNumber}?phone=${phone}&success=1`, { replace: true });

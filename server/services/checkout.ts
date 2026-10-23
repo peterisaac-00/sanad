@@ -3,6 +3,7 @@ import { prisma, newId } from "../db.js";
 import { ApiError } from "../errors.js";
 import { allocateOrderNumber } from "./orders.js";
 import { paymentService, whatsappLink } from "./integrations.js";
+import { customerIdentity, normalizePhone } from "../identity.js";
 
 export interface CheckoutItemInput {
   sku?: string;
@@ -26,6 +27,17 @@ export interface CouponResult {
   code: string;
   discount: number;
   freeShipping: boolean;
+}
+
+type Db = Prisma.TransactionClient | typeof prisma;
+
+/**
+ * Transaction-scoped PostgreSQL advisory lock. Locks are released
+ * automatically on commit/rollback, which makes them safe for serialising
+ * coupon redemption and customer creation without a global table lock.
+ */
+async function advisoryLock(tx: Prisma.TransactionClient, key: string): Promise<void> {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
 }
 
 function priceOf(
@@ -149,16 +161,20 @@ export async function resolveCheckoutLines(input: {
   return lines;
 }
 
-export async function validateCoupon(input: {
-  storeId: string;
-  code: string;
-  subtotal: number;
-  customerPhone?: string;
-  lines?: Array<{ productId: string; categoryId?: string | null; qty: number; unitPrice: number }>;
-}): Promise<CouponResult | null> {
+export async function validateCoupon(
+  input: {
+    storeId: string;
+    code: string;
+    subtotal: number;
+    customerPhone?: string;
+    customerEmail?: string;
+    lines?: Array<{ productId: string; categoryId?: string | null; qty: number; unitPrice: number }>;
+  },
+  db: Db = prisma
+): Promise<CouponResult | null> {
   const code = input.code.trim().toUpperCase();
   if (!code) return null;
-  const coupon = await prisma.coupon.findUnique({ where: { storeId_code: { storeId: input.storeId, code } } });
+  const coupon = await db.coupon.findUnique({ where: { storeId_code: { storeId: input.storeId, code } } });
   if (!coupon || !coupon.isActive) throw new ApiError(400, "COUPON_INVALID", "كود الخصم غير صالح.");
   const now = new Date();
   if (coupon.startsAt && coupon.startsAt > now) throw new ApiError(400, "COUPON_NOT_STARTED", "كود الخصم لم يبدأ بعد.");
@@ -166,21 +182,32 @@ export async function validateCoupon(input: {
   if (input.subtotal < coupon.minOrderValue) {
     throw new ApiError(400, "COUPON_MIN_ORDER", `الحد الأدنى لاستخدام الكوبون هو ${coupon.minOrderValue}.`);
   }
+
+  const phone = normalizePhone(input.customerPhone);
+  const email = String(input.customerEmail ?? "").trim().toLowerCase();
+  const identityFilters: Prisma.OrderWhereInput[] = [];
+  if (phone) identityFilters.push({ customerPhone: phone });
+  if (email) identityFilters.push({ customerEmail: email });
+  const needsIdentity = Boolean(coupon.perCustomerLimit || coupon.firstOrderOnly);
+  if (needsIdentity && identityFilters.length === 0) {
+    throw new ApiError(400, "COUPON_CUSTOMER_REQUIRED", "أدخل رقم الهاتف أو البريد الإلكتروني لاستخدام هذا الكوبون.");
+  }
+
   if (coupon.maxUses) {
-    const uses = await prisma.couponUsage.count({ where: { couponId: coupon.id } });
+    const uses = await db.couponUsage.count({ where: { couponId: coupon.id } });
     if (uses >= coupon.maxUses) throw new ApiError(400, "COUPON_LIMIT_REACHED", "تم الوصول إلى الحد الأقصى لاستخدام الكوبون.");
   }
-  if (coupon.perCustomerLimit && input.customerPhone) {
-    const uses = await prisma.couponUsage.count({
-      where: { couponId: coupon.id, order: { customerPhone: input.customerPhone } },
+  if (coupon.perCustomerLimit && identityFilters.length) {
+    const uses = await db.couponUsage.count({
+      where: { couponId: coupon.id, order: { OR: identityFilters } },
     });
     if (uses >= coupon.perCustomerLimit) {
       throw new ApiError(400, "COUPON_CUSTOMER_LIMIT", "استخدمت هذا الكوبون بالحد الأقصى المسموح.");
     }
   }
-  if (coupon.firstOrderOnly && input.customerPhone) {
-    const previous = await prisma.order.count({
-      where: { storeId: input.storeId, customerPhone: input.customerPhone },
+  if (coupon.firstOrderOnly && identityFilters.length) {
+    const previous = await db.order.count({
+      where: { storeId: input.storeId, OR: identityFilters },
     });
     if (previous > 0) throw new ApiError(400, "COUPON_FIRST_ORDER_ONLY", "هذا الكوبون للطلب الأول فقط.");
   }
@@ -220,15 +247,18 @@ export interface ShippingQuote {
   freeShippingApplied: boolean;
 }
 
-export async function quoteShipping(input: {
-  storeId: string;
-  zoneId?: string;
-  governorate?: string;
-  city?: string;
-  subtotal: number;
-  paymentMethod?: string;
-}): Promise<ShippingQuote> {
-  const zones = await prisma.shippingZone.findMany({
+export async function quoteShipping(
+  input: {
+    storeId: string;
+    zoneId?: string;
+    governorate?: string;
+    city?: string;
+    subtotal: number;
+    paymentMethod?: string;
+  },
+  db: Db = prisma
+): Promise<ShippingQuote> {
+  const zones = await db.shippingZone.findMany({
     where: { storeId: input.storeId, isActive: true },
     include: { rates: { where: { isActive: true } } },
   });
@@ -280,6 +310,24 @@ export async function quoteShipping(input: {
   };
 }
 
+function shippingFromStoredOrder(order: {
+  shippingZoneId: string | null;
+  shippingFee: number;
+  courier: string;
+}): ShippingQuote {
+  return {
+    zoneId: order.shippingZoneId,
+    zoneName: "",
+    fee: order.shippingFee,
+    codFee: 0,
+    total: order.shippingFee,
+    estimatedDaysMin: 0,
+    estimatedDaysMax: 0,
+    carrier: order.courier,
+    freeShippingApplied: false,
+  };
+}
+
 export async function createCheckout(input: {
   storeId: string;
   store: {
@@ -289,6 +337,7 @@ export async function createCheckout(input: {
     onlinePaymentEnabled: boolean;
     whatsapp: string;
   };
+  idempotencyKey?: string;
   body: {
     customer_name: string;
     customer_phone: string;
@@ -307,6 +356,25 @@ export async function createCheckout(input: {
   };
 }) {
   const body = input.body;
+  const idempotencyKey = input.idempotencyKey?.trim() || undefined;
+
+  // A client that retries after a timeout must receive the original order
+  // rather than a duplicate. The unique index is the final race guard; this
+  // fast path avoids re-resolving stock for the common retry case.
+  if (idempotencyKey) {
+    const existing = await prisma.order.findFirst({
+      where: { storeId: input.storeId, idempotencyKey },
+      include: { items: true, payments: true },
+    });
+    if (existing) {
+      return {
+        order: existing,
+        shipping: shippingFromStoredOrder(existing),
+        whatsapp_url: input.store.whatsapp ? whatsappLink(input.store.whatsapp, `طلب جديد SND-${existing.orderNumber}`) : null,
+      };
+    }
+  }
+
   const lines = await resolveCheckoutLines({ storeId: input.storeId, currency: input.store.currency, items: body.items });
   const subtotal = Math.round(lines.reduce((s, l) => s + l.qty * l.unitPrice, 0) * 100) / 100;
 
@@ -316,21 +384,6 @@ export async function createCheckout(input: {
     select: { id: true, categoryId: true },
   });
   const categoryByProduct = new Map(categories.map((p) => [p.id, p.categoryId]));
-
-  const coupon = body.coupon_code
-    ? await validateCoupon({
-        storeId: input.storeId,
-        code: body.coupon_code,
-        subtotal,
-        customerPhone: body.customer_phone,
-        lines: lines.map((l) => ({
-          productId: l.productId,
-          categoryId: categoryByProduct.get(l.productId) ?? null,
-          qty: l.qty,
-          unitPrice: l.unitPrice,
-        })),
-      })
-    : null;
 
   const isCod = /cod|cash|استلام/i.test(body.payment_method || "COD");
   if (!isCod) {
@@ -345,224 +398,263 @@ export async function createCheckout(input: {
     throw new ApiError(400, "COD_DISABLED", "الدفع عند الاستلام غير متاح لهذا المتجر.");
   }
 
-  const shipping = await quoteShipping({
-    storeId: input.storeId,
-    zoneId: body.shipping_zone_id || undefined,
-    governorate: body.governorate,
-    city: body.city,
-    subtotal: subtotal - (coupon?.discount ?? 0),
-    paymentMethod: body.payment_method,
-  });
-  const shippingFee = coupon?.freeShipping ? 0 : shipping.fee;
-  const codFee = isCod ? (coupon?.freeShipping ? 0 : shipping.codFee) : 0;
-  const total = Math.round((subtotal - (coupon?.discount ?? 0) + shippingFee + codFee) * 100) / 100;
-
+  const phone = normalizePhone(body.customer_phone);
+  const email = body.customer_email.trim().toLowerCase();
+  const identity = customerIdentity({ phone, email });
   const orderNumber = await allocateOrderNumber(input.storeId);
-  const order = await prisma.$transaction(async (tx) => {
-    let customerId: string | null = null;
-    if (body.customer_phone || body.customer_email) {
-      const existing = await tx.customer.findFirst({
-        where: {
+  let shippingForResponse: ShippingQuote | null = null;
+
+  let order;
+  try {
+    order = await prisma.$transaction(async (tx) => {
+      // Serialise concurrent checkout attempts for the same shopper so
+      // customer rows and per-customer coupon limits cannot race.
+      if (identity) await advisoryLock(tx, `customer:${input.storeId}:${identity}`);
+
+      let coupon: CouponResult | null = null;
+      if (body.coupon_code) {
+        const code = body.coupon_code.trim().toUpperCase();
+        const couponRow = await tx.coupon.findUnique({
+          where: { storeId_code: { storeId: input.storeId, code } },
+          select: { id: true },
+        });
+        // A per-coupon lock serialises maxUses checks and usage inserts.
+        if (couponRow) await advisoryLock(tx, `coupon:${couponRow.id}`);
+        coupon = await validateCoupon(
+          {
+            storeId: input.storeId,
+            code,
+            subtotal,
+            customerPhone: phone,
+            customerEmail: email,
+            lines: lines.map((l) => ({
+              productId: l.productId,
+              categoryId: categoryByProduct.get(l.productId) ?? null,
+              qty: l.qty,
+              unitPrice: l.unitPrice,
+            })),
+          },
+          tx
+        );
+      }
+
+      const shipping = await quoteShipping(
+        {
           storeId: input.storeId,
-          ...(body.customer_phone ? { phone: body.customer_phone } : { email: body.customer_email }),
+          zoneId: body.shipping_zone_id || undefined,
+          governorate: body.governorate,
+          city: body.city,
+          subtotal: subtotal - (coupon?.discount ?? 0),
+          paymentMethod: body.payment_method,
         },
-      });
-      const customer = existing
-        ? await tx.customer.update({
-            where: { id: existing.id },
+        tx
+      );
+      shippingForResponse = shipping;
+      const shippingFee = coupon?.freeShipping ? 0 : shipping.fee;
+      const codFee = coupon?.freeShipping ? 0 : shipping.codFee;
+      const total = Math.round((subtotal - (coupon?.discount ?? 0) + shippingFee + codFee) * 100) / 100;
+
+      let customerId: string | null = null;
+      if (phone || email) {
+        const identityFilters: Prisma.CustomerWhereInput[] = [];
+        if (phone) identityFilters.push({ phone });
+        if (email) identityFilters.push({ email });
+        const existing = await tx.customer.findFirst({
+          where: { storeId: input.storeId, OR: identityFilters },
+        });
+        const customer = existing
+          ? await tx.customer.update({
+              where: { id: existing.id },
+              data: {
+                name: body.customer_name || existing.name,
+                ...(email && !existing.email ? { email } : {}),
+                ...(phone && !existing.phone ? { phone } : {}),
+              },
+            })
+          : await tx.customer.create({
+              data: {
+                id: newId("cus_"),
+                storeId: input.storeId,
+                name: body.customer_name,
+                phone,
+                email,
+              },
+            });
+        customerId = customer.id;
+        if (body.address) {
+          const addressCount = await tx.customerAddress.count({ where: { storeId: input.storeId, customerId: customer.id } });
+          await tx.customerAddress.create({
             data: {
-              name: body.customer_name || existing.name,
-              ...(body.customer_email && !existing.email ? { email: body.customer_email } : {}),
-            },
-          })
-        : await tx.customer.create({
-            data: {
-              id: newId("cus_"),
+              id: newId("addr_"),
               storeId: input.storeId,
-              name: body.customer_name,
-              phone: body.customer_phone,
-              email: body.customer_email,
+              customerId: customer.id,
+              label: addressCount === 0 ? "العنوان الأساسي" : "",
+              address: body.address,
+              city: body.city,
+              governorate: body.governorate,
+              phone,
+              isDefault: addressCount === 0,
             },
           });
-      customerId = customer.id;
-      if (body.address) {
-        const addressCount = await tx.customerAddress.count({ where: { storeId: input.storeId, customerId: customer.id } });
-        await tx.customerAddress.create({
-          data: {
-            id: newId("addr_"),
-            storeId: input.storeId,
-            customerId: customer.id,
-            label: addressCount === 0 ? "العنوان الأساسي" : "",
-            address: body.address,
-            city: body.city,
-            governorate: body.governorate,
-            phone: body.customer_phone,
-            isDefault: addressCount === 0,
-          },
-        });
-      }
-    }
-
-    const created = await tx.order.create({
-      data: {
-        id: newId("ord_"),
-        storeId: input.storeId,
-        orderNumber,
-        customerId,
-        customerName: body.customer_name,
-        customerPhone: body.customer_phone,
-        customerEmail: body.customer_email,
-        address: body.address,
-        city: body.city,
-        governorate: body.governorate,
-        itemsSummary: lines.map((l) => `${l.name} ×${l.qty}`).join(" + "),
-        amountText: `${total} ${input.store.currency}`,
-        amountEgp: total,
-        subtotal,
-        discount: coupon?.discount ?? 0,
-        shippingFee: shippingFee + codFee,
-        couponCode: coupon?.code ?? "",
-        shippingZoneId: shipping.zoneId,
-        paymentMethod: body.payment_method,
-        paymentStatus: "unpaid",
-        status: "pending",
-        courier: body.courier || shipping.carrier,
-        notes: body.notes,
-        items: {
-          create: lines.map((l) => ({
-            id: newId("item_"),
-            productId: l.productId,
-            variantId: l.variantId,
-            variantLabel: l.variantLabel,
-            sku: l.sku,
-            name: l.name,
-            qty: l.qty,
-            unitPriceEgp: l.unitPrice,
-            imageUrl: l.imageUrl,
-          })),
-        },
-      },
-      include: { items: true },
-    });
-
-    for (const line of lines) {
-      if (line.variantId) {
-        const moved = await tx.productVariant.updateMany({
-          where: { id: line.variantId, storeId: input.storeId, stock: { gte: line.qty } },
-          data: { stock: { decrement: line.qty } },
-        });
-        if (moved.count !== 1) {
-          throw new ApiError(409, "INSUFFICIENT_STOCK", `Not enough stock for: ${line.sku}.`, { short: [line.sku] });
-        }
-      } else {
-        const moved = await tx.product.updateMany({
-          where: { id: line.productId, storeId: input.storeId, stock: { gte: line.qty } },
-          data: { stock: { decrement: line.qty } },
-        });
-        if (moved.count !== 1) {
-          throw new ApiError(409, "INSUFFICIENT_STOCK", `Not enough stock for: ${line.sku}.`, { short: [line.sku] });
         }
       }
-    }
 
-    if (coupon) {
-      await tx.couponUsage.create({
+      const created = await tx.order.create({
         data: {
-          id: newId("cusg_"),
+          id: newId("ord_"),
           storeId: input.storeId,
-          couponId: coupon.couponId,
-          orderId: created.id,
+          orderNumber,
+          idempotencyKey: idempotencyKey ?? null,
           customerId,
-          discount: coupon.discount,
-        },
-      });
-      await tx.coupon.update({ where: { id: coupon.couponId }, data: { updatedAt: new Date() } }).catch(() => null);
-    }
-
-    if (body.affiliate_code) {
-      const affiliate = await tx.affiliate.findUnique({
-        where: { storeId_referralCode: { storeId: input.storeId, referralCode: body.affiliate_code.toUpperCase() } },
-      });
-      if (affiliate && affiliate.isActive) {
-        await tx.affiliateAttribution.create({
-          data: {
-            id: newId("att_"),
-            storeId: input.storeId,
-            affiliateId: affiliate.id,
-            orderId: created.id,
-            commissionAmount: Math.round((total * affiliate.commissionRate) / 100 * 100) / 100,
-            status: "pending",
+          customerName: body.customer_name,
+          customerPhone: phone,
+          customerEmail: email,
+          address: body.address,
+          city: body.city,
+          governorate: body.governorate,
+          itemsSummary: lines.map((l) => `${l.name} ×${l.qty}`).join(" + "),
+          amountText: `${total} ${input.store.currency}`,
+          amountEgp: total,
+          subtotal,
+          discount: coupon?.discount ?? 0,
+          shippingFee: shippingFee + codFee,
+          couponCode: coupon?.code ?? "",
+          shippingZoneId: shipping.zoneId,
+          paymentMethod: body.payment_method,
+          paymentStatus: "unpaid",
+          status: "pending",
+          courier: body.courier || shipping.carrier,
+          notes: body.notes,
+          items: {
+            create: lines.map((l) => ({
+              id: newId("item_"),
+              productId: l.productId,
+              variantId: l.variantId,
+              variantLabel: l.variantLabel,
+              sku: l.sku,
+              name: l.name,
+              qty: l.qty,
+              unitPriceEgp: l.unitPrice,
+              imageUrl: l.imageUrl,
+            })),
           },
-        });
-      }
-    }
-
-    await tx.payment.create({
-      data: {
-        id: newId("pay_"),
-        storeId: input.storeId,
-        orderId: created.id,
-        provider: isCod ? "cod" : paymentService.provider,
-        amount: total,
-        currency: input.store.currency,
-        status: "pending",
-        method: body.payment_method,
-      },
-    });
-
-    if (body.cart_token) {
-      await tx.abandonedCart
-        .update({
-          where: { storeId_cartToken: { storeId: input.storeId, cartToken: body.cart_token } },
-          data: { recoveryStatus: "recovered" },
-        })
-        .catch(() => null);
-    }
-
-    await tx.orderEvent.create({
-      data: {
-        id: newId("evt_"),
-        storeId: input.storeId,
-        orderId: created.id,
-        type: "created",
-        message: "تم استلام الطلب من المتجر",
-        actor: "customer",
-        metadata: { source: "storefront" } as Prisma.InputJsonValue,
-      },
-    });
-
-    // Loyalty: apply the first active earn rule. Points and the ledger entry
-    // are written in the same transaction as the order.
-    if (customerId) {
-      const rule = await tx.loyaltyRule.findFirst({
-        where: { storeId: input.storeId, type: "earn", isActive: true },
-        orderBy: { createdAt: "asc" },
+        },
+        include: { items: true },
       });
-      if (rule && total >= rule.minOrderValue) {
-        const earned = Math.floor(total / Math.max(rule.perAmount, 0.01)) * rule.points;
-        if (earned > 0) {
-          const account = await tx.loyaltyAccount.upsert({
-            where: { customerId },
-            create: { id: newId("lac_"), storeId: input.storeId, customerId, points: 0 },
-            update: {},
+
+      for (const line of lines) {
+        if (line.variantId) {
+          const moved = await tx.productVariant.updateMany({
+            where: { id: line.variantId, storeId: input.storeId, stock: { gte: line.qty } },
+            data: { stock: { decrement: line.qty } },
           });
-          await tx.loyaltyTransaction.create({
-            data: {
-              id: newId("ltx_"),
-              storeId: input.storeId,
-              accountId: account.id,
-              points: earned,
-              type: "earn",
-              note: `طلب SND-${orderNumber}`,
-            },
+          if (moved.count !== 1) {
+            throw new ApiError(409, "INSUFFICIENT_STOCK", `Not enough stock for: ${line.sku}.`, { short: [line.sku] });
+          }
+        } else {
+          const moved = await tx.product.updateMany({
+            where: { id: line.productId, storeId: input.storeId, stock: { gte: line.qty } },
+            data: { stock: { decrement: line.qty } },
           });
-          await tx.loyaltyAccount.update({ where: { id: account.id }, data: { points: { increment: earned } } });
+          if (moved.count !== 1) {
+            throw new ApiError(409, "INSUFFICIENT_STOCK", `Not enough stock for: ${line.sku}.`, { short: [line.sku] });
+          }
         }
       }
-    }
 
-    return created;
-  });
+      if (coupon) {
+        await tx.couponUsage.create({
+          data: {
+            id: newId("cusg_"),
+            storeId: input.storeId,
+            couponId: coupon.couponId,
+            orderId: created.id,
+            customerId,
+            discount: coupon.discount,
+          },
+        });
+        await tx.coupon.update({ where: { id: coupon.couponId }, data: { updatedAt: new Date() } }).catch(() => null);
+      }
+
+      if (body.affiliate_code) {
+        const affiliate = await tx.affiliate.findUnique({
+          where: { storeId_referralCode: { storeId: input.storeId, referralCode: body.affiliate_code.toUpperCase() } },
+        });
+        if (affiliate && affiliate.isActive) {
+          await tx.affiliateAttribution.create({
+            data: {
+              id: newId("att_"),
+              storeId: input.storeId,
+              affiliateId: affiliate.id,
+              orderId: created.id,
+              commissionAmount: Math.round((total * affiliate.commissionRate) / 100 * 100) / 100,
+              status: "pending",
+            },
+          });
+        }
+      }
+
+      await tx.payment.create({
+        data: {
+          id: newId("pay_"),
+          storeId: input.storeId,
+          orderId: created.id,
+          provider: isCod ? "cod" : paymentService.provider,
+          amount: total,
+          currency: input.store.currency,
+          status: "pending",
+          method: body.payment_method,
+        },
+      });
+
+      if (body.cart_token) {
+        await tx.abandonedCart
+          .update({
+            where: { storeId_cartToken: { storeId: input.storeId, cartToken: body.cart_token } },
+            data: { recoveryStatus: "recovered" },
+          })
+          .catch(() => null);
+      }
+
+      await tx.orderEvent.create({
+        data: {
+          id: newId("evt_"),
+          storeId: input.storeId,
+          orderId: created.id,
+          type: "created",
+          message: "تم استلام الطلب من المتجر",
+          actor: "customer",
+          metadata: { source: "storefront" } as Prisma.InputJsonValue,
+        },
+      });
+
+      // Loyalty points are intentionally NOT granted here. They are earned
+      // only when the order reaches `delivered` and reversed on return; see
+      // services/orders.ts.
+      return created;
+    });
+  } catch (err) {
+    if (
+      idempotencyKey &&
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      const existing = await prisma.order.findFirst({
+        where: { storeId: input.storeId, idempotencyKey },
+        include: { items: true, payments: true },
+      });
+      if (existing) {
+        return {
+          order: existing,
+          shipping: shippingFromStoredOrder(existing),
+          whatsapp_url: input.store.whatsapp
+            ? whatsappLink(input.store.whatsapp, `طلب جديد SND-${existing.orderNumber}`)
+            : null,
+        };
+      }
+    }
+    throw err;
+  }
 
   const refreshed = await prisma.order.findUnique({
     where: { id: order.id },
@@ -570,7 +662,7 @@ export async function createCheckout(input: {
   });
   return {
     order: refreshed,
-    shipping,
+    shipping: shippingForResponse ?? shippingFromStoredOrder(order),
     whatsapp_url: input.store.whatsapp ? whatsappLink(input.store.whatsapp, `طلب جديد SND-${orderNumber}`) : null,
   };
 }

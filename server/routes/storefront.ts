@@ -595,7 +595,16 @@ storefrontRouter.post(
   validateBody(checkoutBodySchema),
   asyncHandler(async (req, res) => {
     const store = await activeStore(req.params.subdomain);
-    const result = await createCheckout({ storeId: store.id, store, body: req.body });
+    const rawKey = req.get("Idempotency-Key")?.trim() || "";
+    if (rawKey && !/^[A-Za-z0-9._:-]{8,128}$/.test(rawKey)) {
+      throw new ApiError(400, "INVALID_IDEMPOTENCY_KEY", "Idempotency-Key must be 8-128 URL-safe characters.");
+    }
+    const result = await createCheckout({
+      storeId: store.id,
+      store,
+      body: req.body,
+      idempotencyKey: rawKey || undefined,
+    });
     res.status(201).json({
       order: result.order,
       shipping: result.shipping,
