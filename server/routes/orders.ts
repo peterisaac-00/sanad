@@ -149,6 +149,7 @@ ordersRouter.get(
     const select = {
       id: true,
       orderNumber: true,
+      source: true,
       createdAt: true,
       status: true,
       paymentStatus: true,
@@ -647,10 +648,13 @@ ordersRouter.post(
             city: b.city,
             governorate: b.governorate,
             itemsSummary: b.items_summary,
-            amountText: b.amount_text,
+            amountText: b.amount_text.trim() || (b.amount_egp ? `${b.amount_egp} ${req.ownedStore!.currency}` : ""),
             amountEgp: b.amount_egp,
             subtotal: b.amount_egp,
             paymentMethod: b.payment_method,
+            // External/manual record: it never reserves stock and has no
+            // OrderItem rows or server-calculated gross/discount/shipping split.
+            source: "manual",
             status: b.status,
             courier: b.courier,
             notes: b.notes,

@@ -165,7 +165,7 @@ describe("new dashboard endpoints: tenant isolation", () => {
       .expect(200);
     await a.agent
       .patch(`/api/stores/${a.subdomain}/settings`)
-      .send({ storeName: "Store A" })
+      .send({ phone: "01099999999" })
       .expect(200);
     await a.agent
       .patch(`/api/stores/${a.subdomain}/notification-preferences`)

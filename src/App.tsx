@@ -12,6 +12,7 @@ import { VerifyEmailPage } from './auth/VerifyEmailPage';
 import { OnboardingPage } from './onboarding/OnboardingPage';
 import { DashboardShell } from './dashboard/DashboardShell';
 import { DashboardRouter } from './dashboard/DashboardRouter';
+import { AdminApp } from './admin/AdminApp';
 import { StorefrontApp } from './storefront/StorefrontApp';
 
 function safeDecode(value: string): string {
@@ -51,6 +52,10 @@ function RoutedApp() {
 
   if (path === '/onboarding' || path.startsWith('/onboarding/')) {
     return <OnboardingPage />;
+  }
+
+  if (path === '/admin' || path.startsWith('/admin/')) {
+    return <AdminApp />;
   }
 
   if (path === '/dashboard' || path.startsWith('/dashboard/')) {

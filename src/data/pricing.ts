@@ -49,38 +49,38 @@ export const PRICING_MODEL = {
       cost_en: '100 EGP/mo or 1,000 EGP/yr only',
       commission_ar: '0% عمولة نهائياً',
       commission_en: 'Strictly 0% Commission',
-      notes_ar: 'تشمل استضافة المتجر، البنية التحتية، إدارة الطلبات، لوحة التحكم، ونظام الشحن والمدفوعات.',
-      notes_en: 'Includes store hosting, infrastructure, orders management, admin portal, shipping & payment engine.'
+      notes_ar: 'تشمل استضافة المتجر، البنية التحتية، إدارة الطلبات، لوحة التحكم، ومناطق الشحن اليدوية. لا تشمل الدفع الإلكتروني أو ربط شركات الشحن.',
+      notes_en: 'Includes store hosting, infrastructure, orders management, the admin portal, and manual shipping zones. Online payments and carrier integrations are not included.'
     },
     {
       category_ar: 'بوابات الدفع الإلكتروني (Paymob / Fawry / Kashier / Mada)',
       category_en: 'Payment Gateways (Paymob / Fawry / Mada / KNET)',
-      cost_ar: 'تحددها البوابة المتعاقد معها (عادة 2.5% - 2.75% + رسوم بنكية ثابتة)',
-      cost_en: 'Set directly by the gateway (typically 2.5% - 2.75% + fixed bank fee)',
-      commission_ar: 'رسوم معالجة بنكية تذهب لمزود الدفع مباشرة',
-      commission_en: 'Direct bank processing fee to the gateway provider',
-      notes_ar: 'أموالك تُحوّل من بوابة الدفع إلى حسابك البنكي مباشرة دون مرورها بحساب المنصة.',
-      notes_en: 'Your payout settles directly from the gateway to your bank account with zero platform intermediary.'
+      cost_ar: 'غير متاحة في النسخة الحالية — لا توجد رسوم',
+      cost_en: 'Not available in the current release — no fees',
+      commission_ar: 'لا تنطبق — لا يوجد محوّل دفع مثبت',
+      commission_en: 'Not applicable — no payment adapter installed',
+      notes_ar: 'الدفع عند الاستلام هو الخيار الفعلي. لن يظهر خيار الدفع الإلكتروني في المتجر قبل تثبيت بوابة دفع كاملة مع Webhooks واختبارات إعادة المحاولة.',
+      notes_en: 'Cash on delivery is the actual option today. Online payment stays hidden until a complete gateway adapter with webhooks and retry handling ships.'
     },
     {
       category_ar: 'شركات الشحن والطرود (Bosta / Aramex / SMSA)',
       category_en: 'Courier & Shipping Providers (Bosta / Aramex / SMSA)',
-      cost_ar: 'حسب بوليصة الشحن ووزن الطرد والمحافظة أو الوجهة الخليجية',
-      cost_en: 'Per shipment airway bill, weight, and delivery governorate / Gulf destination',
+      cost_ar: 'تتفق عليها مع شركة الشحن خارج سند',
+      cost_en: 'Agreed directly with the courier outside Sanad',
       commission_ar: 'تسددها لشركة الشحن مباشرة أو يحاسبك المندوب عليها',
-      commission_en: 'Paid directly to courier or settled via COD cash remittances',
-      notes_ar: 'يمكنك ربط حسابك الخاص لدى أي شركة شحن أو استخدام بوالص الشحن المباشرة.',
-      notes_en: 'Connect your own negotiated courier account with complete operational autonomy.'
+      commission_en: 'Paid directly to the courier or collected by the courier agent',
+      notes_ar: 'الشحن يدوي: لا يوجد ربط آلي أو تتبع شحنات داخل سند. أدخل اسم الشركة وتفاصيل الشحن في الطلب يدوياً.',
+      notes_en: 'Shipping is manual: Sanad has no courier integration or shipment tracking. Record the courier and shipping details on the order manually.'
     },
     {
-      category_ar: 'النطاق الخاص (Custom Domain - .com / .eg / .sa)',
-      category_en: 'Custom Domain (.com / .eg / .sa)',
-      cost_ar: 'سعر النطاق السنوي لدى مسجل النطاقات (مثل Namecheap أو GoDaddy)',
-      cost_en: 'Annual domain registration fee paid to domain registrar',
-      commission_ar: '0 ج.م للمنصة لربط النطاق مجاناً مع شهادة SSL مجانية مدى الحياة',
-      commission_en: '0 EGP platform connection fee + Free automated SSL certificate',
-      notes_ar: 'نوفر لك نطاقاً فرعياً مجانياً (yourstore.sanad.app) أو يمكنك ربط نطاقك المستقل بكل سهولة.',
-      notes_en: 'Free subdomain (yourstore.sanad.app) included, or connect your existing domain seamlessly.'
+      category_ar: 'النطاق الفرعي المجاني (yourstore.sanad.app)',
+      category_en: 'Free Sanad Subdomain (yourstore.sanad.app)',
+      cost_ar: 'مشمول في الاشتراك',
+      cost_en: 'Included in the subscription',
+      commission_ar: '0 ج.م — بدون رسوم إضافية',
+      commission_en: '0 EGP — no extra fees',
+      notes_ar: 'يأتي متجرك بنطاق فرعي مجاني. ربط نطاقك المستقل (.com / .eg) غير متاح بعد وهو قيد التطوير.',
+      notes_en: 'Your store gets a free Sanad subdomain. Connecting a custom .com/.eg domain is planned and not available yet.'
     }
   ]
 };
@@ -91,12 +91,12 @@ export const COMMON_FEATURES_LIST_AR = [
   'إدارة غير محدودة للمنتجات، التصنيفات، المتغيرات (المقاسات والألوان)',
   'دورة حياة متكاملة للدفع عند الاستلام (COD) من التأكيد إلى التحصيل',
   'إدارة الطلبات والحالات، سجل العملاء، وتقارير المبيعات الحية',
-  'دعم تعدد العملات (الجنيه المصري، الريال السعودي، الدرهم، الدينار الكويتي...) وتحديثات الصرف',
+  'اختيار عملة المتجر الأساسية (الجنيه المصري، الريال السعودي، الدرهم، الدينار الكويتي...)',
   'إعداد مناطق الشحن وأسعار التوصيل بالمحافظات وقواعد الشحن المجاني',
-  'مركز WhatsApp التجاري لإرسال إشعارات الطلبات وتأكيد الشحن الفوري',
-  'تجهيز وتصدير كتالوج المنتجات إلى Meta Commerce و Google Merchant Center',
-  'أدوات التسويق: قسائم الخصم، العروض المجمعة، وتتبع الحملات الإعلانية',
-  'مركز الترحيل السريع: استيراد المنتجات والعملاء بملفات Excel / CSV',
+  'روابط واتساب يدوية للتواصل مع العملاء وتذكير السلات المتروكة برسائل جاهزة (بدون إرسال تلقائي)',
+  'تصدير الطلبات والعملاء بملفات CSV لاستخدامها في أدواتك الخارجية',
+  'أدوات التسويق المتاحة: قسائم الخصم وتقارير أداء المنتجات والطلبات',
+  'سجل نشاط للمتجر لمراجعة التغييرات الحساسة',
   'شهادة أمان SSL سحابية مجانية ودعم فني متخصص عبر القنوات المباشرة'
 ];
 
@@ -104,13 +104,13 @@ export const COMMON_FEATURES_LIST_EN = [
   'High-speed responsive Arabic-first storefront with mobile checkout',
   '0% platform commission on orders with unlimited sales volume',
   'Unlimited products, hierarchical categories, and multi-variant SKUs',
-  'Full-cycle Cash on Delivery (COD) tracking from order to cash remittance',
+  'Full-cycle Cash on Delivery (COD) status flow from order to cash remittance',
   'Real-time order statuses, customer purchase history, and actionable reports',
-  'Multi-currency commerce engine (EGP, SAR, AED, KWD, QAR, BHD, OMR, USD)',
+  'Choose one base store currency (EGP, SAR, AED, KWD, QAR, BHD, OMR, USD)',
   'Custom shipping zones, governorate courier tariffs, and free shipping tiers',
-  'WhatsApp Commerce hub for quick confirmations and cart recovery',
-  'Product catalog feed generator for Meta Commerce & Google Shopping',
-  'Marketing tools: flexible coupon codes, order bundles, and UTM tracking',
-  'Migration Center: 1-click CSV / Excel product and customer import',
+  'Manual WhatsApp links for customer outreach and abandoned-cart reminders with prepared messages (no automated sending)',
+  'Export orders and customers as CSV for your external tools',
+  'Available marketing tools: discount coupons and product/order performance reports',
+  'Store activity log for reviewing sensitive changes',
   'Automated free Cloud SSL certificate and dedicated merchant support'
 ];

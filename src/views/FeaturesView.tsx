@@ -62,8 +62,8 @@ export const FeaturesView: React.FC<FeaturesViewProps> = ({
         </h1>
         <p className="text-sm sm:text-base text-ink-soft leading-relaxed">
           {currentLang === 'ar'
-            ? 'سند ليست مجرد منشئ واجهات متاجر؛ إنها منصة تشغيل تجارية تعالج أعقد تحديات التاجر في العالم العربي: من ضبط دورة الكاش والـ COD، وحتى التصدير الرقمي والتكامل الإعلاني.'
-            : 'Sanad is not merely a storefront builder; it is a commerce operating system solving Arab merchants’ real challenges: COD cashflows, regional shipping, and ad tracking.'}
+            ? 'سند ليست مجرد منشئ واجهات متاجر؛ إنها منصة تشغيل تجارية تعالج تحديات التاجر في العالم العربي: من ضبط دورة الكاش والـ COD، إلى إدارة الشحن اليدوي والطلبات.'
+            : 'Sanad is not merely a storefront builder; it is a commerce operating system for COD cashflows, manual shipping, and day-to-day order operations.'}
         </p>
       </div>
 
@@ -94,8 +94,12 @@ export const FeaturesView: React.FC<FeaturesViewProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           <div className="lg:col-span-7 space-y-6">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-brand bg-brand-soft/70 px-2.5 py-1 rounded">
-                {currentLang === 'ar' ? 'نظام تشغيلي متكامل' : 'Core Operating System'}
+              <span className={`text-xs font-bold px-2.5 py-1 rounded ${selectedSystem.status === 'active' ? 'text-brand bg-brand-soft/70' : 'text-warning bg-warning-soft'}`}>
+                {selectedSystem.status === 'active'
+                  ? (currentLang === 'ar' ? 'متاح الآن' : 'Available now')
+                  : selectedSystem.status === 'limited'
+                    ? (currentLang === 'ar' ? 'متاح جزئياً — راجع التفاصيل' : 'Partially available — see details')
+                    : (currentLang === 'ar' ? 'قيد التطوير — ليست ميزة متاحة' : 'Planned — not available')}
               </span>
               {selectedSystem.badge_ar && (
                 <span className="text-xs font-bold text-ink-soft bg-surface px-2 py-0.5 rounded">
@@ -117,7 +121,7 @@ export const FeaturesView: React.FC<FeaturesViewProps> = ({
             {/* Checklist of architectural points */}
             <div className="space-y-3 pt-2 border-t border-line">
               <h4 className="text-xs font-bold uppercase tracking-wider text-ink">
-                {currentLang === 'ar' ? 'القدرات والآليات المطبقة في النظام:' : 'System Capabilities & Implementation:'}
+                {currentLang === 'ar' ? 'القدرات الحالية والمخطط لها:' : 'Current & Planned Capabilities:'}
               </h4>
               <ul className="space-y-2.5 text-xs sm:text-sm text-ink-soft">
                 {(currentLang === 'ar'
@@ -130,6 +134,19 @@ export const FeaturesView: React.FC<FeaturesViewProps> = ({
                   </li>
                 ))}
               </ul>
+              {selectedSystem.status === 'designed_for_expansion' ? (
+                <p className="rounded-brand border border-warning-line bg-warning-soft px-3 py-2 text-[11px] leading-5 text-warning">
+                  {currentLang === 'ar'
+                    ? 'هذا النظام قيد التطوير وليس ميزة متاحة للبيع أو للاستخدام الآن. نوضح ذلك حتى لا تعتمد عليه في تشغيل متجرك.'
+                    : 'This system is planned and is not available for sale or use yet. We state this clearly so you do not rely on it for operations.'}
+                </p>
+              ) : selectedSystem.status === 'limited' ? (
+                <p className="rounded-brand border border-warning-line bg-warning-soft px-3 py-2 text-[11px] leading-5 text-warning">
+                  {currentLang === 'ar'
+                    ? 'هذا النظام متاح جزئياً فقط. الأجزاء التي تعمل والأجزاء غير المتاحة موضحة أعلاه، ولا يجب الاعتماد على أي جزء غير متاح في التشغيل.'
+                    : 'This system is only partially available. The points above distinguish what works from what does not; do not rely on the unavailable parts for operations.'}
+                </p>
+              ) : null}
             </div>
 
             <div className="pt-4 flex flex-wrap gap-3">
@@ -137,7 +154,7 @@ export const FeaturesView: React.FC<FeaturesViewProps> = ({
                 onClick={onOpenStoreModal}
                 className="px-6 py-3 bg-brand hover:bg-brand-hover text-white rounded-brand text-xs font-bold transition-colors cursor-pointer flex items-center gap-2"
               >
-                <span>{currentLang === 'ar' ? 'ابدأ متجرك بهذا النظام' : 'Start With This System'}</span>
+                <span>{currentLang === 'ar' ? 'ابدأ متجرك بالأنظمة المتاحة' : 'Start With Available Systems'}</span>
                 {currentLang === 'ar' ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
               </button>
 
@@ -199,8 +216,12 @@ export const FeaturesView: React.FC<FeaturesViewProps> = ({
                   <div className="w-8 h-8 rounded-brand-sm bg-surface flex items-center justify-center text-ink">
                     <Icon className="w-4 h-4" />
                   </div>
-                  <span className="text-[10px] text-brand font-bold bg-brand-soft px-2 py-0.5 rounded">
-                    0% عمولة
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${system.status === 'active' ? 'text-brand bg-brand-soft' : 'text-warning bg-warning-soft'}`}>
+                    {system.status === 'active'
+                      ? (currentLang === 'ar' ? 'متاح' : 'Available')
+                      : system.status === 'limited'
+                        ? (currentLang === 'ar' ? 'متاح جزئياً' : 'Partial')
+                        : (currentLang === 'ar' ? 'قيد التطوير' : 'Planned')}
                   </span>
                 </div>
 

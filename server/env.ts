@@ -101,6 +101,21 @@ if (!parsed.success) {
 }
 
 /**
+ * The S3 adapter is not implemented. Selecting it must fail at boot instead of
+ * accepting uploads and only then returning a configuration error.
+ */
+export function storageDriverError(driver: string): string | null {
+  if (driver === "local") return null;
+  return `[env] STORAGE_DRIVER=${driver} is not supported yet: the S3 media adapter is not implemented. Use STORAGE_DRIVER=local.`;
+}
+
+const storageError = storageDriverError(parsed.data.STORAGE_DRIVER);
+if (storageError) {
+  console.error(storageError);
+  process.exit(1);
+}
+
+/**
  * Express accepts a boolean, a hop count, or a list of trusted proxy
  * addresses/CIDRs. `true` is rejected on purpose: it trusts the entire
  * X-Forwarded-For chain, so any client can spoof its own IP and bypass

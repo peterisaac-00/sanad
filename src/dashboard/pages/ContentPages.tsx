@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Banknote,
   ExternalLink,
   FileText,
   Megaphone,
@@ -561,6 +562,8 @@ export function AffiliatesPage() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState<AffiliateDraft>(emptyAffiliate);
+  const [settling, setSettling] = useState<any | null>(null);
+  const [settleBusy, setSettleBusy] = useState(false);
 
   const { data, loading, error, reload } = useAsync(() => api.affiliates.list(subdomain), [subdomain]);
   const affiliates = data?.affiliates ?? [];
@@ -634,6 +637,21 @@ export function AffiliatesPage() {
     }
   };
 
+  const settle = async () => {
+    if (!settling) return;
+    setSettleBusy(true);
+    try {
+      const result = await api.affiliates.settle(subdomain, settling.id);
+      toast.success(`تم تسجيل تصفية ${money(result.settled.amount, currency)} (${number(result.settled.count)} عمولة).`);
+      setSettling(null);
+      reload();
+    } catch (err: any) {
+      toast.error(safeError(err));
+    } finally {
+      setSettleBusy(false);
+    }
+  };
+
   const referralLink = (code: string) => `${window.location.origin}/store/${subdomain}?ref=${code}`;
 
   return (
@@ -641,12 +659,12 @@ export function AffiliatesPage() {
       <PageHeader
         eyebrow="النمو"
         title="التسويق بالعمولة"
-        description="امنح مسوّقين كود إحالة خاصاً بهم، وتابع الطلبات والعمولات المستحقة لكل واحد تلقائياً."
+        description="امنح مسوّقين كود إحالة خاصاً بهم، وتابع الطلبات والعمولات. تُصفّى العمولات يدوياً بعد توصيل الطلب."
         actions={<Button onClick={() => openEditor(null)}><Plus className="h-4 w-4" /> مسوّق جديد</Button>}
       />
 
-      <Alert tone="info" title="كيف تُحسب العمولة؟">
-        عند استخدام رابط إحالة أو كود مسوّق في طلب، تُسجَّل العمولة تلقائياً بحالة «معلّقة» حتى تأكيد الطلب. تظهر هنا الإجماليات لكل مسوّق.
+      <Alert tone="info" title="تصفية يدوية خارج سند">
+        تُسجَّل العمولة تلقائياً عند استخدام كود الإحالة، لكنها لا تصبح قابلة للتصفية إلا بعد توصيل الطلب. حوّل المبلغ للمسوّق بنفسك ثم سجّل التصفية هنا — لا يوجد صرف آلي أو رصيد قابل للسحب، ولا تُخصم أي مبالغ من حسابك تلقائياً.
       </Alert>
 
       {error ? <Alert tone="error" title="تعذر تحميل المسوّقين">{safeError(error)}</Alert> : null}
@@ -662,7 +680,7 @@ export function AffiliatesPage() {
             action={<Button onClick={() => openEditor(null)}><Plus className="h-4 w-4" /> إضافة أول مسوّق</Button>}
           />
         ) : (
-          <TableShell minWidth={980}>
+          <TableShell minWidth={1040}>
             <thead>
               <tr className="border-b border-line">
                 <Th>المسوّق</Th>
@@ -690,8 +708,11 @@ export function AffiliatesPage() {
                   <Td><span className="font-semibold text-ink">{percent(affiliate.commissionRate)}</span></Td>
                   <Td><span className="text-[11px] text-ink-soft">{number(affiliate.ordersCount ?? 0)}</span></Td>
                   <Td>
-                    <div className="text-[11px] text-ink-soft">إجمالي {money(affiliate.commissionTotal ?? 0, currency)}</div>
-                    <div className="text-[10px] text-warning">معلّق {money(affiliate.commissionPending ?? 0, currency)}</div>
+                    <div className="space-y-0.5 text-[11px] text-ink-soft">
+                      <div>إجمالي {money(affiliate.commissionTotal ?? 0, currency)}</div>
+                      <div className="text-success">قابل للتصفية {money(affiliate.commissionSettleable ?? 0, currency)}</div>
+                      <div className="text-subtle">تمت تصفيته {money(affiliate.commissionSettled ?? 0, currency)}</div>
+                    </div>
                   </Td>
                   <Td>
                     <button onClick={() => toggleActive(affiliate)} aria-label="تبديل التفعيل">
@@ -700,7 +721,12 @@ export function AffiliatesPage() {
                   </Td>
                   <Td>
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEditor(affiliate)}><Pencil className="h-3.5 w-3.5" /></Button>
+                      {Number(affiliate.settleableCount ?? 0) > 0 ? (
+                        <Button size="sm" variant="outline" onClick={() => setSettling(affiliate)} title="تسجيل تصفية يدوية للعمولات المستحقة">
+                          <Banknote className="h-3.5 w-3.5" /> تصفية
+                        </Button>
+                      ) : null}
+                      <Button variant="ghost" size="sm" onClick={() => openEditor(affiliate)} aria-label="تعديل"><Pencil className="h-3.5 w-3.5" /></Button>
                       <button onClick={() => setDeleting(affiliate)} className="rounded-brand-sm p-2 text-subtle hover:bg-danger-soft hover:text-danger" title="حذف">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -753,6 +779,19 @@ export function AffiliatesPage() {
         loading={deleteBusy}
         onConfirm={remove}
         onClose={() => setDeleting(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(settling)}
+        title={settling ? `تسجيل تصفية عمولات ${settling.name}` : "تسجيل تصفية"}
+        description={
+          settling
+            ? `سيتم تعليم ${number(settling.settleableCount ?? 0)} عمولة بإجمالي ${money(settling.commissionSettleable ?? 0, currency)} كمدفوعة. لا تُسجّل التصفية إلا بعد تحويل المبلغ فعلياً خارج سند؛ هذا الإجراء لا يحوّل أي أموال ولا يمكن التراجع عنه من الواجهة.`
+            : undefined
+        }
+        loading={settleBusy}
+        onConfirm={settle}
+        onClose={() => setSettling(null)}
       />
     </div>
   );

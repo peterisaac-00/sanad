@@ -9,12 +9,13 @@ import {
   couponCodeSchema,
   publicReviewSchema,
   shippingQuoteSchema,
+  storefrontVisitSchema,
   subdomainParamSchema,
   validateBody,
   validateParams,
   validateQuery,
 } from "../validate.js";
-import { cartLimiter, publicWriteLimiter, trackingLookupLimiter } from "../middleware.js";
+import { cartLimiter, publicWriteLimiter, trackingLookupLimiter, visitLimiter } from "../middleware.js";
 import { createCheckout, quoteShipping, resolveCheckoutLines, validateCoupon } from "../services/checkout.js";
 import { paymentService, whatsappLink } from "../services/integrations.js";
 import { createTrackingToken, trackingUrl, verifyTrackingToken } from "../services/tracking.js";
@@ -227,6 +228,25 @@ storefrontRouter.get(
       },
       published: store.onboardingCompleted,
     });
+  })
+);
+
+storefrontRouter.post(
+  "/api/storefront/:subdomain/visit",
+  visitLimiter,
+  validateParams(subdomainParamSchema),
+  validateBody(storefrontVisitSchema),
+  asyncHandler(async (req, res) => {
+    const store = await activeStore(req.params.subdomain);
+    // Only a published storefront counts as a visit; the coming-soon page is
+    // not a customer visit. No IP address or user agent is persisted.
+    if (store.onboardingCompleted) {
+      const path = String(req.body.path || "/").split("?")[0].slice(0, 300) || "/";
+      await prisma.storeVisit.create({
+        data: { id: newId("visit_"), storeId: store.id, path },
+      });
+    }
+    res.status(204).end();
   })
 );
 

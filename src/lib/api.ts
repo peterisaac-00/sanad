@@ -374,6 +374,20 @@ export const api = {
     get: (subdomain: string) => req<any>(`/api/stores/${enc(subdomain)}/wallet`),
     deposit: (subdomain: string, body: { amount: number; reference?: string; note?: string }) =>
       req<any>(`/api/stores/${enc(subdomain)}/wallet/deposits`, { method: "POST", body: JSON.stringify(body) }),
+    submitSubscription: (
+      subdomain: string,
+      body: {
+        plan: "monthly" | "annual";
+        method: "bank_transfer" | "instapay" | "vodafone_cash" | "wallet" | "other";
+        reference: string;
+        payerName?: string;
+        note?: string;
+      }
+    ) =>
+      req<{ payment: any; amount: number; currency: string; note: string }>(
+        `/api/stores/${enc(subdomain)}/subscription-payments`,
+        { method: "POST", body: JSON.stringify(body) }
+      ),
   },
 
   shipping: {
@@ -434,7 +448,7 @@ export const api = {
 
   abandoned: {
     list: (subdomain: string, opts?: { page?: number; pageSize?: number; status?: string; search?: string }) =>
-      req<{ carts: any[]; summary: any; pagination: any }>(`/api/stores/${enc(subdomain)}/abandoned-carts${qs(opts ?? {})}`),
+      req<{ carts: any[]; summary: any; pagination: any; whatsapp: any }>(`/api/stores/${enc(subdomain)}/abandoned-carts${qs(opts ?? {})}`),
     update: (subdomain: string, id: string, recoveryStatus: string) =>
       req<{ cart: any }>(`/api/stores/${enc(subdomain)}/abandoned-carts/${enc(id)}`, {
         method: "PATCH",
@@ -477,6 +491,11 @@ export const api = {
       }),
     remove: (subdomain: string, id: string) =>
       req<{ ok: boolean }>(`/api/stores/${enc(subdomain)}/affiliates/${enc(id)}`, { method: "DELETE" }),
+    settle: (subdomain: string, id: string) =>
+      req<{ settled: { count: number; amount: number; settledAt: string }; note: string }>(
+        `/api/stores/${enc(subdomain)}/affiliates/${enc(id)}/settle`,
+        { method: "POST" }
+      ),
   },
 
   reviews: {
@@ -587,6 +606,11 @@ export const api = {
 
   storefront: {
     get: (subdomain: string) => req<any>(`/api/storefront/${enc(subdomain)}`),
+    visit: (subdomain: string, path: string) =>
+      req<Record<string, never>>(`/api/storefront/${enc(subdomain)}/visit`, {
+        method: "POST",
+        body: JSON.stringify({ path }),
+      }),
     products: (
       subdomain: string,
       opts?: {
@@ -641,6 +665,44 @@ export const api = {
         tracking_token: string;
         tracking_url: string;
       }>(`/api/storefront/${enc(subdomain)}/orders/${enc(orderNumber)}${qs({ phone: opts.phone, token: opts.token })}`),
+  },
+
+  admin: {
+    overview: () => req<any>("/api/admin/overview"),
+    subscriptionPayments: (opts?: { status?: string }) =>
+      req<any>(`/api/admin/subscription-payments${qs(opts ?? {})}`),
+    reviewSubscriptionPayment: (id: string, body: { decision: "approve" | "reject"; note?: string }) =>
+      req<{ payment: any; store: any }>(`/api/admin/subscription-payments/${enc(id)}/review`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    approveStore: (id: string, note = "") =>
+      req<{ store: any }>(`/api/admin/stores/${enc(id)}/approve`, {
+        method: "POST",
+        body: JSON.stringify({ note }),
+      }),
+    rejectStore: (id: string, note = "") =>
+      req<{ store: any }>(`/api/admin/stores/${enc(id)}/reject`, {
+        method: "POST",
+        body: JSON.stringify({ note }),
+      }),
+    suspendStore: (id: string, note = "") =>
+      req<{ store: any }>(`/api/admin/stores/${enc(id)}/suspend`, {
+        method: "POST",
+        body: JSON.stringify({ note }),
+      }),
+    storeSettings: (id: string) => req<any>(`/api/admin/stores/${enc(id)}/settings`),
+    updateStoreSettings: (id: string, body: Record<string, unknown>) =>
+      req<{ store: any; branding: any }>(`/api/admin/stores/${enc(id)}/settings`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    uploadStoreMedia: (id: string, input: { fileName: string; mimeType: string; dataBase64: string }) =>
+      req<{ media: { id: string; url: string; fileName: string; mimeType: string; size: number; width: number; height: number } }>(
+        `/api/admin/stores/${enc(id)}/media`,
+        { method: "POST", body: JSON.stringify(input) }
+      ),
+    leads: () => req<{ leads: any[] }>("/api/admin/leads"),
   },
 
   myLeads: () => req<{ leads: any[] }>("/api/leads"),

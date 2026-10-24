@@ -230,7 +230,10 @@ export function OrdersPage() {
                       />
                     </Td>
                     <Td>
-                      <span className="font-mono text-[11px] font-bold text-brand">SND-{order.orderNumber}</span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-mono text-[11px] font-bold text-brand">SND-{order.orderNumber}</span>
+                        {order.source === "manual" ? <Badge tone="bg-surface text-subtle border-line">يدوي خارجي</Badge> : null}
+                      </div>
                       <div className="mt-0.5 max-w-56 truncate text-[10px] text-subtle">{order.itemsSummary || `${order.items?.length ?? 0} منتج`}</div>
                     </Td>
                     <Td>
@@ -253,7 +256,7 @@ export function OrdersPage() {
         )}
       </Card>
 
-      <ManualOrderModal open={manualOpen} onClose={() => setManualOpen(false)} onCreated={() => { setManualOpen(false); reload(); }} subdomain={subdomain} />
+      <ManualOrderModal open={manualOpen} onClose={() => setManualOpen(false)} onCreated={() => { setManualOpen(false); reload(); }} subdomain={subdomain} currency={store.currency} />
     </div>
   );
 }
@@ -263,11 +266,13 @@ function ManualOrderModal({
   onClose,
   onCreated,
   subdomain,
+  currency,
 }: {
   open: boolean;
   onClose: () => void;
   onCreated: () => void;
   subdomain: string;
+  currency: string;
 }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -297,7 +302,7 @@ function ManualOrderModal({
       await api.orders.create(subdomain, {
         ...form,
         amount_egp: Number(form.amount_egp) || 0,
-        amount_text: form.amount_egp ? `${form.amount_egp} ` : "",
+        amount_text: form.amount_egp ? `${form.amount_egp} ${currency}` : "",
         internal_notes: "",
       });
       toast.success("تم إنشاء الطلب يدوياً.");
@@ -314,17 +319,21 @@ function ManualOrderModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="إنشاء طلب يدوي"
-      description="للطلبات الواردة من واتساب أو الهاتف. الطلب يُسجّل بكل بياناته الحقيقية دون أي خصم مخزون تلقائي."
+      title="تسجيل طلب يدوي خارجي"
+      description="سجّل طلباً تم بالفعل عبر واتساب أو الهاتف أو سوق خارجي. هذا السجل خارجي: لا يخصم مخزوناً ولا ينشئ منتجات أو بنود طلب."
       size="md"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>إلغاء</Button>
-          <Button loading={busy} onClick={submit}>إنشاء الطلب</Button>
+          <Button loading={busy} onClick={submit}>تسجيل الطلب</Button>
         </>
       }
     >
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="space-y-4">
+        <Alert tone="warning" title="لن يُخصم من المخزون">
+          لا يربط سند هذا الطلب بأي منتج أو مخزون، ولا يعتبره دفعة إلكترونية. أدخل ملخص المنتجات والمبلغ كما تمّا فعلياً.
+        </Alert>
+        <div className="grid gap-4 sm:grid-cols-2">
         <Field label="اسم العميل" required>
           <Input value={form.customer_name} onChange={(e) => set("customer_name", e.target.value)} placeholder="مثال: أحمد محمد" />
         </Field>
@@ -346,10 +355,10 @@ function ManualOrderModal({
         <Field label="ملخص المنتجات" className="sm:col-span-2">
           <Input value={form.items_summary} onChange={(e) => set("items_summary", e.target.value)} placeholder="قميص ×1 + حزام ×2" />
         </Field>
-        <Field label="المبلغ (بالعملة الأساسية)">
+        <Field label={`المبلغ (${currency})`} hint="المبلغ الإجمالي كما تم الاتفاق عليه، وليس محسوباً من أسعار المنتجات.">
           <Input type="number" min={0} value={form.amount_egp} onChange={(e) => set("amount_egp", e.target.value)} dir="ltr" />
         </Field>
-        <Field label="طريقة الدفع">
+        <Field label="طريقة الدفع" hint="كما تمت فعلياً خارج سند.">
           <Select value={form.payment_method} onChange={(e) => set("payment_method", e.target.value)}>
             <option value="COD">الدفع عند الاستلام</option>
             <option value="bank_transfer">تحويل بنكي</option>
@@ -362,6 +371,7 @@ function ManualOrderModal({
         <Field label="ملاحظات للعميل">
           <Input value={form.notes} onChange={(e) => set("notes", e.target.value)} />
         </Field>
+        </div>
       </div>
     </Modal>
   );
@@ -480,13 +490,18 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
 
   const events = [...(order.events ?? [])].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const refunds = order.refunds ?? [];
+  const isManual = order.source === "manual";
 
   return (
     <div className="space-y-5">
       <PageHeader
         eyebrow={`SND-${order.orderNumber}`}
         title={order.customerName || "طلب بدون اسم"}
-        description={`${dateTime(order.createdAt)} · ${order.items?.length ?? 0} منتج · ${order.paymentMethod || "COD"}`}
+        description={
+          isManual
+            ? `${dateTime(order.createdAt)} · طلب يدوي خارجي · ${order.paymentMethod || "COD"}`
+            : `${dateTime(order.createdAt)} · ${order.items?.length ?? 0} منتج · ${order.paymentMethod || "COD"}`
+        }
         actions={
           <>
             <Link href="/dashboard/orders" className="inline-flex h-10 items-center gap-2 rounded-brand border border-line px-4 text-xs font-semibold text-ink hover:bg-surface">
@@ -501,12 +516,19 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
         }
       />
 
+      {isManual ? (
+        <Alert tone="warning" title="طلب يدوي خارجي">
+          سُجّل هذا الطلب من لوحة التحكم لتوثيق عملية تمت خارج سند. لا يخصم من المخزون، ولا يربط منتجات أو أسعاراً بالكتالوج. حدّث حالته يدوياً بحسب ما يحدث فعلاً.
+        </Alert>
+      ) : null}
+
       <div className="grid gap-4 xl:grid-cols-[1.7fr_1fr]">
         <div className="space-y-4">
           <Card className="p-4">
             <div className="flex flex-wrap items-center gap-3">
               <StatusBadge status={order.status} />
               <PaymentBadge status={order.paymentStatus} />
+              {isManual ? <Badge tone="border-warning-line bg-warning-soft text-warning">يدوي خارجي</Badge> : null}
               {order.couponCode ? <Badge tone="border-info-line bg-info-soft text-info">كوبون {order.couponCode}</Badge> : null}
               {order.courier ? <Badge>{order.courier}</Badge> : null}
             </div>
@@ -558,40 +580,59 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
             ) : null}
           </Card>
 
-          <Card className="overflow-hidden">
-            <div className="border-b border-line px-4 py-3 text-sm font-bold text-ink">منتجات الطلب</div>
-            <TableShell minWidth={560}>
-              <thead>
-                <tr className="border-b border-line">
-                  <Th>المنتج</Th>
-                  <Th>SKU</Th>
-                  <Th>الكمية</Th>
-                  <Th>سعر الوحدة</Th>
-                  <Th>الإجمالي</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {(order.items ?? []).map((item: any) => (
-                  <tr key={item.id} className="border-b border-line">
-                    <Td>
-                      <div className="font-semibold text-ink">{item.name}</div>
-                      {item.variantLabel ? <div className="mt-0.5 text-[10px] text-subtle">{item.variantLabel}</div> : null}
-                    </Td>
-                    <Td className="font-mono text-[10px] text-subtle">{item.sku}</Td>
-                    <Td>{number(item.qty)}</Td>
-                    <Td>{money(item.unitPriceEgp, store.currency)}</Td>
-                    <Td className="font-bold text-ink">{money(item.unitPriceEgp * item.qty, store.currency)}</Td>
+          {isManual ? (
+            <Card className="overflow-hidden">
+              <div className="border-b border-line px-4 py-3 text-sm font-bold text-ink">تفاصيل الطلب اليدوي</div>
+              <div className="space-y-3 p-4 text-xs">
+                <div>
+                  <div className="text-[10px] text-subtle">ملخص المنتجات كما ورد في الطلب</div>
+                  <div className="mt-1 whitespace-pre-wrap text-ink">{order.itemsSummary || "—"}</div>
+                </div>
+                <div className="flex items-center justify-between rounded-brand border border-line bg-surface px-3 py-2">
+                  <span className="text-subtle">المبلغ المسجل</span>
+                  <span className="font-bold text-ink">{order.amountText || money(order.amountEgp, store.currency)}</span>
+                </div>
+                <p className="text-[10px] leading-5 text-subtle">
+                  هذا السجل خارجي وغير مرتبط بالمخزون. لا توجد بنود منتجات أو أسعار محسوبة من الكتالوج، لذلك لا نعرض جدول منتجات أو إجماليات آلية قد تبدو كأنها خصمت مخزوناً.
+                </p>
+              </div>
+            </Card>
+          ) : (
+            <Card className="overflow-hidden">
+              <div className="border-b border-line px-4 py-3 text-sm font-bold text-ink">منتجات الطلب</div>
+              <TableShell minWidth={560}>
+                <thead>
+                  <tr className="border-b border-line">
+                    <Th>المنتج</Th>
+                    <Th>SKU</Th>
+                    <Th>الكمية</Th>
+                    <Th>سعر الوحدة</Th>
+                    <Th>الإجمالي</Th>
                   </tr>
-                ))}
-              </tbody>
-            </TableShell>
-            <div className="space-y-1.5 border-t border-line px-4 py-3 text-xs">
-              <Row label="المجموع الفرعي" value={money(order.subtotal, store.currency)} />
-              {order.discount ? <Row label="الخصم" value={`- ${money(order.discount, store.currency)}`} tone="text-success" /> : null}
-              {order.shippingFee ? <Row label="الشحن" value={money(order.shippingFee, store.currency)} /> : null}
-              <Row label="إجمالي الطلب" value={money(order.amountEgp, store.currency)} strong />
-            </div>
-          </Card>
+                </thead>
+                <tbody>
+                  {(order.items ?? []).map((item: any) => (
+                    <tr key={item.id} className="border-b border-line">
+                      <Td>
+                        <div className="font-semibold text-ink">{item.name}</div>
+                        {item.variantLabel ? <div className="mt-0.5 text-[10px] text-subtle">{item.variantLabel}</div> : null}
+                      </Td>
+                      <Td className="font-mono text-[10px] text-subtle">{item.sku}</Td>
+                      <Td>{number(item.qty)}</Td>
+                      <Td>{money(item.unitPriceEgp, store.currency)}</Td>
+                      <Td className="font-bold text-ink">{money(item.unitPriceEgp * item.qty, store.currency)}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </TableShell>
+              <div className="space-y-1.5 border-t border-line px-4 py-3 text-xs">
+                <Row label="المجموع الفرعي" value={money(order.subtotal, store.currency)} />
+                {order.discount ? <Row label="الخصم" value={`- ${money(order.discount, store.currency)}`} tone="text-success" /> : null}
+                {order.shippingFee ? <Row label="الشحن" value={money(order.shippingFee, store.currency)} /> : null}
+                <Row label="إجمالي الطلب" value={money(order.amountEgp, store.currency)} strong />
+              </div>
+            </Card>
+          )}
 
           <Card className="p-4">
             <div className="flex items-center justify-between">

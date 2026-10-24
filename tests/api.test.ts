@@ -85,11 +85,14 @@ describe("orders: filters, transitions, summary", () => {
     const before = await agent.get("/api/account/store").expect(200);
     expect(before.body.store.subdomain).toMatch(/^s/);
     await agent.patch("/api/account/store").send({}).expect(400);
+    const identity = await agent.patch("/api/account/store").send({ storeName: "Renamed" });
+    expect(identity.status).toBe(409);
+    expect(identity.body.error.code).toBe("STORE_IDENTITY_ADMIN_ONLY");
     const upd = await agent
       .patch("/api/account/store")
-      .send({ storeName: "Renamed", phone: "01234567890", storeCurrency: "SAR" })
+      .send({ phone: "01234567890", storeCurrency: "SAR" })
       .expect(200);
-    expect(upd.body.store.storeName).toBe("Renamed");
+    expect(upd.body.store.storeName).toBe(before.body.store.storeName);
     expect(upd.body.store.currency).toBe("SAR");
     expect(upd.body.store.plan).toBe("annual");
     // subdomain is not accepted at all (strict schema rejects unknown field)

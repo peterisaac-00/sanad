@@ -61,6 +61,9 @@ export function AbandonedCartsPage() {
   const carts = data?.carts ?? [];
   const summary = data?.summary;
   const currency = store?.currency ?? "EGP";
+  const whatsapp = data?.whatsapp;
+  const manualWhatsAppOnly = whatsapp?.sendState === "manual_links_only" || !whatsapp?.sendState;
+  const templateRequired = whatsapp?.sendState === "template_required";
 
   const setRecovery = async (cart: any, recoveryStatus: string) => {
     try {
@@ -121,6 +124,23 @@ export function AbandonedCartsPage() {
         <StatCard label="سلات مستعادة" value={number(summary?.recoveredCount ?? 0)} icon={<TrendingUp className="h-5 w-5" />} accent="success" />
       </div>
 
+      <Alert
+        tone={whatsapp?.sendState === "auto_send_ready" ? "success" : templateRequired ? "warning" : "info"}
+        title={
+          whatsapp?.sendState === "auto_send_ready"
+            ? "الإرسال التلقائي عبر واتساب متاح"
+            : templateRequired
+              ? "الإرسال التلقائي يحتاج قالباً معتمداً"
+              : "التذكير عبر رابط واتساب يدوي"
+        }
+      >
+        {whatsapp?.sendState === "auto_send_ready"
+          ? "يمكن إرسال التذكير مباشرة. مع ذلك، تحقق دائماً من حالة الرسالة قبل اعتبار العميل قد تم تذكيره."
+          : templateRequired
+            ? "بيانات واتساب محفوظة على الخادم، لكن الإرسال التلقائي لا يعمل قبل اعتماد قالب رسالة. زر التذكير يفتح المحادثة برسالة جاهزة لإرسالها يدوياً."
+            : "لا يوجد مزود إرسال تلقائي. زر التذكير يفتح واتساب برسالة جاهزة، وتبقى المسؤولية عليك لإرسالها. لن تُعلَّم السلة كمذكّرة تلقائياً."}
+      </Alert>
+
       <Card className="p-3">
         <div className="flex flex-wrap items-center gap-2">
           <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="ابحث بالاسم أو الهاتف…" className="w-64" />
@@ -179,7 +199,20 @@ export function AbandonedCartsPage() {
                       <Td>
                         <div className="flex items-center justify-end gap-1">
                           {cart.phone ? (
-                            <Button variant="ghost" size="sm" loading={reminding === cart.id} onClick={() => remind(cart)} title="إرسال تذكير واتساب">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              loading={reminding === cart.id}
+                              onClick={() => remind(cart)}
+                              title={
+                                manualWhatsAppOnly
+                                  ? "فتح واتساب لإرسال التذكير يدوياً"
+                                  : templateRequired
+                                    ? "فتح واتساب (الإرسال التلقائي يحتاج قالباً معتمداً)"
+                                    : "إرسال تذكير واتساب"
+                              }
+                              aria-label="تذكير عبر واتساب"
+                            >
                               <MessageCircle className="h-3.5 w-3.5" />
                             </Button>
                           ) : null}
@@ -208,8 +241,10 @@ export function AbandonedCartsPage() {
         )}
       </Card>
 
-      <Alert tone="info" title="كيف يعمل التذكير؟">
-        إن كان مزود واتساب التلقائي مهيأً في بيئة الخادم يتم الإرسال مباشرة. وإلا نفتح لك رابط واتساب برسالة جاهزة لإرسالها يدوياً — لن ندّعي إرسالاً لم يحدث.
+      <Alert tone="info" title="حالة التذكير">
+        {templateRequired
+          ? "مزود واتساب محفوظ، لكن الإرسال التلقائي يحتاج قالباً معتمداً. الرابط يفتح المحادثة برسالة جاهزة."
+          : "التذكير يفتح واتساب برسالة جاهزة لإرسالها يدوياً. لا ندّعي إرسالاً تلقائياً لم يحدث."}
       </Alert>
 
       <ConfirmDialog

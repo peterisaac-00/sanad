@@ -13,52 +13,16 @@ import { KNOWLEDGE_ARTICLES } from "../../data/knowledge";
 import { Link } from "../../lib/router";
 import { Badge, Card, PageHeader, cn } from "../../components/ui";
 import { useDashboard } from "../DashboardShell";
+import { LEARN_CHECKLIST, LEARN_GUIDES } from "../learnContent";
 
 const STORAGE_KEY = "sanad.learn.checklist.v1";
 
-interface ChecklistItem {
-  id: string;
-  label: string;
-  hint: string;
-  href?: string;
-}
-
-const CHECKLIST: { title: string; items: ChecklistItem[] }[] = [
-  {
-    title: "جهّز متجرك للبيع",
-    items: [
-      { id: "product", label: "أضف أول منتج مع صورة وسعر", hint: "المنتجات ← منتج جديد", href: "/dashboard/products" },
-      { id: "categories", label: "أنشئ فئات لتنظيم الكتالوج", hint: "منتجات بفئات واضحة تُشترى أكثر", href: "/dashboard/categories" },
-      { id: "shipping", label: "أضف منطقة شحن بأسعار التحصيل", hint: "بدون منطقة شحن لن يُحسب الشحن في الطلبات", href: "/dashboard/shipping" },
-      { id: "whatsapp", label: "أضف رقم واتساب للدعم", hint: "يظهر في متجرك وصفحة نجاح الطلب", href: "/dashboard/settings" },
-      { id: "publish", label: "انشر صفحة البيع من التهيئة", hint: "التهيئة ← الخطوة الأخيرة" },
-    ],
-  },
-  {
-    title: "ابدأ استقبال أول طلب",
-    items: [
-      { id: "share", label: "شارك رابط متجرك أو استخدم كود الإحالة", hint: "انسخ الرابط من بطاقة المتجر في الشريط الجانبي" },
-      { id: "confirm", label: "أكد الطلبات الجديدة خلال 30 دقيقة", hint: "الطلبات ← تغيير الحالة إلى «بانتظار التأكيد» ثم «مؤكد»", href: "/dashboard/orders" },
-      { id: "track", label: "تابع حالة الطلب حتى التوصيل", hint: "قيد التجهيز ← جاهز للشحن ← خرج للتوصيل ← تم التوصيل" },
-    ],
-  },
-  {
-    title: "انمُ بعد أول طلب",
-    items: [
-      { id: "coupon", label: "أنشئ كوبون ترحيبي للعملاء الجدد", hint: "مثال: WELCOME10", href: "/dashboard/coupons" },
-      { id: "abandoned", label: "فعّل متابعة السلات المتروكة", hint: "ذكر العملاء عبر واتساب", href: "/dashboard/abandoned-carts" },
-      { id: "reviews", label: "راجع التقييمات ووافق على الجيد منها", hint: "التقييمات المنشورة تبني الثقة", href: "/dashboard/reviews" },
-      { id: "reports", label: "راقب أفضل المنتجات أسبوعياً", hint: "التقارير ← أفضل المنتجات", href: "/dashboard/reports" },
-    ],
-  },
-];
-
-const GUIDES = [
-  { title: "دليل البداية السريعة", description: "من أول منتج حتى أول طلب مؤكد، خطوة بخطوة.", minutes: 5, href: "/dashboard/products", icon: PlayCircle, tone: "from-brand/20" },
-  { title: "إدارة الطلبات والشحن", description: "حالات الطلب، التحصيل، الشحن اليدوي ومناطق الشحن.", minutes: 7, href: "/dashboard/orders", icon: BookOpen, tone: "from-info/20" },
-  { title: "التسويق والنمو", description: "الكوبونات، السلات المتروكة، الولاء والتسويق بالعمولة.", minutes: 8, href: "/dashboard/coupons", icon: Lightbulb, tone: "from-success/20" },
-  { title: "المنتجات والكتالوج", description: "أفضل ممارسات الصور والأوصاف والأسعار والمتغيرات.", minutes: 6, href: "/dashboard/products", icon: GraduationCap, tone: "from-warning/20" },
-];
+const GUIDE_ICONS = {
+  play: PlayCircle,
+  book: BookOpen,
+  growth: Lightbulb,
+  catalog: GraduationCap,
+};
 
 export function LearnPage() {
   const { subdomain } = useDashboard();
@@ -87,16 +51,16 @@ export function LearnPage() {
     });
   };
 
-  const totalItems = useMemo(() => CHECKLIST.reduce((sum, group) => sum + group.items.length, 0), []);
-  const doneItems = useMemo(() => CHECKLIST.reduce((sum, group) => sum + group.items.filter((item) => done[item.id]).length, 0), [done]);
+  const totalItems = useMemo(() => LEARN_CHECKLIST.reduce((sum, group) => sum + group.items.length, 0), []);
+  const doneItems = useMemo(() => LEARN_CHECKLIST.reduce((sum, group) => sum + group.items.filter((item) => done[item.id]).length, 0), [done]);
   const progress = totalItems ? Math.round((doneItems / totalItems) * 100) : 0;
 
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="مركز التعلم"
-        title="مركز التعلم"
-        description="أدلة عملية وتذكيرات تضمن ألا يفوتك أي شيء في تشغيل متجرك. تقدّمك محفوظ على هذا الجهاز."
+        eyebrow="الدليل السريع"
+        title="الدليل السريع"
+        description="خطوات قصيرة وقوائم تشغيل لتشغيل متجرك. هذه مساعدة ثابتة وليست مركز تعلم كامل؛ تقدّمك محفوظ على هذا الجهاز."
       />
 
       <Card className="p-4">
@@ -115,8 +79,8 @@ export function LearnPage() {
       </Card>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {GUIDES.map((guide) => {
-          const Icon = guide.icon;
+        {LEARN_GUIDES.map((guide) => {
+          const Icon = GUIDE_ICONS[guide.icon];
           return (
             <Link key={guide.title} href={guide.href} className="group">
               <Card className={cn("relative h-full overflow-hidden p-4 transition group-hover:border-brand-line")}>
@@ -136,7 +100,7 @@ export function LearnPage() {
       </div>
 
       <div className="grid gap-3 lg:grid-cols-3">
-        {CHECKLIST.map((group) => (
+        {LEARN_CHECKLIST.map((group) => (
           <Card key={group.title} className="p-4">
             <div className="mb-3 text-xs font-bold text-ink">{group.title}</div>
             <div className="space-y-2">

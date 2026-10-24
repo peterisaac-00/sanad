@@ -5,12 +5,12 @@ beforeEach(truncateAll);
 afterAll(closeDb);
 
 /**
- * Branding (template, colors, logo, cover) is chosen once during onboarding.
- * Publishing freezes it: the dashboard no longer offers a design page, and the
- * API must reject any attempt to change it afterwards.
+ * Identity and branding (name, description, template, colors, logo, cover and
+ * SEO) are chosen once during onboarding. Publishing freezes them; only the
+ * platform admin API may change them afterwards.
  */
-describe("branding is set once during onboarding", () => {
-  it("rejects branding and template changes after publishing", async () => {
+describe("store identity is admin-managed after onboarding", () => {
+  it("rejects branding, template, name and SEO changes after publishing", async () => {
     const a = await registerMerchant("bl");
     const store = await publishStore(a, {
       branding: { primaryColor: "#1d4ed8", logoUrl: "/uploads/logo.png" },
@@ -19,11 +19,15 @@ describe("branding is set once during onboarding", () => {
 
     const color = await a.agent.patch("/api/onboarding").send({ branding: { primaryColor: "#000000" } });
     expect(color.status).toBe(409);
-    expect(color.body.error.code).toBe("BRANDING_LOCKED");
+    expect(color.body.error.code).toBe("STORE_IDENTITY_ADMIN_ONLY");
 
     const template = await a.agent.patch("/api/onboarding").send({ templateKey: "fashion" });
     expect(template.status).toBe(409);
-    expect(template.body.error.code).toBe("BRANDING_LOCKED");
+    expect(template.body.error.code).toBe("STORE_IDENTITY_ADMIN_ONLY");
+
+    const name = await a.agent.patch("/api/onboarding").send({ storeName: "اسم جديد" });
+    expect(name.status).toBe(409);
+    expect(name.body.error.code).toBe("STORE_IDENTITY_ADMIN_ONLY");
   });
 
   it("removes the dashboard design endpoint and rejects logo/cover edits elsewhere", async () => {
@@ -42,15 +46,22 @@ describe("branding is set once during onboarding", () => {
     expect(account.body.error.code).toBe("VALIDATION_ERROR");
   });
 
-  it("keeps the rest of the store settings editable", async () => {
+  it("blocks owner identity edits but keeps operational settings editable", async () => {
     const a = await registerMerchant("bo");
     await publishStore(a);
 
-    const res = await a.agent
+    const identity = await a.agent
       .patch(`/api/stores/${a.subdomain}/settings`)
-      .send({ storeName: "اسم جديد", description: "وصف محدّث" })
+      .send({ storeName: "اسم جديد", description: "وصف محدّث" });
+    expect(identity.status).toBe(409);
+    expect(identity.body.error.code).toBe("STORE_IDENTITY_ADMIN_ONLY");
+
+    const operational = await a.agent
+      .patch(`/api/stores/${a.subdomain}/settings`)
+      .send({ whatsapp: "201111111111", codEnabled: true, supportEmail: "help@example.com" })
       .expect(200);
-    expect(res.body.store.storeName).toBe("اسم جديد");
-    expect(res.body.store.description).toBe("وصف محدّث");
+    expect(operational.body.store.whatsapp).toBe("201111111111");
+    expect(operational.body.store.codEnabled).toBe(true);
+    expect(operational.body.store.supportEmail).toBe("help@example.com");
   });
 });

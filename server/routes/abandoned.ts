@@ -11,7 +11,7 @@ import {
   validateParams,
   validateQuery,
 } from "../validate.js";
-import { whatsappService } from "../services/integrations.js";
+import { whatsappService, integrationStatus } from "../services/integrations.js";
 
 export const abandonedRouter = Router();
 
@@ -68,6 +68,9 @@ abandonedRouter.get(
         openValue: open._sum.cartValue ?? 0,
         recoveredCount: recovered,
       },
+      // The UI needs the three WhatsApp states explicitly: manual link only,
+      // credentials present but template still required, and (future) auto-send.
+      whatsapp: integrationStatus().whatsapp,
       pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
     });
   })
@@ -108,15 +111,20 @@ abandonedRouter.post(
         where: { id: cart.id },
         data: { recoveryStatus: "reminded", remindedAt: new Date() },
       });
-      res.json({ sent: true, cart: updated });
+      res.json({ sent: true, send_state: "sent", cart: updated });
       return;
     }
+    const templateRequired = sendResult.reason === "WHATSAPP_TEMPLATE_REQUIRED";
     res.json({
       sent: false,
+      send_state: templateRequired ? "template_required" : "manual_links_only",
+      auto_send_available: false,
       reason: sendResult.reason,
       cart,
       whatsapp_url: whatsappService.link(cart.phone, message),
-      note: "الإرسال التلقائي عبر واتساب غير مهيأ. استخدم الرابط لفتح المحادثة وإرسال الرسالة يدوياً.",
+      note: templateRequired
+        ? "بيانات واتساب محفوظة، لكن الإرسال التلقائي يحتاج قالباً معتمداً. افتح الرابط وأرسل الرسالة يدوياً."
+        : "الإرسال التلقائي عبر واتساب غير متاح. استخدم الرابط لفتح المحادثة وإرسال الرسالة يدوياً.",
     });
   })
 );

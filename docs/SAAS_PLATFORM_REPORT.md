@@ -176,8 +176,8 @@ The test suite runs against real per-worker PostgreSQL databases and covers:
 1. **Online payment adapter:** no provider-specific implementation exists.
    `PAYMENT_PROVIDER` + `PAYMENT_SECRET_KEY` alone still return
    `PAYMENT_ADAPTER_MISSING`. COD is the only complete method.
-2. **S3 storage:** `STORAGE_DRIVER=s3` is an honest boundary that returns
-   `STORAGE_INTEGRATION_NOT_CONFIGURED`; local disk is implemented.
+2. **S3 storage:** `STORAGE_DRIVER=s3` stops the app at startup because no S3
+   adapter exists; local disk is the only implemented driver.
 3. **WhatsApp auto-send:** `wa.me` links work; Cloud API sending requires
    approved templates and is not implemented.
 4. **Carrier APIs:** shipping zones/rates/COD fees/tracking links are real;

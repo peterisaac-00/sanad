@@ -47,17 +47,17 @@ export const SolutionsView: React.FC<SolutionsViewProps> = ({
       icon: Instagram,
       headline_ar: 'توقف عن إهدار ساعات يومياً في محادثات الـ DMs',
       headline_en: 'Stop Wasting Hours in Manual DM Selling',
-      desc_ar: 'حوّل متابعي حسابك على إنستغرام وفيسبوك وتيك توك إلى مشترين حقيقيين من خلال رابط سلة واحد في البايو Bio. العميل يختار مقاسه ولونه، يسجل عنوانه، ويتلقى تأكيد طلبه عبر واتساب فورياً.',
-      desc_en: 'Direct followers to a single bio link with instantaneous mobile checkout. Shoppers choose sizes, input addresses, and receive automated WhatsApp confirmations.',
+      desc_ar: 'حوّل متابعي حسابك على إنستغرام وفيسبوك وتيك توك إلى مشترين حقيقيين من خلال رابط سلة واحد في البايو Bio. العميل يختار مقاسه ولونه، يسجل عنوانه، ويمكنك تأكيد طلبه عبر واتساب برسالة جاهزة ترسلها يدوياً.',
+      desc_en: 'Direct followers to a single bio link with a mobile checkout. Shoppers choose sizes and enter addresses; you can confirm the order with a prepared WhatsApp message sent manually.',
       points_ar: [
         'رابط Bio سريع ومناسب لتصفح الهواتف وشبكات المحمول',
-        'تأكيد الطلب التلقائي وإرسال الفاتورة للعميل على واتساب',
+        'تأكيد الطلب وفتح واتساب برسالة/فاتورة جاهزة يرسلها فريقك يدوياً',
         '0% عمولة للمنصة لحماية هامش ربحك الذي تبنيه بجهدك',
         'تجميع وتتبع طلبات الـ COD بدون تكرار تسجيل العناوين يدوياً'
       ],
       points_en: [
         'Lightning fast Link-in-Bio mobile storefront optimized for mobile screens',
-        'Automated order confirmation and WhatsApp invoice dispatch',
+        'Order confirmation with a prepared WhatsApp message/invoice sent manually by your team',
         '0% platform commission preserving 100% of your hard-earned margins',
         'Organized COD order manifests without retyping buyer details manually'
       ]
@@ -69,17 +69,17 @@ export const SolutionsView: React.FC<SolutionsViewProps> = ({
       icon: ShoppingBag,
       headline_ar: 'ابنِ هويتك المستقلة وامتلك علاقتك مع العميل',
       headline_en: 'Build Your Brand Identity & Own Your Customer Data',
-      desc_ar: 'لا تحصر علامتك في منصات البيع الجماعية (Marketplaces) التي تقتطع 15-25% من مبيعاتك وتخفي عنك بيانات عملائك. مع سند، تمتلك متجرك بهويتك، نطاقك المستقل، وقاعدة عملائك للتسويق المتكرر.',
+      desc_ar: 'لا تحصر علامتك في منصات البيع الجماعية (Marketplaces) التي تقتطع 15-25% من مبيعاتك وتخفي عنك بيانات عملائك. مع سند، تمتلك متجرك بهويتك، نطاقك الفرعي، وقاعدة عملائك للتسويق المتكرر.',
       desc_en: 'Break free from marketplace aggregators taking 15-25% cuts and hiding buyer data. Own your storefront domain, logo, and repeat customer retention engine.',
       points_ar: [
-        'ربط نطاقك المستقل (.com / .eg / .sa) مجاناً',
-        'تكامل كامل مع Meta Conversions API و Google Merchant Center',
+        'نطاق فرعي مجاني (yourstore.sanad.app)؛ ربط النطاق المستقل قيد التطوير',
+        'تصدير الطلبات والعملاء CSV؛ تكاملات Meta/Google قيد التطوير',
         'قسائم التخفيض، العروض المجمعة (Bundles)، ورفع متوسط السلة AOV',
         'ملكية كاملة لقاعدة بيانات العملاء وسجل المشتريات'
       ],
       points_en: [
-        'Free custom domain connection (.com / .eg / .sa)',
-        'Server-side Meta CAPI & Google Merchant Center dynamic catalog feeds',
+        'Free Sanad subdomain (yourstore.sanad.app); custom domains are planned',
+        'CSV order/customer export; Meta and Google integrations are planned',
         'Smart bundling engines and promo coupons lifting Average Order Value',
         '100% proprietary customer dataset ownership and exportability'
       ]
@@ -91,19 +91,19 @@ export const SolutionsView: React.FC<SolutionsViewProps> = ({
       icon: Globe,
       headline_ar: 'انطلق من السوق المصري وافتح مبيعاتك لعملاء الخليج',
       headline_en: 'Expand From Egypt to High-Value Gulf Consumers',
-      desc_ar: 'المنتجات المصرية المصنعة محلياً في الأزياء والجلود والمأكولات تحظى بطلب هائل في السعودية والإمارات والكويت. نوفر لك معمارية تعدد العملات والشحن الجوي عابر الحدود لتبيع بسهولة وأمان.',
-      desc_en: 'Egyptian fashion, footwear, and artisanal products enjoy immense demand across Saudi Arabia, UAE, and Kuwait. Utilize our multi-currency and international courier engine.',
+      desc_ar: 'المنتجات المصرية المصنعة محلياً في الأزياء والجلود والمأكولات تحظى بطلب هائل في السعودية والإمارات والكويت. يمكنك تسجيل الطلبات الإقليمية بعملة متجرك، مع تنسيق الشحن الجوي مع شركة شحن خارج سند.',
+      desc_en: 'Egyptian fashion, footwear, and artisanal products enjoy immense demand across Saudi Arabia, UAE, and Kuwait. Record regional orders in your store currency and coordinate cross-border shipping with a courier outside Sanad.',
       points_ar: [
-        'عرض الأسعار بالريال السعودي (SAR) والدرهم (AED) والدينار (KWD)',
-        'نظام الصرف المزدوج: التحديث الآلي لأسعار الصرف أو التحديد اليدوي',
-        'طباعة الفواتير التجارية الدولية وبوالص الشحن الجوي',
-        'استقبال المدفوعات بالبطاقات البنكية الدولية و Apple Pay'
+        'عرض أسعار المنتجات بعملة متجرك الأساسية؛ تعدد العملات قيد التطوير',
+        'تسجيل الطلبات الإقليمية يدوياً؛ لا يوجد تحديث آلي لأسعار الصرف',
+        'طباعة فواتير وقوائم أصناف للشحن الدولي',
+        'تسجيل الدفع عند الاستلام أو التحويل البنكي يدوياً؛ الدفع الإلكتروني غير متاح'
       ],
       points_en: [
-        'Localized prices in SAR, AED, KWD alongside EGP',
-        'Dual FX engine: Automated live exchange rates or custom manual buffer rates',
-        'Automated bilingual commercial invoices for customs clearance',
-        'Digital checkouts accepting international credit cards and Apple Pay'
+        'Product prices are shown in your one base store currency; multi-currency is planned',
+        'Regional orders are recorded manually; there is no automatic FX update',
+        'Printable invoices and packing lists for international shipping',
+        'Manual cash-on-delivery or bank-transfer recording; online card payments are not available'
       ]
     },
     {
@@ -117,13 +117,13 @@ export const SolutionsView: React.FC<SolutionsViewProps> = ({
       desc_en: 'Your physical store is limited to foot traffic; your online store on Sanad connects you to millions of shoppers across 27 Egyptian governorates and the Gulf.',
       points_ar: [
         'تتبع دقيق للمخزون لكل مقاس ولون (SKU)',
-        'استيراد سريع لكتالوج محلك بملف Excel واحد عبر مركز الترحيل',
+        'إدخال الكتالوج يدوياً من لوحة التحكم؛ الاستيراد التلقائي من Excel قيد التطوير',
         'إصدار فواتير ضريبية وبوالص شحن جاهزة للمناديب',
         'تسعير ثابت 100 ج.م شهرياً لا يرهق ميزانية محلك'
       ],
       points_en: [
         'Granular inventory tracking across sizes, colors, and stock locations',
-        'Bulk import your current spreadsheet catalogue in minutes via Migration Center',
+        'Manual catalogue entry from the dashboard; automatic Excel import is planned',
         '1-click printable invoices and airway bills ready for courier pick-up',
         'Flat 100 EGP/mo SaaS fee that keeps operational overhead minimal'
       ]

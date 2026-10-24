@@ -29,7 +29,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({ currentLang, onO
       title_en: 'Getting Started & Store Setup',
       articles: [
         { title_ar: 'كيف تضيف أول منتج وصوره ومتغيرات المقاس واللون؟', title_en: 'How to add your first product with sizes and colors?' },
-        { title_ar: 'ربط النطاق الخاص (.com / .eg / .sa) بخطوات سهلة', title_en: 'Connecting your custom domain with free SSL' },
+        { title_ar: 'استخدام نطاقك الفرعي المجاني', title_en: 'Using your free Sanad subdomain' },
         { title_ar: 'تخصيص الشعار وألوان المتجر وصور البانر الترويجية', title_en: 'Customizing brand logo, colors and home banners' }
       ]
     },
@@ -40,27 +40,27 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({ currentLang, onO
       articles: [
         { title_ar: 'كيف تحدد أسعار شحن مختلفة لكل محافظة في مصر؟', title_en: 'How to set custom courier tariffs per governorate' },
         { title_ar: 'تفعيل قاعدة الشحن المجاني فوق مبلغ محدد (مثال: 600 ج.م)', title_en: 'Enabling free shipping threshold over target cart total' },
-        { title_ar: 'خطوات تأكيد الطلبات عبر واتساب لتقليل المرتجعات', title_en: 'WhatsApp verification workflows to cut cancellations' }
+        { title_ar: 'إرسال رسالة تأكيد واتساب جاهزة يدوياً لتقليل المرتجعات', title_en: 'Sending a prepared WhatsApp confirmation manually to cut cancellations' }
       ]
     },
     {
       id: 'payments',
-      title_ar: 'بوابات الدفع الإلكتروني والتحويل',
-      title_en: 'Digital Payment Gateways',
+      title_ar: 'الدفع عند الاستلام والمدفوعات اليدوية',
+      title_en: 'Cash on Delivery & Manual Payments',
       articles: [
-        { title_ar: 'ربط بوابات الدفع المصرية (Paymob / Fawry / InstaPay)', title_en: 'Connecting Egyptian payment providers' },
-        { title_ar: 'تفعيل بطاقات مدى و Apple Pay لعملاء السعودية والخليج', title_en: 'Enabling Mada & Apple Pay for Gulf shoppers' },
-        { title_ar: 'كيف تُحوّل أموال مبيعاتك مباشرة إلى حسابك البنكي؟', title_en: 'Direct bank payout flow and zero platform holding' }
+        { title_ar: 'كيف تغيّر حالة الدفع أو تسجل دفعة يدوية؟', title_en: 'How to record a manual payment or change payment status' },
+        { title_ar: 'لماذا خيار الدفع الإلكتروني معطّل حالياً؟', title_en: 'Why online payment is currently disabled' },
+        { title_ar: 'كيف تطبع فاتورة وتنسق الشحن مع الناقل خارج سند؟', title_en: 'Printing an invoice and coordinating shipping outside Sanad' }
       ]
     },
     {
       id: 'marketing-meta',
-      title_ar: 'التسويق ومنصات Meta و Google',
-      title_en: 'Marketing & Meta / Google Feeds',
+      title_ar: 'التسويق وتصدير البيانات',
+      title_en: 'Marketing & Data Export',
       articles: [
-        { title_ar: 'كيف تنسخ رابط كتالوج المنتجات إلى Meta Commerce Manager؟', title_en: 'Syncing live product XML feed to Meta Commerce Manager' },
-        { title_ar: 'ربط كود التتبع Google Analytics 4 و Google Tag Manager', title_en: 'Setting up GA4 ecommerce events and GTM container' },
-        { title_ar: 'إنشاء قسائم تخفيض بنسبة مئوية أو بمبلغ ثابت', title_en: 'Creating percentage or fixed amount promo codes' }
+        { title_ar: 'كيف تصدّر الطلبات والعملاء بملف CSV؟', title_en: 'Exporting orders and customers to CSV' },
+        { title_ar: 'إنشاء قسائم تخفيض بنسبة مئوية أو بمبلغ ثابت', title_en: 'Creating percentage or fixed-amount promo codes' },
+        { title_ar: 'ما التكاملات التسويقية المتاحة الآن وما المخطط لها؟', title_en: 'Which marketing integrations exist today vs. planned' }
       ]
     }
   ];
@@ -70,7 +70,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({ currentLang, onO
       {/* Header */}
       <div className="text-center max-w-3xl mx-auto space-y-3">
         <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand-soft px-3 py-1 rounded-brand-sm border border-brand-line">
-          {currentLang === 'ar' ? 'مركز المساعدة والتوثيق' : 'Help Center & Documentation'}
+          {currentLang === 'ar' ? 'مركز المساعدة' : 'Help Center'}
         </span>
         <h1 className="text-3xl sm:text-5xl font-extrabold font-heading text-ink tracking-tight">
           {currentLang === 'ar'
@@ -79,15 +79,15 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({ currentLang, onO
         </h1>
         <p className="text-sm sm:text-base text-ink-soft leading-relaxed">
           {currentLang === 'ar'
-            ? 'شروحات واضحة وتوثيق خطوة بخطوة لكافة وظائف المنصة؛ من إضافة أول منتج وحتى مطابقة تحصيلات الشحن.'
-            : 'Step-by-step documentation for every platform operation, from adding products to courier cash reconciliation.'}
+            ? 'إرشادات مختصرة لبعض العمليات الشائعة. الدليل التفاعلي الكامل موجود داخل لوحة التحكم.'
+            : 'Short guidance for common operations. The interactive guide lives inside the dashboard.'}
         </p>
 
         {/* Search Bar */}
         <div className="relative max-w-xl mx-auto pt-2">
           <input
             type="text"
-            placeholder={currentLang === 'ar' ? 'ابحث في الشروحات: مثلاً "شحن المحافظات" أو "بوابة الدفع"...' : 'Search guides: e.g. "shipping zones" or "custom domain"...'}
+            placeholder={currentLang === 'ar' ? 'ابحث في الإرشادات: مثلاً "شحن المحافظات" أو "الدفع عند الاستلام"...' : 'Search guidance: e.g. "shipping zones" or "cash on delivery"...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full py-3.5 px-4 pe-12 bg-card border border-line rounded-brand-lg text-xs sm:text-sm text-ink shadow-xs focus:outline-none focus:ring-2 focus:ring-brand/30"
@@ -121,7 +121,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({ currentLang, onO
               {currentLang === 'ar' ? 'التوثيق المكتوب والبريد' : 'Merchant Documentation'}
             </h3>
             <p className="text-xs text-ink-soft">
-              {currentLang === 'ar' ? 'أدلة إرشادية وتحديثات دورية على مدار الساعة.' : 'Complete technical guides available 24/7.'}
+              {currentLang === 'ar' ? 'دليل سريع وإرشادات مختصرة للعمليات الشائعة.' : 'A quick guide with concise guidance for common operations.'}
             </p>
           </div>
         </div>

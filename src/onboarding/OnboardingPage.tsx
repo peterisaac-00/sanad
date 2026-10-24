@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { api, mediaUrl } from "../lib/api";
 import { BUSINESS_TYPES, CURRENCIES, EGYPT_GOVERNORATES, TEMPLATES, safeError } from "../lib/format";
-import { Link, navigate } from "../lib/router";
+import { navigate } from "../lib/router";
 import { useSession } from "../lib/session";
 import { ThemeToggle } from "../lib/theme";
 import { Alert, Button, Field, Input, Select, Spinner, Switch, Textarea, useToast } from "../components/ui";
@@ -157,8 +157,8 @@ export function OnboardingPage() {
   useEffect(() => {
     if (!loading && !session) navigate("/auth/login?next=/onboarding", { replace: true });
     if (!loading && session && session.store?.onboardingCompleted && !published && !publishing) {
-      // Identity is set once during onboarding. Published stores manage
-      // everything else from the dashboard, which has no design editor.
+      // Identity is admin-managed after submission; a completed store goes
+      // straight to the console (or waits there for platform approval).
       navigate("/dashboard", { replace: true });
     }
   }, [loading, session, published, publishing]);
@@ -588,13 +588,13 @@ export function OnboardingPage() {
                       onChange={(value) => update("onlinePaymentEnabled", value)}
                       disabled={!data?.payments?.providerConfigured}
                       label="الدفع الإلكتروني"
-                      description={data?.payments?.providerConfigured ? "بوابة الدفع مهيأة على الخادم." : "غير متاح: لم تُضف بوابة دفع في بيئة الخادم بعد."}
+                      description={data?.payments?.providerConfigured ? "بوابة الدفع مهيأة على الخادم." : "غير متاح: لا يوجد محوّل دفع مثبت في هذه النسخة."}
                     />
                   </div>
 
                   {!data?.payments?.providerConfigured ? (
-                    <Alert tone="info" title="بوابة الدفع غير مهيأة">
-                      هذا ليس خطأ في متجرك. أضف بيانات مزود الدفع (PAYMENT_PROVIDER و PAYMENT_SECRET_KEY) على الخادم لتفعيله. حتى ذلك الحين يبقى الدفع عند الاستلام متاحاً.
+                    <Alert tone="info" title="الدفع الإلكتروني غير متاح">
+                      لا يوجد محوّل دفع فعلي في هذه النسخة، وإضافة متغيرات PAYMENT_PROVIDER أو PAYMENT_SECRET_KEY وحدها لن تفعّله. يبقى الدفع عند الاستلام هو الخيار المتاح، ولن نعرض خيار دفع غير قابل للتنفيذ.
                     </Alert>
                   ) : null}
 
@@ -611,7 +611,7 @@ export function OnboardingPage() {
                         <Input type="number" min={0} step="0.01" value={form.shippingThreshold} onChange={(e) => update("shippingThreshold", e.target.value)} placeholder="مثال: 500" />
                       </Field>
                     </div>
-                    <div className="mt-3 text-[10px] leading-5 text-subtle">لا يوجد ربط آلي بشركات الشحن. يمكنك إدارة الشحن والتتبع يدوياً من لوحة التحكم، ولن تُنشأ حالات شحن وهمية.</div>
+                    <div className="mt-3 text-[10px] leading-5 text-subtle">لا يوجد ربط آلي بشركات الشحن أو تتبع شحنات. يمكنك إدارة الشحن يدوياً من لوحة التحكم، ولن تُنشأ حالات شحن وهمية.</div>
                   </div>
                 </div>
               ) : null}
@@ -680,20 +680,39 @@ export function OnboardingPage() {
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-brand-lg bg-success-soft text-success">
               <Rocket className="h-7 w-7" />
             </div>
-            <h2 className="mt-4 font-heading text-2xl font-bold text-ink">متجرك أصبح جاهزاً 🎉</h2>
-            <p className="mt-2 text-sm leading-6 text-subtle">تم نشر متجرك. ابدأ بإضافة منتجاتك لمشاركة الرابط مع عملائك.</p>
-            <div className="mt-4 rounded-brand border border-line bg-surface p-3 text-xs text-brand" dir="ltr">
-              {window.location.origin}/store/{published.store?.subdomain}
+            <h2 className="mt-4 font-heading text-2xl font-bold text-ink">
+              {published.approval_required === false ? "متجرك أصبح جاهزاً 🎉" : "تم إرسال متجرك للمراجعة 🎉"}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-subtle">
+              {published.approval_required === false
+                ? "تم اعتماد متجرك ويمكنك الآن مشاركة الرابط مع عملائك. ابدأ بإضافة منتجاتك لإكمال تجربة التسوق."
+                : "استلمنا بيانات متجرك وهويته. سيراجعها فريق سند ويفعّل المتجر قبل ظهوره للعملاء. يمكنك الآن تجهيز منتجاتك من لوحة التحكم."}
+            </p>
+            <div className="mt-4 rounded-brand border border-line bg-surface p-3 text-[11px] leading-5 text-subtle">
+              {published.approval_required === false ? "رابط متجرك:" : "رابط متجرك بعد الموافقة:"}
+              <div className="mt-1 break-all font-mono text-brand" dir="ltr">
+                {window.location.origin}/store/{published.store?.subdomain}
+              </div>
             </div>
             <div className="mt-5 grid gap-2">
               <Button onClick={() => navigate("/dashboard/products")}>
                 <ArrowLeft className="h-4 w-4" />
-                أضف أول منتج
+                ابدأ بإضافة منتجاتك
               </Button>
-              <Link href={`/store/${published.store?.subdomain}`} className="rounded-brand border border-line px-4 py-2.5 text-xs font-semibold text-ink hover:bg-surface">
-                زيارة المتجر
-              </Link>
-              <button type="button" onClick={() => navigate("/dashboard")} className="text-[11px] text-subtle hover:text-ink-soft">الذهاب إلى لوحة التحكم</button>
+              {published.approval_required === false ? (
+                <Button variant="outline" onClick={() => window.open(`/store/${published.store?.subdomain}`, "_blank", "noopener,noreferrer")}>
+                  زيارة المتجر
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={() => navigate("/dashboard")}>
+                  العودة إلى لوحة التحكم
+                </Button>
+              )}
+              <div className="text-[11px] leading-5 text-subtle">
+                {published.approval_required === false
+                  ? "يمكنك متابعة الطلبات والمنتجات من لوحة التحكم."
+                  : "لن يظهر المتجر للعملاء حتى تصلك موافقة الإدارة. تابع حالة الطلب من لوحة التحكم."}
+              </div>
             </div>
           </div>
         </div>

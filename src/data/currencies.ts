@@ -40,20 +40,15 @@ export interface MerchantCurrencyConfig {
 }
 
 export const DEFAULT_MERCHANT_CURRENCY_CONFIG: MerchantCurrencyConfig = {
+  // Multi-currency and automatic FX are not implemented. A store uses one base
+  // currency until that feature ships; this default reflects the runtime truth.
   primaryCurrency: 'EGP',
-  displayCurrencies: ['EGP', 'SAR', 'AED', 'KWD', 'USD'],
-  exchangeRateMode: 'automatic',
+  displayCurrencies: ['EGP'],
+  exchangeRateMode: 'manual',
   manualRates: {
     EGP: 49.50,
-    SAR: 3.75,
-    AED: 3.67,
-    KWD: 0.308,
-    QAR: 3.64,
-    BHD: 0.376,
-    OMR: 0.385,
-    USD: 1.00
   },
-  automaticSource: 'البنك المركزي / مزود أسعار الصرف الرسمي',
+  automaticSource: 'غير متاح — لا يوجد مزود أسعار صرف',
   markupPercentage: 0,
   lastUpdated: '2026-10-08T08:00:00Z'
 };

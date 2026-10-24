@@ -778,6 +778,62 @@ export const leadBodySchema = z.strictObject({
   ),
 });
 
+// ---- platform admin / subscription billing / analytics ----
+export const adminIdParamSchema = z.strictObject({
+  id: z.string().trim().min(1).max(64),
+});
+
+const safeMediaUrl = z
+  .string()
+  .trim()
+  .max(2000)
+  .refine(
+    (v) => v === "" || /^https?:\/\//i.test(v) || v.startsWith("/uploads/") || /^data:image\//i.test(v),
+    { message: "must be an http(s), /uploads/ or image data URL" }
+  );
+
+export const adminStoreSettingsSchema = z
+  .strictObject({
+    storeName: z.string().trim().min(2).max(120).optional(),
+    description: z.string().trim().max(3000).optional(),
+    logoUrl: safeMediaUrl.optional(),
+    coverUrl: safeMediaUrl.optional(),
+    primaryColor: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    secondaryColor: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    textColor: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    themeMode: z.enum(["light", "dark", "system"]).optional(),
+    arabicFont: z.enum(["Cairo", "IBM Plex Sans Arabic", "Tajawal", "Almarai"]).optional(),
+    templateKey: z.enum(["fashion", "electronics", "restaurant", "beauty", "general", "services"]).optional(),
+    seoTitle: z.string().trim().max(200).optional(),
+    seoDescription: z.string().trim().max(400).optional(),
+    supportEmail: z.string().trim().max(254).optional(),
+    whatsapp: z.string().trim().max(32).optional(),
+    phone: z.string().trim().max(32).optional(),
+    countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/).optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: "at least one field must be provided" });
+
+export const adminStoreReviewSchema = z.strictObject({
+  note: z.string().trim().max(1000).default(""),
+});
+
+export const subscriptionPaymentSchema = z.strictObject({
+  plan: z.enum(["monthly", "annual"]),
+  method: z.enum(["bank_transfer", "instapay", "vodafone_cash", "wallet", "other"]).default("bank_transfer"),
+  reference: z.string().trim().min(3).max(200),
+  payerName: z.string().trim().max(160).default(""),
+  note: z.string().trim().max(1000).default(""),
+});
+
+export const adminSubscriptionReviewSchema = z.strictObject({
+  decision: z.enum(["approve", "reject"]),
+  note: z.string().trim().max(1000).default(""),
+});
+
+export const storefrontVisitSchema = z.strictObject({
+  path: z.string().trim().max(300).default("/"),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 

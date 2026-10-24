@@ -51,6 +51,7 @@ async function main() {
       currency: "EGP",
       plan: "annual",
       status: "active",
+      activatedAt: t,
       createdAt: t,
       updatedAt: t,
     },

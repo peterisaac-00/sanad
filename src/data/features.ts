@@ -7,7 +7,7 @@ export interface FeatureSystem {
   short_description_en: string;
   detailed_points_ar: string[];
   detailed_points_en: string[];
-  status: 'active' | 'designed_for_expansion';
+  status: 'active' | 'limited' | 'designed_for_expansion';
   badge_ar?: string;
   badge_en?: string;
 }
@@ -23,14 +23,14 @@ export const PLATFORM_CORE_SYSTEMS: FeatureSystem[] = [
     detailed_points_ar: [
       'تصميم RTL حقيقي من الأساس وليس مجرد قالب معرّب شكلياً',
       'سرعة فائقة في التصفح وسلة الشراء تعمل بسلاسة على شبكات 4G',
-      'إمكانية ربط نطاقك المخصص (.com / .eg / .sa) مجاناً مع شهادة SSL سحابية',
+      'نطاق فرعي مجاني (yourstore.sanad.app) مع HTTPS؛ ربط النطاق المستقل قيد التطوير',
       'تخصيص الهوية البصرية، الشعار، الألوان، وأقسام الصفحة الرئيسية بدون كتابة أكواد',
       'صفحة إتمام طلب فائقة البساطة مخصصة لتقليل التخلي عن السلة'
     ],
     detailed_points_en: [
       'Native RTL typography and flow, not a superficial translation',
       'Fast loading speed optimized for 4G mobile networks across the Arab world',
-      'Free custom domain connection (.com / .eg / .sa) with automatic Cloud SSL',
+      'Free Sanad subdomain (yourstore.sanad.app) with HTTPS; custom domains are planned',
       'Brand customization: logos, palettes, banner sections without touching code',
       'Streamlined checkout flow engineered to minimize cart abandonment'
     ],
@@ -68,17 +68,17 @@ export const PLATFORM_CORE_SYSTEMS: FeatureSystem[] = [
     short_description_en: 'End-to-end COD operations pipeline designed to slash cancellations and safeguard cashflow.',
     detailed_points_ar: [
       'تتبع دورة حياة الطلب: وارد ← مؤكد هاتفياً / عبر واتساب ← قيد التجهيز ← مشحون ← جاري التوصيل ← تم التسليم والتحصيل ← مرتجع',
-      'حساب مؤشرات COD الحيوية: معدل نجاح التسليم، نسبة الإلغاء، ومطابقة التحصيلات النقدية مع شركة الشحن',
-      'إمكانية فرض رسم رمزي على خيار الدفع عند الاستلام لتشجيع الدفع الإلكتروني',
+      'حساب مؤشرات COD الحيوية: معدل نجاح التسليم ونسبة الإلغاء، مع تسجيل التحصيل يدوياً لكل طلب',
+      'إمكانية فرض رسم رمزي على خيار الدفع عند الاستلام لتغطية تكلفة التحصيل',
       'حظر العملاء غير الجادين وأصحاب المرتجعات المتكررة لحماية رأس مالك',
-      'إشعار المشتري تلقائياً برسالة تذكير عند خروج الشحنة مع المندوب'
+      'رسالة واتساب جاهزة يرسلها التاجر يدوياً عند خروج الشحنة؛ لا إشعارات تلقائية'
     ],
     detailed_points_en: [
       '8-stage pipeline: Placed → Confirmed → Picked → Shipped → Out for Delivery → Delivered & Collected → Remitted/Returned',
-      'Actionable COD KPIs: Delivery success rate, cancellation rate, courier cash reconciliation',
-      'Configurable COD fee surcharge to incentivize pre-paid digital transactions',
+      'Actionable COD KPIs: delivery success rate, cancellation rate, and manual collection recording per order',
+      'Configurable COD fee surcharge to cover the cost of collection',
       'Fraud prevention and repeat-return customer flags to protect merchant margins',
-      'Automatic delivery day SMS/WhatsApp alerts when courier is dispatched'
+      'Prepared WhatsApp message the merchant sends manually when the parcel is dispatched; no automatic alerts'
     ],
     status: 'active',
     badge_ar: 'محور التجارة في مصر والمنطقة',
@@ -108,75 +108,79 @@ export const PLATFORM_CORE_SYSTEMS: FeatureSystem[] = [
   {
     id: 'shipping-logistics',
     iconName: 'Truck',
-    title_ar: 'الشحن والمناطق الجغرافية',
-    title_en: 'Shipping Zones & Logistics Architecture',
-    short_description_ar: 'تخصيص أسعار الشحن بحسب المحافظات المصرية ودول الخليج مع خيارات الشحن المجاني.',
-    short_description_en: 'Granular shipping rules by Egyptian governorates and Gulf countries with free delivery thresholds.',
+    title_ar: 'الشحن والمناطق الجغرافية (يدوي)',
+    title_en: 'Shipping Zones (Manual)',
+    short_description_ar: 'تخصيص أسعار الشحن بحسب المحافظات المصرية ودول الخليج مع خيارات الشحن المجاني. الربط مع شركات الشحن والتتبع غير متاحين.',
+    short_description_en: 'Manual shipping rates by Egyptian governorate and Gulf destination with free-delivery thresholds. Carrier integration and tracking are not available.',
     detailed_points_ar: [
       'تقسيم المحافظات (القاهرة والجيزة، الإسكندرية، محافظات الدلتا، الصعيد، القناة، المحافظات الحدودية)',
       'تسعير خاص للشحن الدولي عابر الحدود إلى السعودية، الإمارات، والكويت',
       'تحديد حد أدنى للطلب لتفعيل الشحن المجاني (أداة مؤكدة لرفع متوسط قيمة السلة AOV)',
-      'خيارات الربط مع شركات الشحن الرائدة (بوسطة، أرامكس، سمسا، وغيرها) عبر واجهات مرنة'
+      'إدارة يدوية لشركات الشحن: تُسجَّل بيانات الناقل في الطلب دون ربط آلي أو تتبع شحنات',
     ],
     detailed_points_en: [
       'Egyptian governorate clusters (Greater Cairo, Alexandria, Delta, Upper Egypt, Red Sea & Frontier)',
       'Dedicated cross-border shipping tariffs for Saudi Arabia, UAE, and GCC',
       'Dynamic free shipping thresholds to systematically lift Average Order Value (AOV)',
-      'Flexible architectural integration hooks for leading couriers (Bosta, Aramex, SMSA)'
+      'Manual courier records on each order; no carrier API integration or shipment tracking',
     ],
-    status: 'active'
+    status: 'limited',
+    badge_ar: 'مناطق وأسعار فقط — بدون تتبع',
+    badge_en: 'Zones & rates only — no tracking'
   },
   {
     id: 'payments-engine',
     iconName: 'CreditCard',
-    title_ar: 'منظومة المدفوعات المحلية والإقليمية',
-    title_en: 'Local & Regional Payments Engine',
-    short_description_ar: 'دعم الدفع عند الاستلام مع بنية تحتية لربط بوابات الدفع الإلكتروني المعتمدة في كل دولة.',
-    short_description_en: 'Native COD plus open integration architecture for accredited digital payment gateways.',
+    title_ar: 'المدفوعات والدفع عند الاستلام',
+    title_en: 'Payments & Cash on Delivery',
+    short_description_ar: 'الدفع عند الاستلام هو الخيار الفعلي. الدفع الإلكتروني غير متاح حتى يكتمل محوّل الدفع والاختبارات الأمنية.',
+    short_description_en: 'Cash on delivery is live. Online card and wallet payments stay disabled until a complete payment adapter and security tests ship.',
     detailed_points_ar: [
       'الدفع عند الاستلام (COD) مدمج وجاهز للعمل من اللحظة الأولى',
-      'معمارية جاهزة لربط بوابات الدفع المصرية (Paymob, Fawry, Kashier, InstaPay, Vodafone Cash)',
-      'معمارية جاهزة لمدفوعات الخليج (مدى Mada, Apple Pay, KNET, تمارا, تابي)',
-      'استقبال أموالك مباشرة على حسابك البنكي دون وساطة مالية من المنصة'
+      'لا يوجد محوّل دفع إلكتروني مثبت؛ خيار الدفع الإلكتروني معطّل في المتجر ولوحة التحكم',
+      'البنية المعمارية تسمح بإضافة مزود لاحقاً، لكنها ليست تكاملاً جاهزاً ولا تعني أن الدفع الإلكتروني يعمل',
+      'المنصة لا تحتفظ بأموال المبيعات؛ الدفع عند الاستلام يُحصَّل خارج سند'
     ],
     detailed_points_en: [
-      'Cash on Delivery active out-of-the-box with customized instructions',
-      'Architectural support for Egyptian payment processors (Paymob, Fawry, InstaPay, Wallets)',
-      'GCC payment ecosystem readiness (Mada, Apple Pay, KNET, Tamara, Tabby)',
-      'Direct merchant settlement: funds flow directly from gateway to merchant bank accounts'
+      'Cash on delivery is active from day one',
+      'No online payment adapter is installed; digital payment stays disabled in the storefront and dashboard',
+      'The codebase can host a provider later, but that is not a working integration and does not mean online payments work',
+      'Sanad never holds sale proceeds; cash on delivery is collected outside the platform'
     ],
-    status: 'active'
+    status: 'limited',
+    badge_ar: 'الدفع عند الاستلام فقط',
+    badge_en: 'COD only'
   },
   {
     id: 'whatsapp-commerce',
     iconName: 'MessageCircle',
-    title_ar: 'مركز واتساب التجاري (WhatsApp Commerce)',
-    title_en: 'WhatsApp Commerce Center',
-    short_description_ar: 'تحويل محادثات واتساب إلى محرك مبيعات حقيقي، تأكيد الطلبات، واسترجاع السلات المتروكة.',
-    short_description_en: 'Turn WhatsApp conversations into a reliable revenue engine, order confirmations, and retention.',
+    title_ar: 'التواصل عبر واتساب (يدوي)',
+    title_en: 'WhatsApp Outreach (Manual)',
+    short_description_ar: 'روابط wa.me يدوية وتذكير السلات المتروكة برسائل جاهزة. الإرسال التلقائي يحتاج مزوداً وقالباً معتمداً.',
+    short_description_en: 'Manual wa.me links and prepared abandoned-cart reminders. Automated sending requires a configured provider and an approved template.',
     detailed_points_ar: [
       'زر شراء واستفسار سريع عبر واتساب مدمج في صفحة كل منتج',
-      'قوالب رسائل فورية لتأكيد بيانات العنوان قبل شحن طرد الدفع عند الاستلام',
-      'إشعار العميل برقم بوليصة الشحن ورابط التتبع بنقرة واحدة عبر واتساب',
-      'استرجاع السلات المتروكة وتذكير العملاء بالمنتجات التي أبدوا اهتماماً بها'
+      'رسالة جاهزة لتأكيد بيانات العنوان تُفتح في واتساب ويرسلها التاجر يدوياً',
+      'لا يوجد إرسال تلقائي أو إشعار بوليصة؛ يمكن نسخ رابط تتبع الطلب وإرساله يدوياً',
+      'تذكير السلات المتروكة يفتح واتساب برسالة جاهزة ولا يُعلّم السلة كمذكّرة تلقائياً'
     ],
     detailed_points_en: [
-      '1-click "Inquire or Buy on WhatsApp" button embedded directly on product pages',
-      'Standardized address and order confirmation message templates prior to COD dispatch',
-      'Send tracking numbers and live order progress directly to customer WhatsApp chats',
-      'Abandoned cart recovery follow-up templates designed for Arab shoppers'
+      'A WhatsApp inquiry/purchase button embedded on each product page',
+      'A prepared address-confirmation message opens in WhatsApp and the merchant sends it manually',
+      'No automated sending or shipment notification; copy the order tracking link and send it manually',
+      'Abandoned-cart reminders open WhatsApp with a prepared message and never mark the cart as auto-reminded'
     ],
-    status: 'active',
-    badge_ar: 'الأعلى تحويلاً في العالم العربي',
-    badge_en: 'Highest Converting Arab Channel'
+    status: 'limited',
+    badge_ar: 'روابط يدوية — بدون إرسال تلقائي',
+    badge_en: 'Manual links — no auto-send'
   },
   {
     id: 'meta-commerce',
     iconName: 'Share2',
     title_ar: 'منظومة ميتا التجارية (Meta Commerce)',
     title_en: 'Meta Commerce Architecture',
-    short_description_ar: 'ربط احترافي مع فيسبوك وإنستغرام لتتبع الحملات، كتالوج المنتجات، وقياس عائد الإعلانات (ROAS).',
-    short_description_en: 'Direct sync with Facebook & Instagram: Pixel, Conversions API (CAPI), and live Product Feeds.',
+    short_description_ar: 'قيد التطوير: ربط فيسبوك وإنستغرام لتتبع الحملات وكتالوج المنتجات وقياس عائد الإعلانات. غير متاح للاستخدام الآن.',
+    short_description_en: 'Planned: Facebook and Instagram sync for campaign tracking, product catalog, and ROAS. Not available for use yet.',
     detailed_points_ar: [
       'تجهيز خلاصة المنتجات الحية (XML Product Feed) للربط مع Meta Commerce Manager',
       'تكامل مع Meta Pixel و Conversions API (CAPI) لتجاوز قيود متصفحات iOS وتتبع دقيق للمبيعات',
@@ -189,15 +193,17 @@ export const PLATFORM_CORE_SYSTEMS: FeatureSystem[] = [
       'Closed-loop commerce attribution: Ad → Storefront → AddToCart → Purchase → Real Revenue',
       'Product performance insights to allocate advertising spend effectively'
     ],
-    status: 'active'
+    status: 'designed_for_expansion',
+    badge_ar: 'قيد التطوير — ليست ميزة متاحة',
+    badge_en: 'Planned — not available'
   },
   {
     id: 'google-ecosystem',
     iconName: 'Search',
     title_ar: 'منظومة جوجل التجارية (Google Commerce)',
     title_en: 'Google Commerce Ecosystem',
-    short_description_ar: 'تجهيز متجرك للظهور في نتائج Google Shopping وتحليلات GA4 المتقدمة وتتبع حملات Google Ads.',
-    short_description_en: 'Prepare your store for Google Shopping, GA4 ecommerce tracking, and Google Ads conversions.',
+    short_description_ar: 'قيد التطوير: تجهيز متجرك لنتائج Google Shopping وتحليلات GA4 وتتبع حملات Google Ads. غير متاح للاستخدام الآن.',
+    short_description_en: 'Planned: prepare your store for Google Shopping, GA4 ecommerce tracking, and Google Ads conversions. Not available for use yet.',
     detailed_points_ar: [
       'توليد خلاصة Google Merchant Center المتوافقة مع معايير محرك البحث',
       'ربط Google Analytics 4 (GA4) مع تتبع كامل لأحداث الشراء (Purchase, BeginCheckout)',
@@ -210,7 +216,9 @@ export const PLATFORM_CORE_SYSTEMS: FeatureSystem[] = [
       'Google Tag Manager (GTM) container container architecture for flexible script management',
       'Automated UTM campaign parameter capture for clear source-of-sale attribution'
     ],
-    status: 'active'
+    status: 'designed_for_expansion',
+    badge_ar: 'قيد التطوير — ليست ميزة متاحة',
+    badge_en: 'Planned — not available'
   },
   {
     id: 'growth-center',
@@ -236,22 +244,24 @@ export const PLATFORM_CORE_SYSTEMS: FeatureSystem[] = [
   {
     id: 'migration-center',
     iconName: 'RefreshCw',
-    title_ar: 'مركز الترحيل السريع للبيانات',
-    title_en: 'Migration Center (Import / Export)',
-    short_description_ar: 'انقل منتجاتك، عملاءك، ومخزونك من أي منصة سابقة بملفات Excel و CSV بدون فقدان بياناتك.',
-    short_description_en: 'Seamlessly migrate products, customers, and inventory from previous platforms via CSV & Excel.',
+    title_ar: 'مركز الترحيل (قيد التطوير)',
+    title_en: 'Migration Center (Planned)',
+    short_description_ar: 'الترحيل التلقائي غير متاح الآن. عند إطلاقه سيتيح استيراد الكتالوج من ملفات CSV و Excel؛ حالياً تُضاف المنتجات يدوياً.',
+    short_description_en: 'Automatic migration is not available today. When shipped it will support catalogue import from CSV and Excel; products are currently added manually.',
     detailed_points_ar: [
-      'استيراد مرن لملفات المنتجات والصور والمخزون بضغطة زر واحدة',
-      'قوالب Excel و CSV جاهزة للتحميل والتعبئة المباشرة',
-      'إمكانية تصدير كافة بيانات متجرك في أي وقت بصيغ مفتوحة (أنت تملك بياناتك بالكامل)',
-      'دعم مطابقة الحقول التلقائي لتسهيل الانتقال من المنصات الشائعة'
+      'استيراد ملفات المنتجات والمخزون سيتاح عند إطلاق الميزة؛ غير متاح الآن',
+      'قوالب Excel و CSV للتحميل والتعبئة قيد التطوير',
+      'تصدير الطلبات والعملاء بصيغة CSV متاح الآن؛ تصدير كامل البيانات ليس متاحاً بعد',
+      'مطابقة الحقول التلقائية قيد التطوير وليست متاحة للاستخدام'
     ],
     detailed_points_en: [
-      'Bulk product and inventory import from standardized spreadsheets in seconds',
-      'Ready-to-use CSV/Excel sample templates with validation guidelines',
-      'Unrestricted data export anytime: complete ownership of your merchant records',
-      'Smart column mapper designed for effortless transition from legacy systems'
+      'Product and inventory file import will be available when the feature ships; it is not available now',
+      'Downloadable CSV/Excel templates are planned',
+      'Orders and customers can be exported as CSV today; a complete data export is not available yet',
+      'Automatic column mapping is planned and is not available for use'
     ],
-    status: 'active'
+    status: 'designed_for_expansion',
+    badge_ar: 'قيد التطوير — ليست ميزة متاحة',
+    badge_en: 'Planned — not available'
   }
 ];

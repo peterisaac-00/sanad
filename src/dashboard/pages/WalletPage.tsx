@@ -1,7 +1,16 @@
 import React, { useState } from "react";
-import { ArrowDownToLine, ArrowUpFromLine, Clock, RefreshCw, Wallet as WalletIcon } from "lucide-react";
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  CalendarClock,
+  CheckCircle2,
+  Clock,
+  CreditCard,
+  RefreshCw,
+  Wallet as WalletIcon,
+} from "lucide-react";
 import { api } from "../../lib/api";
-import { dateTime, money, number, safeError } from "../../lib/format";
+import { date, dateTime, money, number, safeError } from "../../lib/format";
 import { useAsync } from "../../lib/useAsync";
 import {
   Alert,
@@ -14,9 +23,11 @@ import {
   Input,
   Modal,
   PageHeader,
+  Select,
   Skeleton,
   StatCard,
   Textarea,
+  cn,
   useToast,
 } from "../../components/ui";
 import { useDashboard } from "../DashboardShell";
@@ -37,68 +48,209 @@ const TX_STATUS: Record<string, { label: string; tone: string }> = {
   cancelled: { label: "ملغاة", tone: "bg-surface text-ink-soft border-line" },
 };
 
+const SUB_STATUS: Record<string, { label: string; tone: string }> = {
+  pending: { label: "قيد المراجعة", tone: "bg-warning-soft text-warning border-warning-line" },
+  approved: { label: "معتمدة", tone: "bg-success-soft text-success border-success-line" },
+  rejected: { label: "مرفوضة", tone: "bg-danger-soft text-danger border-danger-line" },
+};
+
+const SUB_METHODS: Record<string, string> = {
+  bank_transfer: "تحويل بنكي",
+  instapay: "إنستاباي",
+  vodafone_cash: "فودافون كاش",
+  wallet: "محفظة إلكترونية",
+  other: "طريقة أخرى",
+};
+
+const PLAN_LABELS: Record<string, string> = { monthly: "شهري", annual: "سنوي" };
+type SubscriptionPlan = "monthly" | "annual";
+type SubscriptionMethod = "bank_transfer" | "instapay" | "vodafone_cash" | "wallet" | "other";
+
 export function WalletPage() {
   const { subdomain } = useDashboard();
   const toast = useToast();
-  const [depositOpen, setDepositOpen] = useState(false);
-  const [amount, setAmount] = useState("");
-  const [reference, setReference] = useState("");
-  const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [subOpen, setSubOpen] = useState(false);
+  const [subBusy, setSubBusy] = useState(false);
+  const [subPlan, setSubPlan] = useState<SubscriptionPlan>("monthly");
+  const [subMethod, setSubMethod] = useState<SubscriptionMethod>("bank_transfer");
+  const [subReference, setSubReference] = useState("");
+  const [subPayer, setSubPayer] = useState("");
+  const [subNote, setSubNote] = useState("");
 
   const { data, loading, error, reload } = useAsync(() => api.wallet.get(subdomain), [subdomain]);
-  const currency = data?.summary?.currency ?? "EGP";
+  const walletCurrency = data?.summary?.currency ?? "EGP";
   const transactions = data?.transactions ?? [];
+  const subscription = data?.subscription ?? {};
+  const subscriptionCurrency = subscription.currency ?? "EGP";
+  const prices = subscription.prices ?? { monthly: 100, annual: 1000 };
+  const payments = data?.subscription_payments ?? [];
+  const pendingPayment = payments.find((payment: any) => payment.status === "pending") ?? subscription.pending_payment ?? null;
+  const pendingCount = payments.filter((payment: any) => payment.status === "pending").length;
+  const currentPlan: SubscriptionPlan = subscription.plan === "annual" ? "annual" : "monthly";
+  const paidUntil = subscription.paid_until ? new Date(subscription.paid_until) : null;
+  const expired = Boolean(paidUntil && paidUntil.getTime() < Date.now());
+  const selectedAmount = Number(prices[subPlan] ?? 0);
+  const annualSaving = Math.max(0, Number(prices.monthly ?? 0) * 12 - Number(prices.annual ?? 0));
 
-  const submitDeposit = async () => {
-    const value = Number(amount);
-    if (!value || value < 1) {
-      toast.error("أدخل مبلغاً صحيحاً.");
+  const openSubscription = () => {
+    setSubPlan(currentPlan);
+    setSubMethod("bank_transfer");
+    setSubReference("");
+    setSubPayer("");
+    setSubNote("");
+    setSubOpen(true);
+  };
+
+  const submitSubscription = async () => {
+    if (subReference.trim().length < 3) {
+      toast.error("أدخل مرجع العملية (رقم التحويل أو آخر 4 أرقام من الحساب).");
       return;
     }
-    setBusy(true);
+    setSubBusy(true);
     try {
-      const result = await api.wallet.deposit(subdomain, { amount: value, reference: reference.trim(), note: note.trim() });
-      toast.success(result.note ?? "تم تسجيل طلب الإيداع.");
-      setDepositOpen(false);
-      setAmount("");
-      setReference("");
-      setNote("");
+      const result = await api.wallet.submitSubscription(subdomain, {
+        plan: subPlan,
+        method: subMethod,
+        reference: subReference.trim(),
+        payerName: subPayer.trim(),
+        note: subNote.trim(),
+      });
+      toast.success(result.note);
+      setSubOpen(false);
       reload();
     } catch (err: any) {
       toast.error(safeError(err));
     } finally {
-      setBusy(false);
+      setSubBusy(false);
     }
   };
 
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="التشغيل"
-        title="المحفظة"
-        description="رصيدك وسجل الحركات المالية لمتجرك. تُسجَّل الإيداعات كمعلّقة حتى يتم التحقق من التحويل."
-        actions={<Button onClick={() => setDepositOpen(true)}><ArrowDownToLine className="h-4 w-4" /> طلب إيداع</Button>}
+        eyebrow="الاشتراك والفوترة"
+        title="الاشتراك والمحفظة"
+        description="سجّل دفعة اشتراك سند الشهرية أو السنوية، وتابع اعتمادها من إدارة المنصة. رصيد المحفظة منفصل تماماً عن اشتراكك."
+        actions={
+          <Button onClick={openSubscription} disabled={Boolean(pendingPayment)}>
+            <CreditCard className="h-4 w-4" /> تسجيل دفعة اشتراك
+          </Button>
+        }
       />
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label="الرصيد الحالي"
-          value={money(data?.summary?.balance ?? 0, currency)}
+          label="رصيد المحفظة"
+          value={money(data?.summary?.balance ?? 0, walletCurrency)}
           icon={<WalletIcon className="h-5 w-5" />}
           accent="brand"
-          hint={data?.account?.updatedAt ? `آخر تحديث ${dateTime(data.account.updatedAt)}` : undefined}
+          hint="رصيد تشغيلي داخل المتجر، ولا يُستخدم لدفع الاشتراك."
         />
-        <StatCard label="إيداعات معلّقة" value={money(data?.summary?.pendingDeposits ?? 0, currency)} icon={<Clock className="h-5 w-5" />} accent="warning" />
-        <StatCard label="إيداعات مؤكدة" value={money(data?.summary?.completedDeposits ?? 0, currency)} icon={<ArrowDownToLine className="h-5 w-5" />} accent="success" />
+        <StatCard
+          label="خطة الاشتراك"
+          value={PLAN_LABELS[currentPlan] ?? currentPlan}
+          icon={<CreditCard className="h-5 w-5" />}
+          accent={currentPlan === "annual" ? "success" : "brand"}
+          hint={`${money(Number(prices[currentPlan] ?? 0), subscriptionCurrency)} / ${currentPlan === "annual" ? "سنة" : "شهر"}`}
+        />
+        <StatCard
+          label="مدفوع حتى"
+          value={paidUntil ? date(paidUntil) : "لم يُعتمد بعد"}
+          icon={<CalendarClock className="h-5 w-5" />}
+          accent={expired ? "danger" : "success"}
+          hint={expired ? "انتهت صلاحية الاشتراك الحالي — سجّل دفعة جديدة." : "يُحدَّث تلقائياً بعد اعتماد الإدارة."}
+        />
+        <StatCard
+          label="دفعات قيد المراجعة"
+          value={pendingCount ? number(pendingCount) : "لا يوجد"}
+          icon={<Clock className="h-5 w-5" />}
+          accent="warning"
+          hint={pendingPayment ? `${money(pendingPayment.amount, pendingPayment.currency ?? subscriptionCurrency)} بانتظار القرار` : "أرسل بيانات التحويل ليعتمدها فريق سند."}
+        />
       </div>
 
-      {data?.note ? <Alert tone="info" title="كيف تعمل المحفظة؟">{data.note}</Alert> : null}
-      {error ? <Alert tone="error" title="تعذر تحميل المحفظة">{safeError(error)}</Alert> : null}
+      {pendingPayment ? (
+        <Alert tone="warning" title="دفعة اشتراك قيد المراجعة">
+          تم تسجيل دفعة {PLAN_LABELS[pendingPayment.plan] ?? pendingPayment.plan} بقيمة{" "}
+          {money(pendingPayment.amount, pendingPayment.currency ?? subscriptionCurrency)} ومرجع{" "}
+          <span dir="ltr" className="font-mono">{pendingPayment.reference || "—"}</span>. لا يمكن إرسال دفعة جديدة حتى تراجعها الإدارة.
+        </Alert>
+      ) : null}
+
+      {!pendingPayment && expired ? (
+        <Alert tone="error" title="انتهى اشتراكك">
+          سجّل دفعة الاشتراك الشهرية أو السنوية من زر «تسجيل دفعة اشتراك» ليستمر متجرك في العمل.
+        </Alert>
+      ) : null}
+
+      {error ? <Alert tone="error" title="تعذر تحميل بيانات الاشتراك">{safeError(error)}</Alert> : null}
+
+      <Card className="overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
+          <div>
+            <div className="text-xs font-bold text-ink">دفعات اشتراك سند</div>
+            <div className="mt-0.5 text-[10px] text-subtle">كل دفعة تُراجع يدوياً قبل تحديث خطة المتجر وتاريخ التجديد.</div>
+          </div>
+          <Button variant="ghost" size="sm" onClick={reload} aria-label="تحديث"><RefreshCw className="h-3.5 w-3.5" /></Button>
+        </div>
+        {loading && !data ? (
+          <div className="space-y-2 p-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
+        ) : payments.length === 0 ? (
+          <EmptyState
+            title="لا توجد دفعات اشتراك بعد"
+            description={
+              expired
+                ? "اشتراكك السابق انتهى. سجّل دفعة الاشتراك ليعيد فريق سند تفعيل التجديد."
+                : "سجّل أول دفعة عبر تحويل بنكي أو إنستاباي أو محفظة إلكترونية، ثم أدخل مرجع العملية ليتم اعتمادها."
+            }
+            icon={<CreditCard className="h-5 w-5" />}
+            action={<Button onClick={openSubscription}><CreditCard className="h-4 w-4" /> تسجيل دفعة</Button>}
+          />
+        ) : (
+          <TableShell minWidth={1040}>
+            <thead>
+              <tr className="border-b border-line">
+                <Th>التاريخ</Th>
+                <Th>الخطة</Th>
+                <Th>المبلغ</Th>
+                <Th>طريقة الدفع</Th>
+                <Th>المرجع / الدافع</Th>
+                <Th>الحالة</Th>
+                <Th>ملاحظة الإدارة</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map((payment: any) => {
+                const status = SUB_STATUS[payment.status] ?? { label: payment.status, tone: "bg-surface text-ink-soft border-line" };
+                return (
+                  <tr key={payment.id} className="border-b border-line transition hover:bg-surface">
+                    <Td><span className="text-[11px] text-subtle">{dateTime(payment.createdAt)}</span></Td>
+                    <Td>
+                      <Badge tone={payment.plan === "annual" ? "bg-brand-soft text-brand border-brand-line" : "bg-surface text-ink-soft border-line"}>
+                        {PLAN_LABELS[payment.plan] ?? payment.plan}
+                      </Badge>
+                    </Td>
+                    <Td><span className="font-semibold text-ink">{money(payment.amount, payment.currency ?? subscriptionCurrency)}</span></Td>
+                    <Td><span className="text-[11px] text-ink-soft">{SUB_METHODS[payment.method] ?? payment.method}</span></Td>
+                    <Td>
+                      <div className="font-mono text-[10px] text-ink-soft" dir="ltr">{payment.reference || "—"}</div>
+                      {payment.payerName ? <div className="mt-0.5 text-[10px] text-subtle">{payment.payerName}</div> : null}
+                    </Td>
+                    <Td><Badge tone={status.tone}>{status.label}</Badge></Td>
+                    <Td><span className="line-clamp-2 max-w-[220px] text-[10px] leading-5 text-subtle">{payment.reviewNote || "—"}</span></Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </TableShell>
+        )}
+      </Card>
+
+      {data?.note ? <Alert tone="info" title="ملاحظة عن المحفظة">{data.note}</Alert> : null}
 
       <Card className="overflow-hidden">
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
-          <div className="text-xs font-bold text-ink">سجل الحركات</div>
+          <div className="text-xs font-bold text-ink">سجل حركات المحفظة</div>
           <Button variant="ghost" size="sm" onClick={reload} aria-label="تحديث"><RefreshCw className="h-3.5 w-3.5" /></Button>
         </div>
         {loading && !data ? (
@@ -106,9 +258,8 @@ export function WalletPage() {
         ) : transactions.length === 0 ? (
           <EmptyState
             title="لا توجد حركات مالية"
-            description="عند تسجيل أول إيداع أو تحصيل، ستظهر الحركات هنا مع الرصيد قبل وبعد كل عملية."
+            description="ستظهر هنا حركات رصيد المتجر إن وجدت. الإيداع في المحفظة غير متاح حالياً، أما اشتراك سند فيُسجَّل في القسم أعلاه."
             icon={<WalletIcon className="h-5 w-5" />}
-            action={<Button onClick={() => setDepositOpen(true)}><ArrowDownToLine className="h-4 w-4" /> تسجيل إيداع</Button>}
           />
         ) : (
           <TableShell minWidth={940}>
@@ -139,11 +290,11 @@ export function WalletPage() {
                     </Td>
                     <Td>
                       <span className={incoming ? "font-semibold text-success" : "font-semibold text-danger"}>
-                        {incoming ? "+" : "−"}{money(transaction.amount, currency)}
+                        {incoming ? "+" : "−"}{money(transaction.amount, walletCurrency)}
                       </span>
                     </Td>
-                    <Td><span className="text-[11px] text-subtle">{money(transaction.balanceBefore, currency)}</span></Td>
-                    <Td><span className="text-[11px] text-subtle">{money(transaction.balanceAfter, currency)}</span></Td>
+                    <Td><span className="text-[11px] text-subtle">{money(transaction.balanceBefore, walletCurrency)}</span></Td>
+                    <Td><span className="text-[11px] text-subtle">{money(transaction.balanceAfter, walletCurrency)}</span></Td>
                     <Td>
                       <div className="max-w-[240px] truncate text-[11px] text-ink-soft">{transaction.reference || transaction.note || "—"}</div>
                     </Td>
@@ -157,29 +308,75 @@ export function WalletPage() {
       </Card>
 
       <Modal
-        open={depositOpen}
-        onClose={() => setDepositOpen(false)}
-        title="طلب إيداع في المحفظة"
-        description="سجّل بيانات التحويل وسيتحقق فريق سند منه قبل إضافة المبلغ إلى الرصيد."
+        open={subOpen}
+        onClose={() => setSubOpen(false)}
+        title="تسجيل دفعة اشتراك"
+        description="اختر الخطة، ثم أدخل بيانات التحويل. ستراجع إدارة سند الدفعة قبل اعتماد التجديد."
         footer={
           <>
-            <Button variant="ghost" onClick={() => setDepositOpen(false)}>إلغاء</Button>
-            <Button loading={busy} onClick={submitDeposit}>تسجيل الطلب</Button>
+            <Button variant="ghost" onClick={() => setSubOpen(false)}>إلغاء</Button>
+            <Button loading={subBusy} onClick={submitSubscription} disabled={Boolean(pendingPayment)}>
+              إرسال للمراجعة
+            </Button>
           </>
         }
       >
         <div className="space-y-4">
-          <Field label={`المبلغ (${currency})`} required>
-            <Input type="number" min={1} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="1000" />
-          </Field>
-          <Field label="مرجع التحويل" hint="رقم العملية أو آخر 4 أرقام من الحساب المحوّل منه">
-            <Input value={reference} onChange={(e) => setReference(e.target.value)} dir="ltr" />
-          </Field>
-          <Field label="ملاحظات">
-            <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
-          </Field>
-          <Alert tone="warning" title="لن يتغير الرصيد فوراً">
-            يُسجَّل الطلب بحالة «معلّقة» ويظهر في السجل. لا تُضاف الأموال إلى الرصيد إلا بعد تأكيد التحويل.
+          <div className="grid gap-2 sm:grid-cols-2">
+            {(["monthly", "annual"] as SubscriptionPlan[]).map((plan) => {
+              const active = subPlan === plan;
+              return (
+                <button
+                  key={plan}
+                  type="button"
+                  onClick={() => setSubPlan(plan)}
+                  className={cn(
+                    "rounded-brand border p-3 text-start transition",
+                    active ? "border-brand bg-brand-soft" : "border-line bg-surface hover:border-brand-line"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-bold text-ink">الاشتراك {PLAN_LABELS[plan]}</span>
+                    {active ? <CheckCircle2 className="h-4 w-4 text-brand" /> : null}
+                  </div>
+                  <div className="mt-1 text-lg font-bold text-ink">{money(Number(prices[plan] ?? 0), subscriptionCurrency)}</div>
+                  <div className="text-[10px] text-subtle">
+                    {plan === "annual" ? `كل سنة${annualSaving ? ` — توفير ${money(annualSaving, subscriptionCurrency)}` : ""}` : "كل شهر"}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="rounded-brand border border-brand-line bg-brand-soft px-3 py-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="font-semibold text-brand">المبلغ المستحق</span>
+              <span className="font-bold text-ink">{money(selectedAmount, subscriptionCurrency)}</span>
+            </div>
+            <p className="mt-1 text-[10px] leading-5 text-subtle">المبلغ ثابت حسب خطة سند، ولا يتغير رصيد محفظة المتجر.</p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="طريقة الدفع" required>
+              <Select value={subMethod} onChange={(event) => setSubMethod(event.target.value as SubscriptionMethod)}>
+                {Object.entries(SUB_METHODS).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="اسم الدافع">
+              <Input value={subPayer} onChange={(event) => setSubPayer(event.target.value)} placeholder="الاسم الظاهر في التحويل" />
+            </Field>
+            <Field label="مرجع العملية" required className="sm:col-span-2" hint="رقم التحويل أو آخر 4 أرقام من الحساب المحوّل منه.">
+              <Input value={subReference} onChange={(event) => setSubReference(event.target.value)} dir="ltr" placeholder="TX-123456" />
+            </Field>
+            <Field label="ملاحظات" className="sm:col-span-2">
+              <Textarea rows={3} value={subNote} onChange={(event) => setSubNote(event.target.value)} placeholder="أي تفاصيل تساعد الإدارة في التحقق من الدفعة." />
+            </Field>
+          </div>
+
+          <Alert tone="info" title="بعد إرسال الدفعة">
+            ستظهر الدفعة بحالة «قيد المراجعة» في السجل، وتبقى خطة الاشتراك كما هي حتى تعتمدها الإدارة. لا تُضاف أي مبالغ إلى محفظة المتجر.
           </Alert>
         </div>
       </Modal>

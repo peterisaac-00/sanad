@@ -12,13 +12,15 @@ integration boundaries for online payments, AI, WhatsApp and carriers.
 | Marketing site | `/` | Public landing page; signed-in visitors are routed to the dashboard |
 | Sign in / register | `/auth/login`, `/auth/register` | Cookie session, show/hide password, inline errors, safe redirect |
 | Onboarding | `/onboarding` | Five RTL steps, autosave, real image upload, template + selling setup, publish |
-| Dashboard | `/dashboard`, `/dashboard/*` | Dark-first RTL shell, 22 routes in five groups, mobile drawer/bottom nav |
+| Dashboard | `/dashboard`, `/dashboard/*` | Dark-first RTL shell, 22 routes in five groups; incomplete features are gated with a visible reason |
 | Storefront | `/store/:subdomain`, `/store/:subdomain/*` | Published stores only; unpublished stores show a branded “قيد التجهيز” page |
 
 The dashboard covers overview, products, categories, orders, customers,
-wallet, abandoned carts, upsells, related products, coupons, shipping, pages,
-design, blog, affiliates, loyalty, dropshipping, reviews, AI assistant,
-reports, settings, audit logs, domains, team and learn.
+abandoned carts, related products, coupons, shipping, pages, design, blog,
+affiliates, reviews, AI assistant, reports, settings, audit logs, domains,
+team and the quick guide. Wallet, upsells, loyalty and dropshipping remain in
+the codebase but are gated and hidden from navigation until their approval
+and settlement workflows ship.
 
 ## Architecture
 
@@ -86,7 +88,7 @@ Seeded demo login (dev only): `merchant@saraya.sanad.app` + `DEMO_MERCHANT_PASSW
 | `LOG_LEVEL` | no | `info` | pino level; PII/secrets are redacted |
 | `APP_URL` | no | `http://localhost:3000` | absolute base used in verification/reset/tracking links |
 | `VITE_API_URL` | no | `""` | build-time API base; empty = same origin |
-| `STORAGE_DRIVER` | no | `local` | `local` is implemented; `s3` fails honestly until an adapter is added |
+| `STORAGE_DRIVER` | no | `local` | only `local` is implemented; `s3` fails at startup until an adapter is added |
 | `STORAGE_DIR` | no | `data/uploads` | local upload directory, served at `/uploads` with inert-content headers |
 | `MEDIA_MAX_BYTES` | no | `5242880` | per-image upload limit (max 20 MB) |
 | `MEDIA_MAX_DIMENSION` | no | `6000` | max width/height after decoding |
@@ -252,7 +254,7 @@ masking.
   but automatic sending still requires an approved template.
 - **Shipping:** zones, rates, COD fees and free-shipping thresholds are real;
   carrier/tracking integration is manual.
-- **Media:** local disk works. `STORAGE_DRIVER=s3` fails honestly until an S3
+- **Media:** local disk works. `STORAGE_DRIVER=s3` fails at startup until an S3
   adapter is implemented.
 
 ## Deployment

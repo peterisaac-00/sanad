@@ -11,12 +11,12 @@ import {
   CircleDollarSign,
   Clock,
   Package,
+  ShoppingBag,
   ShoppingCart,
   Sparkles,
   Store,
   TrendingUp,
   Users,
-  Wallet,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { money, number, ORDER_STATUS, PAYMENT_STATUS, date, safeError, statusLabel } from "../lib/format";
@@ -141,7 +141,7 @@ export function DashboardHome() {
         <StatCard label="متوسط قيمة الطلب" value={money(kpis?.avg_order_egp, store.currency)} hint={`${number(kpis?.cod_share_percent ?? 0)}% دفع عند الاستلام`} icon={<Banknote className="h-4 w-4" />} accent="brand" />
         <StatCard label="العملاء" value={number(kpis?.customers_count ?? 0)} hint="عملاء لديهم طلبات أو بيانات محفوظة" icon={<Users className="h-4 w-4" />} accent="success" />
         <StatCard label="منتجات منخفضة المخزون" value={number(kpis?.low_stock_products ?? 0)} hint={`${number(kpis?.products_count ?? 0)} منتج في الكتالوج`} icon={<Boxes className="h-4 w-4" />} accent="danger" />
-        <StatCard label="رصيد المحفظة" value={money(kpis?.wallet_balance, store.currency)} hint={`${number(kpis?.abandoned_carts ?? 0)} سلة متروكة`} icon={<Wallet className="h-4 w-4" />} accent="warning" />
+        <StatCard label="السلات المتروكة" value={number(kpis?.abandoned_carts ?? 0)} hint="قابلة للمتابعة برسالة واتساب يدوية" icon={<ShoppingBag className="h-4 w-4" />} accent="warning" />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">

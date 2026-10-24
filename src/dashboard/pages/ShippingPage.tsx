@@ -41,7 +41,6 @@ interface ZoneDraft {
   estimatedDaysMin: string;
   estimatedDaysMax: string;
   carrier: string;
-  trackingSupported: boolean;
   isActive: boolean;
   isFallback: boolean;
 }
@@ -56,7 +55,6 @@ const emptyZone: ZoneDraft = {
   estimatedDaysMin: "1",
   estimatedDaysMax: "3",
   carrier: "",
-  trackingSupported: false,
   isActive: true,
   isFallback: false,
 };
@@ -100,9 +98,13 @@ export function ShippingPage() {
       <PageHeader
         eyebrow="التشغيل"
         title="مناطق الشحن"
-        description="حدّد تكلفة الشحن ورسوم الدفع عند الاستلام لكل محافظة. الأسعار تُحسب على الخادم عند كل طلب."
+        description="حدّد تكلفة الشحن ورسوم الدفع عند الاستلام لكل محافظة. الشحن يدوي: لا يوجد ربط آلي بشركات الشحن، والأسعار تُحسب على الخادم عند كل طلب."
         actions={<Button onClick={() => { setEditing(null); setEditorOpen(true); }}><Plus className="h-4 w-4" /> منطقة جديدة</Button>}
       />
+
+      <Alert tone="info" title="الشحن يدوي">
+        تُدخل شركة الشحن وأسعار المناطق يدوياً. لا يوجد تتبع مباشر أو إرسال آلي لشركات الشحن؛ استخدم رقم الشحنة/الرابط الذي توفره الشركة خارج سند إن لزم.
+      </Alert>
 
       {error ? <Alert tone="error" title="تعذر تحميل مناطق الشحن">{safeError(error)}</Alert> : null}
 
@@ -131,8 +133,8 @@ export function ShippingPage() {
                   <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-subtle">
                     <ActivePill active={zone.isActive} />
                     <span>{num(zone.estimatedDaysMin) === num(zone.estimatedDaysMax) ? `${zone.estimatedDaysMin} يوم` : `${zone.estimatedDaysMin}–${zone.estimatedDaysMax} يوم`}</span>
-                    {zone.carrier ? <span>{zone.carrier}</span> : null}
-                    {zone.trackingSupported ? <span>تتبع مدعوم</span> : null}
+                    {zone.carrier ? <span>{zone.carrier} (يدوي)</span> : null}
+                    <span>إدارة يدوية</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -233,7 +235,6 @@ function ZoneEditor({
         estimatedDaysMin: String(zone.estimatedDaysMin ?? 1),
         estimatedDaysMax: String(zone.estimatedDaysMax ?? 3),
         carrier: zone.carrier ?? "",
-        trackingSupported: Boolean(zone.trackingSupported),
         isActive: zone.isActive !== false,
         isFallback: Boolean(zone.isFallback),
       });
@@ -276,7 +277,8 @@ function ZoneEditor({
         estimatedDaysMin: Math.max(0, Math.round(num(draft.estimatedDaysMin))),
         estimatedDaysMax: Math.max(0, Math.round(num(draft.estimatedDaysMax))),
         carrier: draft.carrier.trim(),
-        trackingSupported: draft.trackingSupported,
+        // No carrier adapter exists; always store the truthful value.
+        trackingSupported: false,
         isActive: draft.isActive,
         isFallback: draft.isFallback,
         rates: rates
@@ -318,7 +320,7 @@ function ZoneEditor({
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="اسم المنطقة" required><Input value={draft.name} onChange={(e) => set("name", e.target.value)} placeholder="القاهرة الكبرى" /></Field>
-        <Field label="شركة الشحن"><Input value={draft.carrier} onChange={(e) => set("carrier", e.target.value)} placeholder="أرامكس / بوسطة…" /></Field>
+        <Field label="شركة الشحن" hint="اسم الشركة للعرض فقط؛ لا يوجد ربط آلي بها."><Input value={draft.carrier} onChange={(e) => set("carrier", e.target.value)} placeholder="أرامكس / بوسطة…" /></Field>
         <Field label="المحافظات" hint="افصل بينها بفاصلة. اتركها فارغة لمنطقة افتراضية تشمل الكل." className="sm:col-span-2">
           <Input value={draft.governorates} onChange={(e) => set("governorates", e.target.value)} placeholder="القاهرة، الجيزة، القليوبية" />
         </Field>
@@ -331,7 +333,9 @@ function ZoneEditor({
           <Field label="إلى"><Input type="number" min={0} value={draft.estimatedDaysMax} onChange={(e) => set("estimatedDaysMax", e.target.value)} dir="ltr" /></Field>
         </div>
         <Switch checked={draft.isFallback} onChange={(v) => set("isFallback", v)} label="المنطقة الافتراضية" description="تُستخدم عندما لا تنطبق أي محافظة أخرى." />
-        <Switch checked={draft.trackingSupported} onChange={(v) => set("trackingSupported", v)} label="تدعم تتبع الشحنات" />
+        <div className="rounded-brand border border-line bg-surface px-3 py-2.5 text-[10px] leading-5 text-subtle">
+          تتبع الشحنات غير متاح داخل سند. لا يوجد تكامل مع شركات الشحن، ولن نعرض حالة تتبع غير حقيقية.
+        </div>
         <Switch checked={draft.isActive} onChange={(v) => set("isActive", v)} label="نشطة" />
 
         <div className="sm:col-span-2">

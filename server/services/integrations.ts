@@ -189,23 +189,45 @@ class ManualShippingService implements ShippingCarrierService {
 export const shippingService: ShippingCarrierService = new ManualShippingService();
 
 export function integrationStatus() {
+  const whatsappAutoSendAvailable = false; // Cloud API credentials alone cannot send without an approved template.
   return {
     ai: { configured: aiService.configured, label: aiService.configured ? "configured" : "not_configured" },
     payments: {
       configured: paymentService.configured,
+      selectable: paymentService.configured,
       provider: paymentService.provider,
-      label: paymentService.configured ? "configured" : "not_configured",
+      label: paymentService.configured ? "configured" : env.payments.configured ? "adapter_missing" : "not_configured",
+      reason: paymentService.configured
+        ? ""
+        : "لا يوجد محوّل دفع مثبت. يظل الدفع عند الاستلام متاحاً، ولا يمكن تفعيل الدفع الإلكتروني.",
     },
     whatsapp: {
       autoSendConfigured: whatsappService.autoSendConfigured,
+      autoSendAvailable: whatsappAutoSendAvailable,
       linksAvailable: true,
-      label: whatsappService.autoSendConfigured ? "configured" : "manual_links_only",
+      // configured credentials are not enough: approved templates are required.
+      sendState: whatsappAutoSendAvailable
+        ? "auto_send_ready"
+        : whatsappService.autoSendConfigured
+          ? "template_required"
+          : "manual_links_only",
+      label: whatsappAutoSendAvailable
+        ? "auto_send_ready"
+        : whatsappService.autoSendConfigured
+          ? "template_required"
+          : "manual_links_only",
+      reason:
+        "الروابط اليدوية إلى واتساب تعمل. لا يوجد إرسال تلقائي حتى تُعتمد قوالب واتساب في بيئة الخادم.",
     },
     shipping: {
-      configured: shippingService.configured,
-      provider: shippingService.provider,
-      label: shippingService.configured ? "configured" : "manual_carriers",
+      // Zones/rates and courier names are managed manually; no carrier API is
+      // connected even when SHIPPING_* credentials are present.
+      configured: false,
+      provider: "manual",
+      label: "manual_carriers",
+      trackingAvailable: false,
+      reason: "الشحن يدوي: تُدخل شركة الشحن وأسعار المناطق يدوياً، ولا يوجد ربط آلي أو تتبع مباشر لشركات الشحن.",
     },
-    storage: { driver: env.storageDriver, label: env.storageDriver === "local" ? "local_disk" : "s3" },
+    storage: { driver: env.storageDriver, label: "local_disk" },
   };
 }

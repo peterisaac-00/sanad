@@ -70,12 +70,12 @@ export const INDUSTRIES_DATA: IndustryVertical[] = [
     solutions_ar: [
       'ميزة الباقات والعروض الترويجية المجمعة لرفع قيمة السلة AOV',
       'أقسام مخصصة لشهادات الجودة وتفاصيل الاستخدام والمكونات',
-      'تتبع العميل وتذكيره بإعادة طلب روتين العناية عبر واتساب'
+      'تذكير يدوي عبر واتساب بإعادة طلب روتين العناية برسالة جاهزة'
     ],
     solutions_en: [
       'Custom bundle builder to push order totals above free shipping thresholds',
       'Dedicated ingredient disclosure and authentic usage guidelines',
-      'WhatsApp automated re-order reminders for replenishment'
+      'Manual WhatsApp re-order reminder with a prepared message'
     ],
     best_practices_ar: [
       'تحديد حد أدنى للشحن المجاني (مثلاً 500 ج.م في مصر) لتشجيع شراء مجموعات كاملة',
@@ -106,12 +106,12 @@ export const INDUSTRIES_DATA: IndustryVertical[] = [
     solutions_ar: [
       'جداول مواصفات تقنية قياسية مهيأة لمحركات البحث',
       'إدارة أرقام تتبع القطع وحالات الضمان بالفاتورة',
-      'خيارات دفع آمنة وربط تتبع الشحنات القيمة خطوة بخطوة'
+      'الدفع عند الاستلام وتسجيل بيانات الشحن يدوياً دون وعود بتتبع آلي'
     ],
     solutions_en: [
       'Standardized technical spec sheets optimized for search discovery',
       'Invoice-embedded warranty certificates and serial reference codes',
-      'Secure courier handling and multi-stage delivery tracking'
+      'Cash on delivery with manual courier entry and no automated tracking promises'
     ],
     best_practices_ar: [
       'توضيح توافق الملحق (مثل التوافق مع هواتف معينة أو منافذ شحن) بخط عريض',
@@ -177,12 +177,12 @@ export const INDUSTRIES_DATA: IndustryVertical[] = [
     ],
     solutions_ar: [
       'رابط متجر واحد يوضع في البايو Bio يختصر رحلة العميل ويوضح المنتجات والمخزون الحي',
-      'تأكيد الطلب التلقائي وإرسال الفاتورة عبر واتساب مباشرة',
+      'تأكيد الطلب وفتح واتساب برسالة/فاتورة جاهزة يرسلها فريقك يدوياً',
       'لوحة متابعة مركزية توضح لك بالضبط كم طرداً تم تسليمه وكم أموالاً بانتظار التحصيل'
     ],
     solutions_en: [
       'A single link in bio with real-time inventory and instant frictionless checkout',
-      'Automated order confirmation and WhatsApp invoice dispatch',
+      'Order confirmation with a prepared WhatsApp invoice message sent manually by your team',
       'Clean dashboard showing delivered packages and pending cash remittances'
     ],
     best_practices_ar: [

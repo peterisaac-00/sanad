@@ -17,6 +17,14 @@ import { WalletPage, DropshippingPage } from "./pages/WalletPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { LearnPage } from "./pages/LearnPage";
+import { FeatureGate } from "./FeatureGate";
+import { FEATURE_REGISTRY, isFeatureGated } from "./features";
+
+function gate(path: string, page: React.ReactNode) {
+  const feature = FEATURE_REGISTRY[path];
+  if (feature && isFeatureGated(path)) return <FeatureGate feature={feature} />;
+  return page;
+}
 
 /**
  * Route table for the merchant console. Every navigation entry in the sidebar
@@ -41,16 +49,16 @@ export function DashboardRouter() {
   if (path === "/dashboard/shipping") return <ShippingPage />;
   if (path === "/dashboard/reviews") return <ReviewsPage />;
   if (path === "/dashboard/abandoned-carts") return <AbandonedCartsPage />;
-  if (path === "/dashboard/upsells") return <UpsellsPage />;
+  if (path === "/dashboard/upsells") return gate(path, <UpsellsPage />);
   if (path === "/dashboard/related-products") return <RelatedProductsPage />;
   if (path === "/dashboard/coupons") return <CouponsPage />;
   if (path === "/dashboard/affiliates") return <AffiliatesPage />;
-  if (path === "/dashboard/loyalty") return <LoyaltyPage />;
+  if (path === "/dashboard/loyalty") return gate(path, <LoyaltyPage />);
   if (path === "/dashboard/assistant") return <AssistantPage />;
   if (path === "/dashboard/pages") return <PagesPage />;
   if (path === "/dashboard/blog") return <BlogPage />;
-  if (path === "/dashboard/wallet") return <WalletPage />;
-  if (path === "/dashboard/dropshipping") return <DropshippingPage />;
+  if (path === "/dashboard/wallet") return gate(path, <WalletPage />);
+  if (path === "/dashboard/dropshipping") return gate(path, <DropshippingPage />);
   if (path === "/dashboard/settings") return <SettingsPage />;
   if (path === "/dashboard/learn") return <LearnPage />;
 

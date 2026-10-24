@@ -46,7 +46,7 @@ import { TableShell, Td, Th } from "../common";
 const TABS = [
   { key: "general", label: "بيانات المتجر", icon: Building2 },
   { key: "notifications", label: "الإشعارات", icon: Bell },
-  { key: "domains", label: "النطاقات", icon: Globe },
+  { key: "domains", label: "النطاقات (تحقق فقط)", icon: Globe },
   { key: "team", label: "الفريق", icon: Users },
   { key: "security", label: "الأمان والحساب", icon: Shield },
   { key: "audit", label: "سجل النشاط", icon: ScrollText },
@@ -61,6 +61,36 @@ const TIME_ZONES = [
 
 const ROLES: Record<string, string> = { admin: "مدير عام", manager: "مدير", staff: "موظف", viewer: "مشاهدة فقط" };
 const TEAM_STATUS: Record<string, string> = { invited: "مدعو", active: "نشط", suspended: "موقوف" };
+
+const INTEGRATION_LABELS: Record<string, string> = {
+  ai: "المساعد الذكي",
+  payments: "الدفع الإلكتروني",
+  whatsapp: "واتساب",
+  shipping: "الشحن",
+  storage: "تخزين الوسائط",
+};
+
+const SUCCESS_TONE = "bg-success-soft text-success border-success-line";
+const INFO_TONE = "bg-info-soft text-info border-info-line";
+const NEUTRAL_TONE = "bg-surface text-subtle border-line";
+
+function integrationBadge(key: string, value: any): { text: string; tone: string } {
+  if (key === "storage") return { text: "تخزين محلي", tone: NEUTRAL_TONE };
+  if (key === "shipping") return { text: "شحن يدوي", tone: INFO_TONE };
+  if (key === "payments") {
+    return value?.selectable
+      ? { text: "مهيأ", tone: SUCCESS_TONE }
+      : { text: "غير متاح", tone: NEUTRAL_TONE };
+  }
+  if (key === "whatsapp") {
+    if (!value?.autoSendConfigured) return { text: "روابط يدوية", tone: INFO_TONE };
+    if (!value?.autoSendAvailable) return { text: "قالب مطلوب", tone: INFO_TONE };
+    return { text: "إرسال تلقائي", tone: SUCCESS_TONE };
+  }
+  return value?.configured
+    ? { text: "مهيأ", tone: SUCCESS_TONE }
+    : { text: "غير مهيأ", tone: NEUTRAL_TONE };
+}
 
 export function SettingsPage() {
   const { subdomain, store } = useDashboard();
@@ -88,7 +118,7 @@ export function SettingsPage() {
       seoDescription: s.seoDescription ?? "",
       whatsapp: s.whatsapp ?? "",
       codEnabled: Boolean(s.codEnabled),
-      onlinePaymentEnabled: Boolean(s.onlinePaymentEnabled),
+      onlinePaymentEnabled: Boolean(s.onlinePaymentEnabled && Boolean(data?.online_payments_available ?? data?.integrations?.payments?.selectable)),
       primaryLanguage: s.primaryLanguage === "en" ? "en" : "ar",
       timeZone: s.timeZone ?? "Africa/Cairo",
     });
@@ -103,17 +133,13 @@ export function SettingsPage() {
     setSaving(true);
     try {
       await api.settings.update(subdomain, {
-        storeName: form.storeName.trim(),
         phone: form.phone.trim(),
         countryCode: form.countryCode,
         storeCurrency: form.storeCurrency,
-        description: form.description,
         supportEmail: form.supportEmail.trim(),
-        seoTitle: form.seoTitle.trim(),
-        seoDescription: form.seoDescription.trim(),
         whatsapp: form.whatsapp.trim(),
         codEnabled: form.codEnabled,
-        onlinePaymentEnabled: form.onlinePaymentEnabled,
+        onlinePaymentEnabled: onlinePaymentsAvailable ? form.onlinePaymentEnabled : false,
         primaryLanguage: form.primaryLanguage,
         timeZone: form.timeZone,
       });
@@ -421,13 +447,14 @@ export function SettingsPage() {
   };
 
   const integrations = data?.integrations ?? {};
+  const onlinePaymentsAvailable = Boolean(data?.online_payments_available ?? integrations.payments?.selectable);
 
   return (
     <div className="space-y-5">
       <PageHeader
         eyebrow="التشغيل"
         title="الإعدادات"
-        description="بيانات المتجر، الإشعارات، النطاقات، الفريق، والأمان في مكان واحد."
+        description="بيانات المتجر، الإشعارات، التحقق من النطاقات، الفريق، والأمان في مكان واحد."
         actions={<Button variant="ghost" size="sm" onClick={reload} aria-label="تحديث"><RefreshCw className="h-3.5 w-3.5" /></Button>}
       />
 
@@ -457,16 +484,22 @@ export function SettingsPage() {
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-4">
             <Card className="p-4">
-              <div className="mb-3 text-xs font-bold text-ink">الهوية</div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="اسم المتجر" required>
-                  <Input value={form.storeName} onChange={(e) => setForm({ ...form, storeName: e.target.value })} />
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="text-xs font-bold text-ink">الهوية</div>
+                <Badge tone="bg-brand-soft text-brand border-brand-line">تُدار من إدارة سند</Badge>
+              </div>
+              <Alert tone="info" title="تعديل الهوية متاح للإدارة فقط">
+                اسم المتجر والوصف والشعار والغلاف والألوان والقالب وإعدادات SEO تُعدَّل من لوحة إدارة المنصة. تواصل مع فريق سند لأي تغيير.
+              </Alert>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <Field label="اسم المتجر" hint="يُعدَّل عبر إدارة سند فقط.">
+                  <Input value={form.storeName} disabled />
                 </Field>
                 <Field label="رابط المتجر" hint="النطاق الفرعي لا يتغير من هنا للحفاظ على الروابط المنشورة.">
                   <Input value={`/store/${subdomain}`} disabled dir="ltr" className="font-mono" />
                 </Field>
-                <Field label="وصف المتجر" className="sm:col-span-2">
-                  <Textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                <Field label="وصف المتجر" hint="يُعدَّل عبر إدارة سند فقط." className="sm:col-span-2">
+                  <Textarea rows={3} value={form.description} disabled />
                 </Field>
                 <div className="sm:col-span-2 rounded-brand border border-line bg-surface px-3 py-2.5">
                   <div className="flex flex-wrap items-center gap-3">
@@ -481,7 +514,7 @@ export function SettingsPage() {
                       </div>
                     ) : null}
                     <p className="flex-1 text-[11px] leading-5 text-subtle">
-                      الهوية البصرية — الشعار والغلاف والألوان والقالب — تُضبط مرة واحدة أثناء إنشاء المتجر، ولا يمكن تعديلها بعد النشر.
+                      الهوية البصرية — الشعار والغلاف والألوان والقالب — تُضبط من إدارة سند، وتبقى محمية داخل متجرك.
                     </p>
                   </div>
                 </div>
@@ -522,23 +555,36 @@ export function SettingsPage() {
                 <div className="sm:col-span-2 grid gap-3 sm:grid-cols-2">
                   <Switch checked={form.codEnabled} onChange={(v) => setForm({ ...form, codEnabled: v })} label="الدفع عند الاستلام" description="الطريقة الأساسية للتجارة الإلكترونية في المنطقة." />
                   <Switch
-                    checked={form.onlinePaymentEnabled}
+                    checked={onlinePaymentsAvailable && form.onlinePaymentEnabled}
                     onChange={(v) => setForm({ ...form, onlinePaymentEnabled: v })}
-                    label="الدفع الإلكتروني"
-                    description={integrations.payments?.configured ? "البوابة مهيأة على الخادم." : "يتطلب تهيئة بوابة دفع على الخادم أولاً."}
+                    disabled={!onlinePaymentsAvailable}
+                    label={onlinePaymentsAvailable ? "الدفع الإلكتروني" : "الدفع الإلكتروني — قريباً"}
+                    description={
+                      onlinePaymentsAvailable
+                        ? "البوابة مهيأة على الخادم."
+                        : "غير متاح: لا يوجد محوّل دفع مثبت. يبقى الدفع عند الاستلام هو الخيار الفعلي."
+                    }
                   />
                 </div>
+                {!onlinePaymentsAvailable ? (
+                  <p className="mt-3 rounded-brand border border-line bg-surface px-3 py-2 text-[10px] leading-5 text-subtle sm:col-span-2">
+                    لن نسمح باختيار الدفع الإلكتروني في المتجر حتى يتوفر مزود دفع فعلي مع Webhooks ومعالجة إعادة المحاولة. لا تُظهر هذه الصفحة خياراً مدفوعاً غير قابل للتنفيذ.
+                  </p>
+                ) : null}
               </div>
             </Card>
 
             <Card className="p-4">
-              <div className="mb-3 text-xs font-bold text-ink">تحسين محركات البحث (SEO)</div>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="text-xs font-bold text-ink">تحسين محركات البحث (SEO)</div>
+                <Badge tone="bg-surface text-ink-soft border-line">العنوان والوصف من الإدارة</Badge>
+              </div>
               <div className="grid gap-4">
-                <Field label="عنوان الصفحة">
-                  <Input value={form.seoTitle} onChange={(e) => setForm({ ...form, seoTitle: e.target.value })} />
+                <Field label="عنوان الصفحة" hint="يُعدَّل عبر إدارة سند فقط.">
+                  <Input value={form.seoTitle} disabled />
                 </Field>
-                <Field label="وصف الصفحة">
-                  <Textarea rows={2} value={form.seoDescription} onChange={(e) => setForm({ ...form, seoDescription: e.target.value })} />
+                <Field label="وصف الصفحة" hint="يُعدَّل عبر إدارة سند فقط.">
+                  <Textarea rows={2} value={form.seoDescription} disabled />
                 </Field>
                 <Field label="اللغة الأساسية">
                   <Select value={form.primaryLanguage} onChange={(e) => setForm({ ...form, primaryLanguage: e.target.value })}>
@@ -569,16 +615,20 @@ export function SettingsPage() {
             <Card className="p-4">
               <div className="mb-3 text-xs font-bold text-ink">حالة التكاملات</div>
               <div className="space-y-2 text-[11px]">
-                {Object.entries(integrations).map(([key, value]: [string, any]) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <span className="text-subtle">{key}</span>
-                    {value?.configured ? (
-                      <Badge tone="bg-success-soft text-success border-success-line"><CheckCircle2 className="h-3 w-3" /> مهيأ</Badge>
-                    ) : (
-                      <Badge tone="bg-surface text-subtle border-line">غير مهيأ</Badge>
-                    )}
-                  </div>
-                ))}
+                {Object.entries(integrations).map(([key, value]: [string, any]) => {
+                  const badge = integrationBadge(key, value);
+                  return (
+                    <div key={key} className="rounded-brand-sm border border-line bg-surface px-2.5 py-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-subtle">{INTEGRATION_LABELS[key] ?? key}</span>
+                        <Badge tone={badge.tone}>{badge.text}</Badge>
+                      </div>
+                      {value?.reason ? (
+                        <p className="mt-1 text-[10px] leading-5 text-subtle">{value.reason}</p>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
               <div className="mt-3 text-[10px] leading-5 text-subtle">
                 التكاملات غير المهيأة تعمل بوضع يدوي بشفافية، ولن ندّعي إرسالاً أو ربطاً لم يحدث فعلاً.
@@ -609,13 +659,17 @@ export function SettingsPage() {
           </div>
         </Card>
       ) : tab === "domains" ? (
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="space-y-3">
+          <Alert tone="warning" title="ربط النطاق بالمتجر غير مكتمل">
+            التحقق هنا يثبت ملكيتك للنطاق فقط. لا يتم توجيه النطاق إلى واجهة متجرك ولا إصدار شهادة HTTPS تلقائية بعد، لذلك لا تعتمد عليه في استقبال العملاء.
+          </Alert>
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_380px]">
           <Card className="overflow-hidden">
-            <div className="border-b border-line px-4 py-3 text-xs font-bold text-ink">النطاقات المتصلة</div>
+            <div className="border-b border-line px-4 py-3 text-xs font-bold text-ink">النطاقات المسجلة</div>
             {(data?.domains ?? []).length === 0 ? (
               <EmptyState
-                title="لا توجد نطاقات مخصصة"
-                description="متجرك متاح الآن على رابط سند. أضف نطاقاً خاصاً بك لتعزيز الثقة."
+                title="لا توجد نطاقات مسجلة"
+                description="يمكنك تسجيل نطاق والتحقق من ملكيته، لكن توجيه النطاق إلى متجرك غير متاح بعد."
                 icon={<Globe className="h-5 w-5" />}
               />
             ) : (
@@ -693,10 +747,11 @@ export function SettingsPage() {
               </Field>
               <Button className="w-full" loading={domainBusy} onClick={addDomain}>إضافة النطاق</Button>
               <div className="text-[10px] leading-5 text-subtle">
-                بعد الإضافة سنعرض لك قيمة TXT مرة واحدة فقط. نتحقق منها فعلياً عبر DNS، ولن يظهر النطاق كموثّق قبل ذلك. إن فقدت القيمة يمكنك إصدار قيمة جديدة من القائمة.
+                بعد الإضافة سنعرض لك قيمة TXT مرة واحدة فقط. نتحقق منها فعلياً عبر DNS، ولن يظهر النطاق كموثّق قبل ذلك. إن فقدت القيمة يمكنك إصدار قيمة جديدة من القائمة. بعد التحقق يبقى النطاق غير موجه إلى المتجر حتى يكتمل الربط.
               </div>
             </div>
           </Card>
+          </div>
         </div>
       ) : tab === "team" ? (
         <div className="space-y-3">

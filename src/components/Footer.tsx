@@ -59,27 +59,27 @@ export const Footer: React.FC<FooterProps> = ({ currentLang, onNavigate }) => {
               </li>
               <li>
                 <button onClick={() => onNavigate('features')} className="cursor-pointer transition-colors hover:text-white">
-                  {currentLang === 'ar' ? 'دورة حياة الـ COD المتكاملة' : 'Full COD Lifecycle'}
+                  {currentLang === 'ar' ? 'دورة حالات الـ COD' : 'COD Status Flow'}
                 </button>
               </li>
               <li>
                 <button onClick={() => onNavigate('features')} className="cursor-pointer transition-colors hover:text-white">
-                  {currentLang === 'ar' ? 'مناطق الشحن واللوجستيات' : 'Shipping & Logistics'}
+                  {currentLang === 'ar' ? 'مناطق الشحن اليدوية' : 'Manual Shipping Zones'}
                 </button>
               </li>
               <li>
                 <button onClick={() => onNavigate('features')} className="cursor-pointer transition-colors hover:text-white">
-                  {currentLang === 'ar' ? 'مركز WhatsApp التجاري' : 'WhatsApp Commerce Hub'}
+                  {currentLang === 'ar' ? 'واتساب (روابط يدوية)' : 'WhatsApp (Manual Links)'}
                 </button>
               </li>
               <li>
                 <button onClick={() => onNavigate('features')} className="cursor-pointer transition-colors hover:text-white">
-                  {currentLang === 'ar' ? 'منظومة Meta & Google' : 'Meta & Google Feeds'}
+                  {currentLang === 'ar' ? 'Meta & Google (قيد التطوير)' : 'Meta & Google (Planned)'}
                 </button>
               </li>
               <li>
                 <button onClick={() => onNavigate('migration')} className="cursor-pointer transition-colors hover:text-white">
-                  {currentLang === 'ar' ? 'مركز الترحيل (CSV / Excel)' : 'Migration Center'}
+                  {currentLang === 'ar' ? 'دليل الترحيل اليدوي' : 'Manual Migration Guide'}
                 </button>
               </li>
             </ul>

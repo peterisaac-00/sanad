@@ -459,6 +459,19 @@ export function StorefrontApp({ subdomain }: { subdomain: string }) {
     document.documentElement.dir = "rtl";
   }, []);
 
+  // One visit per browser tab session, and only for published storefronts.
+  useEffect(() => {
+    if (!result.data?.published) return;
+    const key = `sanad_store_visit:${subdomain}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      // Private modes can deny storage; the beacon still works.
+    }
+    void api.storefront.visit(subdomain, window.location.pathname).catch(() => undefined);
+  }, [subdomain, result.data?.published]);
+
   const errorMessage = useMemo(() => {
     const err = result.error as any;
     if (!err) return "";

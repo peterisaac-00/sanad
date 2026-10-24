@@ -148,10 +148,10 @@ export const KNOWLEDGE_ARTICLES: KnowledgeArticle[] = [
   },
   {
     slug: 'meta-capi-and-google-shopping-setup',
-    title_ar: 'الربط التقني مع Meta Conversions API و Google Merchant Center',
-    title_en: 'Technical Setup: Meta Conversions API & Google Merchant Center',
-    summary_ar: 'كيف تضمن دقة تتبع مبيعاتك الإعلانية، التغلب على قيود خصوصية المتصفحات، وتغذية خوارزميات الإعلانات ببيانات شراء حقيقية.',
-    summary_en: 'Ensure pinpoint advertising attribution, overcome browser cookie drops, and feed real purchase signals to ad algorithms.',
+    title_ar: 'دليل تعليمي: Meta Conversions API و Google Merchant Center (خارج سند)',
+    title_en: 'Guide: Meta Conversions API & Google Merchant Center (Outside Sanad)',
+    summary_ar: 'دليل عام لتحسين تتبع الإعلانات وتغذية كتالوج Google. لا يوفر سند تكامل Meta CAPI أو Google Merchant Center في النسخة الحالية؛ نفّذ ذلك بأدوات خارجية.',
+    summary_en: 'A general guide to advertising attribution and Google catalogue feeds. Sanad does not provide Meta CAPI or Google Merchant Center integration in the current release; use external tools.',
     category_ar: 'الإعلانات والنمو',
     category_en: 'Ads & Attribution',
     reading_time_min: 8,
@@ -163,11 +163,11 @@ export const KNOWLEDGE_ARTICLES: KnowledgeArticle[] = [
       },
       {
         heading: 'الحل: واجهة تحويلات الخادم (Conversions API - CAPI)',
-        content: 'يقوم نظام منصة سند بإرسال إشارة الشراء (Purchase Event) من خادم المتجر مباشرة إلى خوادم شركة ميتا مصحوبة برقم الطلب وقيمته، مما يضمن تسجيل 100% من المبيعات ومطابقتها مع الحملة الإعلانية الأصلية.'
+        content: 'إذا كنت تستخدم أداة خارجية أو مطوراً، يمكنك إرسال إشارة الشراء (Purchase Event) من خادمك إلى خوادم ميتا مصحوبة برقم الطلب وقيمته. سند لا يرسل هذه الإشارة تلقائياً ولا يوفر تكامل CAPI في النسخة الحالية.'
       },
       {
-        heading: 'خلاصة المنتجات التلقائية لـ Google Shopping',
-        content: 'إنشاء ملف تغذية الكتالوج (XML Feed) متجدد لحظياً يتيح عرض منتجاتك بأسعارها ومخزونها المحدث في نتائج بحث جوجل للتسوق مجاناً وبواسطة إعلانات Performance Max.'
+        heading: 'خلاصة المنتجات لـ Google Shopping',
+        content: 'يحتاج عرض المنتجات في Google Shopping إلى ملف تغذية كتالوج (XML Feed) تبنيها بأداة خارجية وتحدّثها بنفسك. سند لا يولّد هذا الملف تلقائياً؛ تصدير الطلبات والعملاء CSV هو المتاح حالياً.'
       }
     ],
     sections_en: [

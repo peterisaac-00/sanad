@@ -85,8 +85,8 @@ const TEMPLATES: TemplateStore[] = [
     industry_en: 'Smartphones, Audio & Wearables',
     hero_title_ar: 'إكسسوارات الهواتف الذكية مع ضمان استبدال رسمي لمدة عام',
     hero_title_en: 'Premium Smartphone Accessories with 1-Year Warranty',
-    hero_subtitle_ar: 'مواصفات قياسية وتأكيد فوري للطلب عبر واتساب مع رقم بوليصة الشحن.',
-    hero_subtitle_en: 'Full technical specs and instant WhatsApp order tracking numbers.',
+    hero_subtitle_ar: 'مواصفات قياسية ورسالة واتساب جاهزة يرسلها فريقك يدوياً؛ لا يوجد إشعار أو رقم تتبع تلقائي.',
+    hero_subtitle_en: 'Full technical specs with a prepared WhatsApp message your team sends manually; no automatic notification or tracking number.',
     primary_color: 'bg-secondary',
     sample_products: [
       { title_ar: 'شاحن GaN فائق السرعة 65W', title_en: '65W Fast GaN Charger', price_egp: 550, price_sar: 42, badge_ar: 'ضمان سنة', image_accent: 'bg-line' },
@@ -120,7 +120,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ currentLang, onOpe
         <p className="text-sm sm:text-base text-ink-soft leading-relaxed">
           {currentLang === 'ar'
             ? 'ليست مجرد قوالب مترجمة؛ إنها واجهات تسوق تحترم خطوط القراءة العربية وسرعة التصفح وتجربة الشراء بالهاتف المحمول.'
-            : 'Native RTL shopping experiences crafted for mobile buyers with instant WhatsApp checkout and clear COD workflows.'}
+            : 'Native RTL shopping experiences crafted for mobile buyers with clear WhatsApp contact and COD workflows.'}
         </p>
 
         {/* Template Selector & Device Controls */}
@@ -303,8 +303,8 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ currentLang, onOpe
         </h3>
         <p className="text-xs sm:text-sm text-subtle max-w-md mx-auto">
           {currentLang === 'ar'
-            ? 'احصل على متجرك بنطاقك المخصص و 0% عمولة واشتراك شهري ثابت 100 ج.م فقط.'
-            : 'Get your storefront with custom domain, 0% cut, and flat 100 EGP/mo.'}
+            ? 'احصل على متجرك بنطاق فرعي مجاني و 0% عمولة واشتراك شهري ثابت 100 ج.م فقط. ربط النطاق المستقل قيد التطوير.'
+            : 'Get your storefront on a free subdomain with 0% cut and flat 100 EGP/mo. Custom domain connection is planned.'}
         </p>
         <button
           onClick={onOpenStoreModal}

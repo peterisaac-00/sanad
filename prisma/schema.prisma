@@ -20,7 +20,12 @@ model Store {
   countryCode String   @default("EG") @map("country_code")
   currency    String   @default("EGP")
   plan        String   @default("annual")
-  status      String   @default("active")
+  // Admin-controlled lifecycle: pending -> active, or rejected/suspended.
+  status      String   @default("pending")
+  activatedAt DateTime? @map("activated_at")
+  // Platform subscription billing is reviewed by the admin after the owner
+  // submits payment details from the wallet page.
+  subscriptionPaidUntil DateTime? @map("subscription_paid_until")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -86,6 +91,8 @@ model Store {
   suppliers  Supplier[]
   dropshipProducts DropshipProduct[]
   leads      Lead[]
+  subscriptionPayments SubscriptionPayment[]
+  visits     StoreVisit[]
 
   @@map("stores")
 }
@@ -138,6 +145,47 @@ model StoreDomain {
 
   @@index([storeId])
   @@map("store_domains")
+}
+
+// A subscription payment is a platform-billing record. It never changes the
+// merchant wallet balance; the admin reviews it and, on approval, advances the
+// store's paid-through date and plan.
+model SubscriptionPayment {
+  id            String   @id
+  storeId       String   @map("store_id")
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  plan          String
+  amount        Float
+  currency      String   @default("EGP")
+  method        String   @default("bank_transfer")
+  reference     String   @default("")
+  payerName     String   @default("") @map("payer_name")
+  note          String   @default("")
+  status        String   @default("pending")
+  reviewNote    String   @default("") @map("review_note")
+  submittedById String?  @map("submitted_by_id")
+  reviewedById  String?  @map("reviewed_by_id")
+  reviewedAt    DateTime? @map("reviewed_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([storeId, createdAt])
+  @@index([status, createdAt])
+  @@map("subscription_payments")
+}
+
+// Aggregated storefront visits. No IP or user agent is stored here; the
+// rate-limiter keeps anonymous counters separately.
+model StoreVisit {
+  id        String   @id
+  storeId   String   @map("store_id")
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  path      String   @default("/")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([storeId, createdAt])
+  @@index([createdAt])
+  @@map("store_visits")
 }
 
 model Merchant {
@@ -391,6 +439,9 @@ model Order {
   shippingZoneId String? @map("shipping_zone_id")
   paymentMethod String  @default("COD") @map("payment_method")
   paymentStatus String  @default("unpaid") @map("payment_status")
+  // "storefront" orders are inventory-linked; "manual" orders are external
+  // records entered from the dashboard and never reserve stock.
+  source       String   @default("storefront")
   status       String   @default("pending")
   stockRestored Boolean @default(false) @map("stock_restored")
   // Optional client-supplied key that makes checkout retries idempotent.
@@ -661,7 +712,10 @@ model AffiliateAttribution {
   orderId          String   @unique @map("order_id")
   order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   commissionAmount Float    @default(0) @map("commission_amount")
+  // pending → paid. "paid" is recorded after the merchant transfers the
+  // commission manually; the platform never moves money automatically.
   status           String   @default("pending")
+  settledAt        DateTime? @map("settled_at")
   createdAt        DateTime @default(now()) @map("created_at")
 
   @@index([storeId])

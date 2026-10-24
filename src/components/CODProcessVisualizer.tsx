@@ -42,8 +42,8 @@ const STAGES: StageInfo[] = [
     actor_en: 'Shopper on Storefront',
     desc_ar: 'يسجل العميل طلبه باختيار خيار الدفع عند الاستلام وكتابة رقم هاتفه وعنوانه.',
     desc_en: 'Customer places order selecting Cash on Delivery with phone number and delivery address.',
-    action_ar: 'حجز المخزون تلقائياً وإصدار رقم طلب فريد وإرسال إشعار فوري للتاجر.',
-    action_en: 'Stock reserved, unique order ID generated, merchant notified.',
+    action_ar: 'حجز المخزون تلقائياً وإصدار رقم طلب فريد. يظهر الطلب في لوحة التحكم للمراجعة.',
+    action_en: 'Stock is reserved and a unique order ID is generated. The order appears in the dashboard for review.',
     impact_ar: 'بداية العداد الزمني لمعدل الاستجابة',
     impact_en: 'Response clock starts ticking',
     icon: Clock
@@ -58,8 +58,8 @@ const STAGES: StageInfo[] = [
     desc_en: '1-click WhatsApp message to verify building/apartment number and purchase intent.',
     action_ar: 'فلترة الطلبات الوهمية قبل شحن الطرد ودفع مصاريف الشحن لشركة الشحن.',
     action_en: 'Filters out ghost/fake orders before courier airway bill issuance.',
-    impact_ar: 'يخفض المرتجعات بنسبة تصل إلى 28%',
-    impact_en: 'Reduces return rate by up to 28%',
+    impact_ar: 'يقلل المرتجعات عبر تأكيد العنوان يدوياً',
+    impact_en: 'Helps reduce returns through manual address confirmation',
     icon: PhoneCall
   },
   {
@@ -68,26 +68,26 @@ const STAGES: StageInfo[] = [
     title_en: '3. Picking & Packaging',
     actor_ar: 'المستودع الداخلي',
     actor_en: 'Internal Packing Station',
-    desc_ar: 'تغليف المنتجات وطباعة بوليصة الشحن مع الفاتورة الضريبية وقائمة الأصناف بدقة.',
-    desc_en: 'Secure product packaging, barcode generation, and packing slip printing.',
+    desc_ar: 'تغليف المنتجات وطباعة الفاتورة وقائمة الأصناف يدوياً قبل التسليم للناقل.',
+    desc_en: 'Secure product packaging and printing of the invoice and packing slip before courier handoff.',
     action_ar: 'فحص الجودة والمقاس قبل التغليف لتفادي أخطاء تجهيز الطلبات.',
-    action_en: 'Pre-dispatch QC check to eliminate size and item mismatch errors.',
-    impact_ar: 'يقضي تماماً على مرتجعات الخطأ في المقاس',
-    impact_en: 'Eliminates picking mistakes entirely',
+    action_en: 'Pre-dispatch QC check to reduce size and item mismatch errors.',
+    impact_ar: 'يقلل أخطاء التجهيز والمقاس',
+    impact_en: 'Reduces packing and sizing errors',
     icon: Package
   },
   {
     id: 4,
     title_ar: '4. تسليم الطرد للمندوب',
     title_en: '4. Handed to Courier',
-    actor_ar: 'شركة الشحن (بوسطة/أرامكس/سمسا)',
-    actor_en: 'Courier (Bosta / Aramex / SMSA)',
-    desc_ar: 'استلام مندوب الشحن للشحنة وتسجيلها في نظام التتبع مع رمز الباركود الموحد.',
-    desc_en: 'Courier picks up parcel and registers shipment in the tracking system.',
-    action_ar: 'تحديث حالة الطلب إلى "تم الشحن" وإرسال رابط التتبع المباشر للعميل عبر واتساب.',
-    action_en: 'Status updates to Shipped; tracking URL sent to buyer via WhatsApp.',
-    impact_ar: 'شفافية كاملة للمشتري',
-    impact_en: 'Full buyer tracking visibility',
+    actor_ar: 'شركة الشحن (خارج سند)',
+    actor_en: 'Courier (outside Sanad)',
+    desc_ar: 'استلام مندوب الشحن للشحنة، وتسجيل اسم الناقل ورقم البوليصة يدوياً في الطلب.',
+    desc_en: 'Courier picks up the parcel; the merchant records the carrier name and waybill number manually.',
+    action_ar: 'تحديث حالة الطلب إلى "تم الشحن" يدوياً وإرسال رسالة واتساب جاهزة للعميل. لا يوجد ربط آلي أو تتبع مباشر.',
+    action_en: 'Manually mark the order as Shipped and send a prepared WhatsApp message. No carrier integration or live tracking exists.',
+    impact_ar: 'تحديثات حالة يدوية واضحة للمشتري',
+    impact_en: 'Clear manual status updates for the buyer',
     icon: Truck
   },
   {
@@ -98,10 +98,10 @@ const STAGES: StageInfo[] = [
     actor_en: 'Last-Mile Delivery Driver',
     desc_ar: 'خروج المندوب لتسليم الشحنة في اليوم المحدد لمنطقة العميل السكنية.',
     desc_en: 'Driver begins route in customer neighbourhood.',
-    action_ar: 'إشعار صباحي تلقائي للمشتري: "طردك سيصلك اليوم، برجاء تجهيز مبلغ X ج.م كاش".',
-    action_en: 'Morning alert: "Your parcel arrives today, please prepare exact cash X EGP".',
-    impact_ar: 'يحل مشكلة "المشتري لا يملك فكة أو غير متواجد"',
-    impact_en: 'Solves "no cash available / not home" issue',
+    action_ar: 'لا يوجد إشعار صباحي تلقائي؛ يرسل التاجر رسالة واتساب يدوياً يطلب فيها تجهيز المبلغ النقدي.',
+    action_en: 'No automatic morning alert exists; the merchant manually sends a WhatsApp message asking the buyer to prepare the cash amount.',
+    impact_ar: 'يقلل حالات عدم توفر الفكة عبر التذكير اليدوي',
+    impact_en: 'Helps reduce cash-not-ready failures through manual reminders',
     icon: UserCheck
   },
   {
@@ -114,8 +114,8 @@ const STAGES: StageInfo[] = [
     desc_en: 'Customer inspects parcel and hands full cash amount to courier driver.',
     action_ar: 'تسجيل التحصيل في النظام وتحديث حالة الطلب إلى "تم التسليم بنجاح".',
     action_en: 'Remittance recorded in system, status changed to Delivered.',
-    impact_ar: 'تحقيق المبيعة وحفظ هامش الربح 100%',
-    impact_en: 'Order completed, 100% margin locked',
+    impact_ar: 'تحقيق المبيعة وتحصيل المبلغ النقدي',
+    impact_en: 'Sale completed and cash collected',
     icon: CheckCircle2
   },
   {
@@ -126,10 +126,10 @@ const STAGES: StageInfo[] = [
     actor_en: 'Courier Finance Department',
     desc_ar: 'تحويل شركة الشحن لمبالغ التحصيلات النقدية المجمعة مباشرة لحسابك البنكي أو المحفظة.',
     desc_en: 'Courier transfers collected COD funds directly into merchant bank account.',
-    action_ar: 'مطابقة المبالغ المحولة تلقائياً مع كشف حساب الطرود المسلمة في لوحة تحكمك.',
-    action_en: 'Automated 1-to-1 reconciliation against delivered order manifests.',
-    impact_ar: 'إغلاق الدورة النقدية ومطابقة الحسابات بدقة',
-    impact_en: 'Cash cycle closed with zero missing revenue',
+    action_ar: 'راجع كشف شركة الشحن وسجّل التحصيل يدوياً في الطلب. لا توجد مطابقة آلية أو ربط بنكي.',
+    action_en: 'Review the courier statement and record the collection manually on the order. No automatic reconciliation or bank integration exists.',
+    impact_ar: 'إغلاق الدورة النقدية بعد المراجعة اليدوية',
+    impact_en: 'Cash cycle closed after manual review',
     icon: Banknote
   },
   {
@@ -138,10 +138,10 @@ const STAGES: StageInfo[] = [
     title_en: '8. Controlled Return Handling',
     actor_ar: 'التاجر وقسم الجرد',
     actor_en: 'Merchant Returns Audit',
-    desc_ar: 'في حال تعذر استلام الطلب، يعود الطرد للمستودع وإعادة إدراجه في المخزون فورياً.',
-    desc_en: 'If delivery fails, parcel is inspected, re-stocked, and customer flagged if bad faith.',
-    action_ar: 'تسجيل سبب الإلغاء وحظر العميل في حال تكرار الامتناع عن الاستلام لحمايتك.',
-    action_en: 'Cancellations categorized; habitual return abusers flagged to safeguard margins.',
+    desc_ar: 'في حال تعذر استلام الطلب، يعود الطرد للمستودع ويعاد إدخاله في المخزون يدوياً.',
+    desc_en: 'If delivery fails, the parcel returns to the warehouse and is restocked manually.',
+    action_ar: 'سجّل سبب الإلغاء وراجع سجل العميل يدوياً؛ لا يوجد حظر تلقائي للعملاء.',
+    action_en: 'Record the cancellation reason and review customer history manually; no automatic customer blocking exists.',
     impact_ar: 'حماية رأس المال من الهدر المتكرر',
     impact_en: 'Protects working capital from fraud',
     icon: RotateCcw
@@ -162,7 +162,7 @@ export const CODProcessVisualizer: React.FC<CODProcessVisualizerProps> = ({ curr
             <span>{currentLang === 'ar' ? 'البنية التحتية التشغيلية للدفع عند الاستلام' : 'COD Operating Infrastructure'}</span>
           </div>
           <h3 className="text-xl sm:text-2xl font-bold font-heading text-ink">
-            {currentLang === 'ar' ? 'دورة حياة الـ COD المتكاملة (من الطلب إلى توريد الكاش)' : 'The 8-Stage COD Lifecycle Pipeline'}
+            {currentLang === 'ar' ? 'دورة حالات الـ COD من الطلب إلى التحصيل اليدوي' : '8-Stage COD Status Flow (Manual Collection)'}
           </h3>
           <p className="text-xs sm:text-sm text-subtle mt-1">
             {currentLang === 'ar'

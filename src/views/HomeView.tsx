@@ -147,8 +147,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </h3>
             <p className="text-xs sm:text-sm text-ink-soft leading-relaxed">
               {currentLang === 'ar'
-                ? 'الدفع عند الاستلام ليس مجرد خيار فرعي؛ بل هو عصب التجارة في مصر. نوفر نظاماً متكاملاً من التأكيد بالواتساب وحتى مطابقة تحصيلات مناديب الشحن لخفض المرتجعات.'
-                : 'COD is not an afterthought; it is the lifeblood of Egyptian commerce. We engineer the complete cycle from WhatsApp verification to courier cash settlement.'}
+                ? 'الدفع عند الاستلام ليس مجرد خيار فرعي؛ بل هو عصب التجارة في مصر. نوفر دورة حالات واضحة، وتسجيلاً يدوياً للتحصيل، ورسائل واتساب جاهزة للتأكيد بدلاً من ادعاء أتمتة غير موجودة.'
+                : 'COD is not an afterthought; it is the lifeblood of Egyptian commerce. We provide a clear status flow, manual collection recording, and prepared WhatsApp messages instead of pretending automation exists.'}
             </p>
           </div>
 
@@ -162,8 +162,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </h3>
             <p className="text-xs sm:text-sm text-ink-soft leading-relaxed">
               {currentLang === 'ar'
-                ? 'بنية تحتية لتعدد العملات (EGP, SAR, AED, KWD)، تسعير آلي ويدوي لأسعار الصرف، ودعم الشحن عابر الحدود لتبيع لعملاء السعودية والإمارات مباشرة.'
-                : 'Multi-currency engine (EGP, SAR, AED, KWD), dual FX system, and cross-border shipping tools to scale your sales to Gulf consumers.'}
+                ? 'عملة أساسية واحدة للمتجر، وتسجيل يدوي للطلبات الإقليمية، وشحن عابر للحدود يتم التنسيق بشأنه مع شركة شحن خارج سند. تعدد العملات وأسعار الصرف الآلية قيد التطوير.'
+                : 'One base store currency, manual regional order recording, and cross-border shipping coordinated with a courier outside Sanad. Multi-currency and automatic FX are planned.'}
             </p>
           </div>
         </div>
@@ -203,8 +203,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-subtle">
-                    {system.status === 'active' ? (currentLang === 'ar' ? 'نظام مفعل ومباشر' : 'Live Operating System') : ''}
+                  <span className={`text-xs font-semibold ${system.status === 'active' ? 'text-subtle' : 'text-warning'}`}>
+                    {system.status === 'active'
+                      ? (currentLang === 'ar' ? 'نظام مفعل ومباشر' : 'Live Operating System')
+                      : system.status === 'limited'
+                        ? (currentLang === 'ar' ? 'متاح جزئياً' : 'Partially available')
+                        : (currentLang === 'ar' ? 'قيد التطوير' : 'Planned')}
                   </span>
                   {system.badge_ar && (
                     <span className="text-[10px] font-bold text-brand bg-brand-soft px-2 py-0.5 rounded border border-brand-line">
@@ -252,7 +256,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </section>
 
-      {/* 6. DUAL EXCHANGE RATE SIMULATOR */}
+      {/* 6. CURRENCY & FX STATUS */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <ExchangeRateSimulator currentLang={currentLang} />
       </section>
@@ -340,7 +344,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   100 <span className="text-sm font-normal text-white/70">{currentLang === 'ar' ? 'جنيه مصري / شهر' : 'EGP / month'}</span>
                 </div>
                 <div className="text-xs text-white/70">
-                  {currentLang === 'ar' ? 'مرونة كاملة، تجديد شهري بدون التزام.' : 'Flexible monthly billing, cancel anytime.'}
+                  {currentLang === 'ar' ? 'مرونة كاملة، تجديد شهري بدون التزام طويل الأجل.' : 'Flexible monthly billing; contact support to cancel renewal.'}
                 </div>
               </div>
 

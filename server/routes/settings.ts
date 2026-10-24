@@ -19,7 +19,8 @@ import {
 } from "../validate.js";
 import { verifyMerchantPassword, sessionCookieName } from "../auth.js";
 import { writeAudit } from "../services/account.js";
-import { integrationStatus } from "../services/integrations.js";
+import { integrationStatus, paymentService } from "../services/integrations.js";
+import { assertOwnerMayEditStore } from "../services/storePolicy.js";
 
 export const settingsRouter = Router();
 
@@ -91,6 +92,7 @@ settingsRouter.get(
       domains: domains.map(sanitizeDomain),
       team,
       integrations: integrationStatus(),
+      online_payments_available: paymentService.configured,
       usage: { products: productCount, orders: orderCount, customers: customerCount },
       public_url: `/store/${req.ownedStore!.subdomain}`,
     });
@@ -106,6 +108,14 @@ settingsRouter.patch(
   asyncHandler(async (req, res) => {
     const storeId = req.ownedStore!.id;
     const b = req.body;
+    assertOwnerMayEditStore(b);
+    if (b.onlinePaymentEnabled === true && !paymentService.configured) {
+      throw new ApiError(
+        409,
+        "PAYMENT_PROVIDER_NOT_CONFIGURED",
+        "لا يمكن تفعيل الدفع الإلكتروني قبل تثبيت مزود دفع فعلي. استخدم الدفع عند الاستلام، أو أضف محوّل الدفع أولاً."
+      );
+    }
     const store = await prisma.store.update({
       where: { id: storeId },
       data: {

@@ -9,6 +9,7 @@ import { onboardingPatchSchema } from "../validate.js";
 import { ensureStoreDefaults, writeAudit } from "../services/account.js";
 import { env } from "../env.js";
 import { paymentService } from "../services/integrations.js";
+import { onboardingIdentityTouched, OWNER_IDENTITY_LOCKED_MESSAGE } from "../services/storePolicy.js";
 
 export const onboardingRouter = Router();
 
@@ -52,7 +53,7 @@ onboardingRouter.get(
       progress: progressOf(store),
       payments: {
         codEnabled: store.codEnabled,
-        onlinePaymentEnabled: store.onlinePaymentEnabled,
+        onlinePaymentEnabled: store.onlinePaymentEnabled && paymentService.configured,
         providerConfigured: paymentService.configured,
       },
       public_url: `/store/${store.subdomain}`,
@@ -79,19 +80,12 @@ onboardingRouter.patch(
       const taken = await prisma.store.findUnique({ where: { subdomain: body.subdomain }, select: { id: true } });
       if (taken && taken.id !== store.id) throw new ApiError(409, "SUBDOMAIN_TAKEN", "This store address is already taken.");
     }
-    // Visual identity is chosen once, during onboarding. Publishing freezes it:
-    // the dashboard has no design editor, and the API enforces the same rule.
-    const brandingTouched =
-      body.templateKey !== undefined ||
-      (body.branding !== undefined && Object.keys(body.branding).length > 0);
-    if (store.onboardingCompleted && brandingTouched) {
-      throw new ApiError(
-        409,
-        "BRANDING_LOCKED",
-        "تم ضبط هوية المتجر (الشعار والألوان والقالب) أثناء الإنشاء، ولا يمكن تعديلها بعد النشر."
-      );
+    // Identity and branding are chosen once, during onboarding. After the
+    // owner submits/publishes the store, only the platform admin may edit them.
+    if (store.onboardingCompleted && onboardingIdentityTouched(body)) {
+      throw new ApiError(409, "STORE_IDENTITY_ADMIN_ONLY", OWNER_IDENTITY_LOCKED_MESSAGE);
     }
-    if (body.onlinePaymentEnabled === true && !paymentService.configured) {
+    if ((body.onlinePaymentEnabled === true || body.selling?.onlinePaymentEnabled === true) && !paymentService.configured) {
       throw new ApiError(
         409,
         "PAYMENT_PROVIDER_NOT_CONFIGURED",
@@ -214,7 +208,6 @@ onboardingRouter.post(
       data: {
         onboardingCompleted: true,
         onboardingStep: 5,
-        status: "active",
         publishedAt: store.publishedAt ?? new Date(),
       },
     });
@@ -227,16 +220,17 @@ onboardingRouter.post(
     await writeAudit({
       storeId: updated.id,
       merchantId: req.auth!.merchantId,
-      action: "store.published",
+      action: "store.submitted_for_review",
       entity: "store",
       entityId: updated.id,
-      metadata: { subdomain: updated.subdomain },
+      metadata: { subdomain: updated.subdomain, status: updated.status },
       ip: req.ip,
     });
     const branding = await prisma.storeBranding.findUnique({ where: { storeId: updated.id } });
     res.json({
       store: updated,
       branding,
+      approval_required: updated.status !== "active",
       public_url: `/store/${updated.subdomain}`,
       dashboard_url: "/dashboard",
     });

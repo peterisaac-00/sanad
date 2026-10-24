@@ -1,216 +1,145 @@
-import React, { useState, useRef } from 'react';
+import React from 'react';
 import { Language } from '../data/translations';
-import { api } from '../lib/api';
-import {
-  Upload,
-  CheckCircle2,
-  Download,
-  ShieldCheck,
-  ArrowLeft,
-  ArrowRight,
-  AlertCircle
-} from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileSpreadsheet, ListChecks, ShieldCheck } from 'lucide-react';
 
 interface MigrationCenterViewProps {
   currentLang: Language;
   onOpenStoreModal: () => void;
 }
 
+/**
+ * There is no CSV/Excel importer, column mapper, or automated migration in the
+ * product. This page must not pretend otherwise; it documents the manual path.
+ */
 export const MigrationCenterView: React.FC<MigrationCenterViewProps> = ({
   currentLang,
   onOpenStoreModal
 }) => {
-  const [selectedSource, setSelectedSource] = useState<string>('excel');
-  const [parsed, setParsed] = useState<{ rows: number; columns: string[]; fileName: string } | null>(null);
-  const [parseError, setParseError] = useState<string>('');
-  const [isRecording, setIsRecording] = useState<boolean>(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const isAr = currentLang === 'ar';
 
-  const downloadTemplate = () => {
-    const header = 'sku,name_ar,name_en,price_egp,price_sar,stock';
-    const example = 'SKU-001,قميص كتان, Linen Shirt,750,57,48';
-    const blob = new Blob([`${header}\n${example}\n`], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'Sanad_Products_Template.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+  const unavailable = [
+    isAr ? 'رفع ملف CSV أو Excel واستيراد المنتجات تلقائياً.' : 'Uploading a CSV or Excel file to import products automatically.',
+    isAr ? 'مطابقة الأعمدة أو تحويل صور المنتجات آلياً.' : 'Automatic column mapping or product image conversion.',
+    isAr ? 'استيراد الطلبات أو العملاء أو سجل المخزون من منصة أخرى.' : 'Importing orders, customers, or stock history from another platform.',
+    isAr ? 'الاحتفاظ بالروابط القديمة أو إعادة توجيهها تلقائياً.' : 'Preserving or redirecting old URLs automatically.',
+  ];
 
-  const parseCsv = (text: string): { columns: string[]; rows: number } => {
-    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-    if (lines.length < 2) throw new Error(currentLang === 'ar' ? 'الملف فارغ أو بدون صفوف بيانات.' : 'File is empty or has no data rows.');
-    const columns = lines[0].split(',').map((c) => c.trim().toLowerCase()).filter(Boolean);
-    return { columns, rows: lines.length - 1 };
-  };
-
-  const handleFile = async (file: File) => {
-    setParseError('');
-    setParsed(null);
-    try {
-      const text = await file.text();
-      const { columns, rows } = parseCsv(text);
-      setParsed({ rows, columns, fileName: file.name });
-      setIsRecording(true);
-      try {
-        await api.lead('migration_import', { source: selectedSource, fileName: file.name, rows, columns });
-      } finally {
-        setIsRecording(false);
-      }
-    } catch (e: any) {
-      setParseError(e?.message || (currentLang === 'ar' ? 'تعذر قراءة الملف.' : 'Could not read the file.'));
-    }
-  };
+  const steps = [
+    {
+      title: isAr ? 'جهّز قائمة المنتجات' : 'Prepare your product list',
+      body: isAr
+        ? 'اجمع اسم المنتج، الكود (SKU)، السعر، المخزون، والمقاسات/الألوان في ملف واحد للرجوع إليه.'
+        : 'Collect product name, SKU, price, stock, and variants in one reference file.',
+    },
+    {
+      title: isAr ? 'أنشئ متجرك وأضف المنتجات' : 'Create your store and add products',
+      body: isAr
+        ? 'أضف المنتجات من لوحة التحكم يدوياً. لا يوجد زر استيراد جماعي في النسخة الحالية.'
+        : 'Add products from the dashboard manually. There is no bulk-import button in the current release.',
+    },
+    {
+      title: isAr ? 'أعد إدخال العملاء المهمين' : 'Re-enter your key customers',
+      body: isAr
+        ? 'أضف العملاء الذين تحتاجهم للبدء. تصدير العملاء من سند متاح بصيغة CSV، لكن الاستيراد غير متاح.'
+        : 'Add the customers you need to start with. Sanad can export customers as CSV, but importing them is not available.',
+    },
+    {
+      title: isAr ? 'راجع الطلبات المفتوحة يدوياً' : 'Review open orders manually',
+      body: isAr
+        ? 'سجّل الطلبات الجارية كطلبات يدوية خارجية حتى لا تفقد متابعة أي عميل.'
+        : 'Record in-flight orders as external manual orders so no customer follow-up is lost.',
+    },
+  ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
-      {/* Header */}
-      <div className="text-center max-w-3xl mx-auto space-y-3">
-        <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand-soft px-3 py-1 rounded-brand-sm border border-brand-line">
-          {currentLang === 'ar' ? 'مركز الترحيل السريع' : 'Fast Migration Center'}
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
+      <div className="text-center max-w-3xl mx-auto space-y-4">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-warning-line bg-warning-soft px-3 py-1 text-xs font-bold text-warning">
+          <AlertCircle className="h-4 w-4" />
+          {isAr ? 'الترحيل التلقائي غير متاح' : 'Automatic migration is not available'}
         </span>
         <h1 className="text-3xl sm:text-5xl font-extrabold font-heading text-ink tracking-tight">
-          {currentLang === 'ar'
-            ? 'انقل متجرك إلى سند بدون فقدان دقيقة واحدة أو منتج واحد'
-            : 'Migrate to Sanad in Minutes Without Losing a Single Product'}
+          {isAr ? 'انقل بياناتك إلى سند يدوياً' : 'Move Your Data to Sanad Manually'}
         </h1>
         <p className="text-sm sm:text-base text-ink-soft leading-relaxed">
-          {currentLang === 'ar'
-            ? 'انقل منتجاتك، أسعارك، مقاساتك، وصورك من أي منصة سابقة عبر ملفات Excel و CSV المنظمة، وتخلص من العمولات المقتطعة للأبد.'
-            : 'Import products, variants, and inventory from legacy systems via standardized CSV/Excel files and escape percentage commission cuts.'}
+          {isAr
+            ? 'لا يوجد مركز ترحيل يرفع الملفات أو يطابق الحقول تلقائياً. نوضح هنا ما لا يعمل وما يمكنك فعله الآن حتى تبدأ بدون وعود غير حقيقية.'
+            : 'There is no migration center that uploads files or maps fields automatically. Here is what does not work and what you can do today, without false promises.'}
         </p>
       </div>
 
-      {/* Migration Supported Platforms */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto">
-        {[
-          { id: 'excel', name_ar: 'ملف Excel / CSV', name_en: 'Excel / CSV Sheets', desc_ar: 'قالب مفتوح لأي تاجر' },
-          { id: 'shopify', name_ar: 'شوبيفاي Shopify', name_en: 'Shopify Export', desc_ar: 'تصدير الكتالوج والعملاء' },
-          { id: 'woocommerce', name_ar: 'ووكومرس WooCommerce', name_en: 'WooCommerce', desc_ar: 'استيراد بضغطة زر' },
-          { id: 'salla-zid', name_ar: 'سلة وزد وسهلة', name_en: 'Salla & Zid', desc_ar: 'مطابقة الحقول تلقائياً' }
-        ].map((platform) => (
-          <button
-            key={platform.id}
-            onClick={() => setSelectedSource(platform.id)}
-            className={`p-4 rounded-brand-lg border text-center transition-all cursor-pointer space-y-1 ${
-              selectedSource === platform.id
-                ? 'border-brand bg-brand-soft text-brand-active font-bold ring-1 ring-brand/30'
-                : 'border-line bg-card hover:border-line text-ink-soft'
-            }`}
-          >
-            <div className="font-heading text-sm">{platform.name_ar}</div>
-            <div className="text-[11px] text-subtle font-normal">{platform.desc_ar}</div>
-          </button>
-        ))}
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-brand-lg border border-warning-line bg-warning-soft/50 p-5">
+          <div className="mb-3 flex items-center gap-2 text-sm font-bold text-warning">
+            <AlertCircle className="h-4 w-4" />
+            {isAr ? 'ما لا نقدمه' : 'What we do not offer'}
+          </div>
+          <ul className="space-y-2 text-xs leading-6 text-ink-soft">
+            {unavailable.map((item) => (
+              <li key={item}>• {item}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="rounded-brand-lg border border-success-line bg-success-soft/40 p-5">
+          <div className="mb-3 flex items-center gap-2 text-sm font-bold text-success">
+            <CheckCircle2 className="h-4 w-4" />
+            {isAr ? 'ما يمكنك فعله الآن' : 'What you can do now'}
+          </div>
+          <ul className="space-y-2 text-xs leading-6 text-ink-soft">
+            <li>
+              • {isAr ? 'إنشاء متجر واختيار عملته الأساسية.' : 'Create a store and choose its base currency.'}
+            </li>
+            <li>
+              • {isAr ? 'إضافة المنتجات والمناطق وأسعار الشحن يدوياً.' : 'Add products, zones, and shipping rates manually.'}
+            </li>
+            <li>
+              • {isAr ? 'تصدير الطلبات والعملاء من سند بصيغة CSV.' : 'Export orders and customers from Sanad as CSV.'}
+            </li>
+            <li>
+              • {isAr ? 'تسجيل الطلبات الخارجية كطلبات يدوية.' : 'Record external orders as manual orders.'}
+            </li>
+          </ul>
+        </div>
       </div>
 
-      {/* Interactive Spreadsheet Uploader Simulator */}
-      <div className="bg-card rounded-brand-lg border border-line shadow-sm p-6 sm:p-10 max-w-4xl mx-auto space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-line">
-          <div>
-            <h3 className="text-lg sm:text-xl font-bold font-heading text-ink">
-              {currentLang === 'ar' ? 'نموذج مطابقة البيانات الذكي (Data Mapper)' : 'Smart Spreadsheet Data Mapper'}
-            </h3>
-            <p className="text-xs text-subtle mt-0.5">
-              {currentLang === 'ar' ? 'يدعم قراءة الأعمدة بالعربية والإنجليزية تلقائياً.' : 'Reads Arabic & English column headers seamlessly.'}
+      <div className="rounded-brand-lg border border-line bg-card p-6 sm:p-8">
+        <div className="mb-5 flex items-center gap-2 text-sm font-bold text-ink">
+          <ListChecks className="h-4 w-4 text-brand" />
+          {isAr ? 'خطوات الترحيل اليدوي' : 'Manual migration steps'}
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {steps.map((step, index) => (
+            <div key={step.title} className="rounded-brand border border-line bg-surface p-4">
+              <div className="mb-1 text-[10px] font-bold text-brand">
+                {isAr ? `الخطوة ${index + 1}` : `Step ${index + 1}`}
+              </div>
+              <div className="text-sm font-bold text-ink">{step.title}</div>
+              <p className="mt-1 text-[11px] leading-6 text-subtle">{step.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-brand-lg border border-line bg-brand-soft/40 p-6 sm:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm font-bold text-brand">
+              <ShieldCheck className="h-4 w-4" />
+              {isAr ? 'ابدأ بخطوة صغيرة وآمنة' : 'Start with a small, safe step'}
+            </div>
+            <p className="text-xs leading-6 text-ink-soft">
+              {isAr
+                ? 'أنشئ المتجر، أضف أول 10 منتجات، وجرّب طلباً واحداً قبل نقل بقية الكتالوج.'
+                : 'Create the store, add your first 10 products, and test one order before moving the rest of the catalogue.'}
             </p>
           </div>
-
-          <button
-            onClick={downloadTemplate}
-            className="px-4 py-2 border border-line hover:border-line rounded-brand text-xs font-semibold text-ink-soft flex items-center gap-1.5 cursor-pointer bg-surface"
-          >
-            <Download className="w-4 h-4 text-brand" />
-            <span>{currentLang === 'ar' ? 'تحميل قالب Excel النموذجي' : 'Download Sample CSV'}</span>
-          </button>
-        </div>
-
-        {/* Upload Dropzone: parses a real CSV file locally */}
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".csv,.txt"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) handleFile(f);
-            e.target.value = '';
-          }}
-        />
-        <div
-          onClick={() => fileRef.current?.click()}
-          className={`border-2 border-dashed rounded-brand-lg p-8 text-center cursor-pointer transition-all space-y-3 ${
-            parsed
-              ? 'border-brand bg-brand-soft/50'
-              : 'border-line hover:border-brand bg-surface/50'
-          }`}
-        >
-          {parsed ? (
-            <div className="space-y-2 py-2">
-              <CheckCircle2 className="w-10 h-10 text-brand mx-auto" />
-              <div className="font-bold text-ink text-sm">
-                {currentLang === 'ar'
-                  ? `تمت قراءة ${parsed.rows} منتجاً من ${parsed.fileName}`
-                  : `${parsed.rows} products parsed from ${parsed.fileName}`}
-              </div>
-              <div className="text-xs text-subtle" dir="ltr">
-                {parsed.columns.join(' · ')}
-              </div>
-              {isRecording && (
-                <div className="text-[11px] text-subtle">
-                  {currentLang === 'ar' ? 'جاري تسجيل طلب الترحيل...' : 'Recording migration request...'}
-                </div>
-              )}
-            </div>
-          ) : (
-            <>
-              <div className="w-12 h-12 bg-card rounded-brand-lg border border-line flex items-center justify-center text-brand mx-auto shadow-2xs">
-                <Upload className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <div className="font-bold text-ink text-xs sm:text-sm">
-                  {currentLang === 'ar' ? 'انقر لاختيار ملف المنتجات (CSV) من جهازك' : 'Click to choose your product CSV file'}
-                </div>
-                <div className="text-[11px] text-subtle">
-                  {currentLang === 'ar' ? 'يُقرأ الملف محلياً في متصفحك، ويُرسل ملخص الأعمدة فقط' : 'Parsed locally in your browser; only the column summary is sent'}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-        {parseError && (
-          <div className="text-xs font-semibold text-danger bg-danger-soft border border-danger-line rounded-brand px-3 py-2 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            <span>{parseError}</span>
-          </div>
-        )}
-
-        {/* Data Ownership Principles */}
-        <div className="bg-surface p-4 rounded-brand-lg border border-line text-xs text-ink-soft flex items-center gap-3">
-          <ShieldCheck className="w-6 h-6 text-brand flex-shrink-0" />
-          <div>
-            <span className="font-bold text-ink block">
-              {currentLang === 'ar' ? 'مبدأ ملكية بيانات التاجر:' : 'Absolute Merchant Data Ownership:'}
-            </span>
-            <span>
-              {currentLang === 'ar'
-                ? 'مثلما تستورد بياناتك بسهولة، يمكنك تصدير كافة منتجاتك وطلباتك وعملائك في أي وقت وبصيغ مفتوحة دون احتجاز بياناتك.'
-                : 'Just as easily as you import, you can export all your products, orders, and customer databases anytime.'}
-            </span>
-          </div>
-        </div>
-
-        {/* Action Button */}
-        <div className="text-center pt-2">
           <button
             onClick={onOpenStoreModal}
-            className="px-8 py-3.5 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-brand transition-colors cursor-pointer shadow-xs inline-flex items-center gap-2"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-brand bg-brand px-5 py-3 text-xs font-bold text-white transition-colors hover:bg-brand-hover"
           >
-            <span>{currentLang === 'ar' ? 'ابدأ ترحيل متجرك الآن بـ 100 ج.م/شهر' : 'Start Your Migration Now'}</span>
-            {currentLang === 'ar' ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+            <FileSpreadsheet className="h-4 w-4" />
+            {isAr ? 'ابدأ متجرك الآن' : 'Start Your Store Now'}
           </button>
         </div>
       </div>

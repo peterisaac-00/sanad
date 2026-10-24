@@ -206,7 +206,7 @@ export const StoreCreationModal: React.FC<StoreCreationModalProps> = ({
                       </span>
                     </div>
                     <p className="text-[11px] text-subtle mt-1">
-                      {currentLang === 'ar' ? 'يمكنك ربط نطاقك المستقل (.com / .eg / .sa) لاحقاً مجاناً.' : 'You can connect a custom domain (.com / .eg / .sa) later for free.'}
+                      {currentLang === 'ar' ? 'يمكنك ربط نطاقك المستقل (.com / .eg / .sa) قريباً؛ ربط النطاقات قيد التطوير.' : 'Custom domain connection (.com / .eg / .sa) is planned; it is not available yet.'}
                     </p>
                   </div>
 

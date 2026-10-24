@@ -237,6 +237,7 @@ export async function bulkOrderStatus(input: {
 
 export const ORDER_EXPORT_COLUMNS = [
   "orderNumber",
+  "source",
   "createdAt",
   "status",
   "paymentStatus",

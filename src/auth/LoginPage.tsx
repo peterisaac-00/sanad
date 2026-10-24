@@ -26,11 +26,16 @@ export function LoginPage() {
 
   // A draft store has no console yet, regardless of the ?next= hint: finish
   // onboarding (design + publish) before any dashboard destination is allowed.
-  const destination = (store: any) =>
-    store?.onboardingCompleted ? safeNextPath(nextParam, "/dashboard") : "/onboarding";
+  // Platform admins, however, can go straight to /admin even without a store.
+  const destination = (payload: { merchant?: any; store?: any } | null) => {
+    if (nextParam && /^\/admin(\/|$)/.test(nextParam) && payload?.merchant?.role === "admin") {
+      return safeNextPath(nextParam, "/admin");
+    }
+    return payload?.store?.onboardingCompleted ? safeNextPath(nextParam, "/dashboard") : "/onboarding";
+  };
 
   useEffect(() => {
-    if (!loading && session) navigate(destination(session.store), { replace: true });
+    if (!loading && session) navigate(destination(session), { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, session]);
 
@@ -40,7 +45,7 @@ export function LoginPage() {
 
   const finishLogin = (result: { merchant: any; store: any }) => {
     setSession(result);
-    navigate(destination(result.store), { replace: true });
+    navigate(destination(result), { replace: true });
   };
 
   const submit = async (event: React.FormEvent) => {

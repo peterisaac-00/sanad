@@ -27,8 +27,8 @@ export const FAQS_DATA: FAQItem[] = [
     category_name_en: 'Pricing & Commission',
     question_ar: 'ما هي التكاليف الخارجية التي قد أدفعها لجهات أخرى؟',
     question_en: 'What external third-party costs might I incur with outside providers?',
-    answer_ar: 'نحن شفافون تماماً: الاشتراك الثابت للمنصة يغطي تشغيل واستضافة متجرك ولوحة التحكم. التكاليف الخارجية التي لا تعود للمنصة هي: (1) رسوم المعالجة البنكية لبوابات الدفع الإلكتروني إن قمت بربطها (مثل باي موب أو فوري بنسبة تقارب 2.5% تذهب للبنك)، (2) تكلفة بوالص الشحن التي تسددها لشركات النقل مباشرة، (3) رسوم شراء اسم النطاق الخاص (.com / .eg) إن أردت شراءه من مسجل نطاقات خارجي.',
-    answer_en: 'We maintain complete transparency: Our fixed subscription covers store operations, hosting, and operations software. External costs paid to third parties include: (1) Merchant acquiring fees set by payment gateways if integrated, (2) Courier freight tariffs paid directly to logistics providers, (3) Domain registrar annual fees if registering a custom .com/.eg domain.'
+    answer_ar: 'نحن شفافون تماماً: الاشتراك الثابت للمنصة يغطي تشغيل المتجر واستضافته ولوحة التحكم ومناطق الشحن اليدوية. التكاليف الخارجية التي لا تعود للمنصة هي: (1) لا توجد رسوم دفع إلكتروني لأن الخدمة غير متاحة حالياً، (2) تكلفة بوالص الشحن التي تسددها لشركات النقل مباشرة — الربط والتتبع داخل سند غير متاحين، (3) النطاق الفرعي مجاني؛ ربط نطاق مستقل غير متاح بعد.',
+    answer_en: 'We maintain complete transparency: The fixed subscription covers store operations, hosting, the dashboard, and manual shipping zones. External costs include: (1) no payment-gateway fees because online payments are not available yet, (2) courier freight paid directly to logistics providers — Sanad has no carrier integration or tracking, (3) the subdomain is free; connecting a custom domain is not available yet.'
   },
   {
     id: 'c3',
@@ -37,8 +37,8 @@ export const FAQS_DATA: FAQItem[] = [
     category_name_en: 'Pricing & Commission',
     question_ar: 'هل أستطيع إلغاء اشتراكي في أي وقت؟',
     question_en: 'Can I cancel my subscription at any time?',
-    answer_ar: 'نعم، لا يوجد أي إلزام طويل الأجل في الخطة الشهرية. يمكنك إلغاء اشتراكك بنقرة واحدة من لوحة التحكم، وبياناتك تظل محفوظة ومتاحة للتصدير بملفات Excel / CSV بالكامل دون أي قيود.',
-    answer_en: 'Yes, there is no long-term lock-in on the monthly plan. You can cancel with one click from your admin console, and your merchant data remains exportable to CSV/Excel anytime.'
+    answer_ar: 'نعم، لا يوجد أي إلزام طويل الأجل في الخطة الشهرية. يمكنك إلغاء تجديد الاشتراك بالتواصل مع الدعم قبل موعده، وتبقى بياناتك محفوظة. تصدير الطلبات والعملاء متاح بصيغة CSV؛ تصدير كامل البيانات بصيغ أخرى قيد التطوير.',
+    answer_en: 'Yes, there is no long-term lock-in on the monthly plan. Contact support before renewal to cancel, and your data remains stored. Orders and customers can be exported as CSV; a complete export in other formats is planned.'
   },
   {
     id: 'o1',
@@ -47,8 +47,8 @@ export const FAQS_DATA: FAQItem[] = [
     category_name_en: 'COD & Logistics',
     question_ar: 'كيف يساعدني نظام سند في تقليل مرتجعات الدفع عند الاستلام (COD)؟',
     question_en: 'How does Sanad Commerce help me reduce Cash on Delivery (COD) returns?',
-    answer_ar: 'صممنا المنصة على أساس دورة حياة واقعية للتجارة في مصر والوطن العربي: (1) تتبع الحالات من التأكيد وحتى التحصيل الفعلي، (2) قوالب تأكيد سريعة عبر واتساب للتحقق من دقة العنوان قبل الشحن، (3) إمكانية إضافة رسم رمزي على COD، (4) إشعار صباحي تلقائي للعميل يوم خروج الشحنة مع المندوب، (5) حظر العملاء المتكررين في رفض الشحنات.',
-    answer_en: 'We architected the platform around local Arab commerce dynamics: (1) Full order lifecycle from verification to cash collection, (2) WhatsApp verification templates prior to dispatch, (3) Optional COD surcharge, (4) Morning delivery day alerts with exact cash amount required, (5) Flagging chronic non-serious buyers.'
+    answer_ar: 'صممنا المنصة على أساس دورة حياة واقعية للتجارة في مصر والوطن العربي: (1) تتبع الحالات من التأكيد وحتى التحصيل الفعلي، (2) رسالة تأكيد جاهزة تُفتح في واتساب ويرسلها فريقك يدوياً للتحقق من العنوان قبل الشحن، (3) إمكانية إضافة رسم رمزي على COD، (4) تنبيه يدوي/داخلي قبل خروج الشحنة، (5) حظر العملاء المتكررين في رفض الشحنات.',
+    answer_en: 'We architected the platform around local Arab commerce dynamics: (1) Full order lifecycle from verification to cash collection, (2) A prepared WhatsApp confirmation message that your team sends manually before dispatch, (3) Optional COD surcharge, (4) Manual/internal pre-dispatch reminders, (5) Flagging chronic non-serious buyers.'
   },
   {
     id: 'o2',
@@ -67,8 +67,8 @@ export const FAQS_DATA: FAQItem[] = [
     category_name_en: 'Gulf & Multi-Currency',
     question_ar: 'كيف أبيع لعملاء السعودية والإمارات والخليج وأنا في مصر؟',
     question_en: 'How can I sell to customers in Saudi Arabia, UAE, and GCC while based in Egypt?',
-    answer_ar: 'المنصة مصممة معمارياً للتجارة الإقليمية العابرة للحدود: يمكنك تفعيل عرض الأسعار بالريال السعودي (SAR) والدرهم الإماراتي (AED) والدينار الكويتي (KWD). يدفع العميل الخليجي إلكترونياً ببطاقته أو عبر Apple Pay، وتشحن له عبر شركات الشحن الجوي السريع الدولية مع طباعة بوالص الشحن والفواتير المصاحبة.',
-    answer_en: 'The architecture is engineered for cross-border commerce: Enable localized prices in SAR, AED, KWD. Gulf shoppers pay digitally via cards or Apple Pay, and you ship via express air couriers with automated export packing slips.'
+    answer_ar: 'المنصة تدعم تسجيل الطلبات الإقليمية يدوياً: يمكنك إدخال اسم العميل وعنوانه بعملة المتجر، والدفع عند الاستلام أو التحويل البنكي الذي تسجله يدوياً. الدفع الإلكتروني بالبطاقات وApple Pay غير متاح في النسخة الحالية، والشحن الدولي يتم بالتنسيق مع شركة الشحن خارج سند.',
+    answer_en: 'The platform supports manually recorded regional orders: enter the customer name and address in your store currency, with cash on delivery or a bank transfer you record manually. Card payments and Apple Pay are not available in the current release, and international shipping is coordinated with the courier outside Sanad.'
   },
   {
     id: 'g2',
@@ -77,18 +77,18 @@ export const FAQS_DATA: FAQItem[] = [
     category_name_en: 'Gulf & Multi-Currency',
     question_ar: 'ما الفرق بين نظام سعر الصرف التلقائي واليدوي؟',
     question_en: 'What is the difference between automatic and manual exchange rate modes?',
-    answer_ar: 'الوضع التلقائي يقوم بتحديث أسعار صرف العملات مقابل العملة الأساسية عبر واجهة بيانات أسعار الصرف الرسمية. الوضع اليدوي يمنحك السيطرة الكاملة على تثبيت سعر صرف محدد (مثلاً تحديد سعر تحويل الريال للجنيه يدوياً) أو إضافة هامش أمان بنسبة مئوية (مثل +2% أو +3%) للتحوط من أي فروقات بنكية.',
-    answer_en: 'Automatic mode fetches official live exchange rates from FX data sources. Manual mode gives you total autonomy to lock in fixed custom exchange rates or add a safety buffer margin (+2% or +3%) against currency fluctuation.'
+    answer_ar: 'لا يوجد حالياً تحديث تلقائي لأسعار الصرف. يحدد المتجر عملة أساسية واحدة وتُعرض الأسعار بها؛ تعدد العملات والتحويل التلقائي بينها قيد التطوير ولم يُفعّل بعد.',
+    answer_en: 'There is no automatic FX update today. Each store has one base currency and prices are shown in it; multi-currency conversion is planned and not enabled yet.'
   },
   {
     id: 'm1',
     category: 'marketing',
     category_name_ar: 'التسويق ومنصات ميتا وجوجل وواتساب',
     category_name_en: 'Marketing & Ad Channels',
-    question_ar: 'كيف يدعم المتجر إعلانات فيسبوك وإنستغرام (Meta Commerce)؟',
-    question_en: 'How does the store integrate with Facebook & Instagram (Meta Commerce)?',
-    answer_ar: 'نوفر تكاملاً شاملاً مع Meta: (1) ربط Meta Pixel و Conversions API (CAPI) لضمان تسجيل 100% من أحداث الشراء وتخطي مشاكل حظر المتصفحات، (2) تصدير كتالوج منتجات متجدد لحظياً (XML Product Feed) للربط المباشر مع مدير المعاملات التجارية بميتا ومطابقة إعلانات الكتالوج الديناميكية.',
-    answer_en: 'We provide a complete Meta Commerce foundation: (1) Meta Pixel + Server-Side Conversions API (CAPI) to record 100% of purchase signals despite browser drops, (2) Real-time XML Product Feed syncing directly to Meta Commerce Manager for dynamic catalog ads.'
+    question_ar: 'هل يوجد تكامل مع Meta Commerce أو Google؟',
+    question_en: 'Is there a Meta Commerce or Google integration?',
+    answer_ar: 'لا توجد تغذية تلقائية أو تكامل Meta Pixel/CAPI داخل سند في النسخة الحالية، ولم نُطلق خلاصة منتجات حية. المتاح هو تصدير الطلبات والعملاء بملفات CSV لاستخدامها في أدواتك الخارجية إلى أن يكتمل التكامل.',
+    answer_en: 'There is no automated Meta Pixel/CAPI integration or live product feed in the current release. You can export orders and customers as CSV for external tools until the integration ships.',
   },
   {
     id: 't1',
@@ -97,7 +97,7 @@ export const FAQS_DATA: FAQItem[] = [
     category_name_en: 'Tech & Migration',
     question_ar: 'أنا أستخدم شوبيفاي / سلة / ووكومرس حالياً، كيف أنقل متجري إلى سند؟',
     question_en: 'I currently sell on Shopify / Salla / WooCommerce, how do I migrate to Sanad?',
-    answer_ar: 'مركز الترحيل (Migration Center) يتيح لك استيراد ملفات CSV / Excel التي تحتوي على منتجاتك، أسعارها، تصنيفاتها، ومخزونها. كل ما عليك فعله هو تصدير منتجاتك من منصتك السابقة واستيرادها إلى سند بنقرات معدودة دون الحاجة لإعادة كتابة كل منتج يدوياً.',
-    answer_en: 'Our Migration Center enables importing CSV/Excel files containing your products, prices, categories, and inventory. Simply export your data from your legacy platform and import it into Sanad in a few clicks without manual retyping.'
+    answer_ar: 'مركز الترحيل التلقائي غير متاح حالياً. يمكنك إضافة المنتجات والفئات يدوياً من لوحة التحكم، وتصدير الطلبات والعملاء بملفات CSV. استيراد كتالوج كامل من منصة سابقة قيد التطوير ولم يُفعّل بعد.',
+    answer_en: 'Automatic migration is not available yet. Add products and categories manually from the dashboard, and export orders and customers as CSV. Bulk catalog import from a legacy platform is planned and not enabled.'
   }
 ];

@@ -271,25 +271,100 @@ contentRouter.get(
       orderBy: { createdAt: "desc" },
       include: { attributions: { orderBy: { createdAt: "desc" }, take: 20, include: { order: true } } },
     });
-    const aggregates = await prisma.affiliateAttribution.groupBy({
-      by: ["affiliateId", "status"],
+    const attributions = await prisma.affiliateAttribution.findMany({
       where: { storeId },
-      _sum: { commissionAmount: true },
-      _count: { _all: true },
+      select: {
+        affiliateId: true,
+        status: true,
+        commissionAmount: true,
+        settledAt: true,
+        order: { select: { status: true } },
+      },
     });
     res.json({
       affiliates: affiliates.map((a) => {
-        const rows = aggregates.filter((row) => row.affiliateId === a.id);
+        const rows = attributions.filter((row) => row.affiliateId === a.id);
+        const pending = rows.filter((row) => row.status === "pending");
+        const settleable = pending.filter((row) => row.order.status === "delivered");
+        const paid = rows.filter((row) => row.status === "paid");
+        const settledDates = paid.map((row) => row.settledAt).filter((d): d is Date => Boolean(d));
         return {
           ...a,
-          ordersCount: rows.reduce((s, r) => s + r._count._all, 0),
-          commissionTotal: rows.reduce((s, r) => s + (r._sum.commissionAmount ?? 0), 0),
-          commissionPending: rows.filter((r) => r.status === "pending").reduce((s, r) => s + (r._sum.commissionAmount ?? 0), 0),
+          ordersCount: rows.length,
+          commissionTotal: rows.reduce((s, r) => s + r.commissionAmount, 0),
+          commissionPending: pending.reduce((s, r) => s + r.commissionAmount, 0),
+          commissionSettleable: settleable.reduce((s, r) => s + r.commissionAmount, 0),
+          commissionSettled: paid.reduce((s, r) => s + r.commissionAmount, 0),
+          settleableCount: settleable.length,
+          lastSettledAt: settledDates.length ? new Date(Math.max(...settledDates.map((d) => d.getTime()))) : null,
         };
       }),
+      settlement: {
+        enabled: true,
+        mode: "manual_external",
+        note: "تصفية العمولات تُسجَّل بعد تحويل المبلغ يدوياً خارج سند. لا يوجد صرف آلي أو رصيد قابل للسحب.",
+      },
     });
   })
 );
+
+contentRouter.post(
+  "/api/stores/:subdomain/affiliates/:id/settle",
+  asyncHandler(requireAuth),
+  validateParams(idParamSchema),
+  asyncHandler(requireStoreOwnership),
+  asyncHandler(async (req, res) => {
+    const storeId = req.ownedStore!.id;
+    const affiliate = await prisma.affiliate.findFirst({ where: { id: req.params.id, storeId } });
+    if (!affiliate) throw new ApiError(404, "AFFILIATE_NOT_FOUND", "Affiliate not found.");
+
+    const settledAt = new Date();
+    const result = await prisma.$transaction(async (tx) => {
+      const rows = await tx.affiliateAttribution.findMany({
+        where: {
+          storeId,
+          affiliateId: affiliate.id,
+          status: "pending",
+          order: { status: "delivered" },
+        },
+        select: { id: true, commissionAmount: true },
+      });
+      if (!rows.length) return null;
+      await tx.affiliateAttribution.updateMany({
+        where: { id: { in: rows.map((row) => row.id) }, status: "pending" },
+        data: { status: "paid", settledAt },
+      });
+      return {
+        count: rows.length,
+        amount: Math.round(rows.reduce((sum, row) => sum + row.commissionAmount, 0) * 100) / 100,
+      };
+    });
+
+    if (!result) {
+      throw new ApiError(
+        409,
+        "AFFILIATE_NOTHING_TO_SETTLE",
+        "لا توجد عمولات مستحقة على طلبات تم توصيلها. لا تُصفّى العمولة قبل اكتمال الطلب."
+      );
+    }
+
+    await writeAudit({
+      storeId,
+      merchantId: req.auth!.merchantId,
+      action: "affiliate.commissions_settled",
+      entity: "affiliate",
+      entityId: affiliate.id,
+      metadata: { count: result.count, amount: result.amount, mode: "manual_external" },
+      ip: req.ip,
+    });
+
+    res.json({
+      settled: { count: result.count, amount: result.amount, settledAt },
+      note: "تم تسجيل تصفية العمولات. هذا إقرار بأن التحويل تم يدوياً خارج سند، وليس دفعة آلية.",
+    });
+  })
+);
+
 
 contentRouter.post(
   "/api/stores/:subdomain/affiliates",

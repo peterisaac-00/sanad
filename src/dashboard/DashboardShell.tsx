@@ -37,7 +37,8 @@ import { Link, navigate, usePath } from "../lib/router";
 import { useSession } from "../lib/session";
 import { useTheme, ThemeToggle } from "../lib/theme";
 import { BrandLogo } from "../components/Brand";
-import { Badge, Spinner, cn, useToast } from "../components/ui";
+import { Alert, Badge, Spinner, cn, useToast } from "../components/ui";
+import { FEATURE_REGISTRY, isFeatureVisible } from "./features";
 
 export interface DashboardContextValue {
   store: any;
@@ -100,7 +101,7 @@ const NAV_GROUPS: Array<{
       { label: "المحفظة", path: "/dashboard/wallet", icon: Wallet },
       { label: "الدروبشيبينغ", path: "/dashboard/dropshipping", icon: Boxes },
       { label: "الإعدادات", path: "/dashboard/settings", icon: Settings },
-      { label: "مركز التعلم", path: "/dashboard/learn", icon: GraduationCap },
+      { label: "الدليل السريع", path: "/dashboard/learn", icon: GraduationCap },
     ],
   },
 ];
@@ -211,9 +212,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       {NAV_GROUPS.map((group) => (
         <div key={group.label} className="pt-3">
           <div className="mb-1.5 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-subtle">{group.label}</div>
-          {group.items.map((item) => {
+          {group.items.filter((item) => isFeatureVisible(item.path)).map((item) => {
             const active = matches(path, item.path);
             const Icon = item.icon;
+            const feature = FEATURE_REGISTRY[item.path];
             return (
               <Link
                 key={item.path}
@@ -230,7 +232,21 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                   <Icon className="h-4 w-4" />
                 </span>
                 <span className="truncate">{item.label}</span>
-                {active ? <span className="ms-auto h-1.5 w-1.5 rounded-full bg-brand" /> : null}
+                <span className="ms-auto flex shrink-0 items-center gap-1">
+                  {feature?.badge ? (
+                    <span
+                      className={cn(
+                        "rounded-full border px-1.5 py-0.5 text-[8px] font-semibold",
+                        feature.state === "needs_setup"
+                          ? "border-warning-line bg-warning-soft text-warning"
+                          : "border-line bg-surface text-subtle"
+                      )}
+                    >
+                      {feature.badge}
+                    </span>
+                  ) : null}
+                  {active ? <span className="h-1.5 w-1.5 rounded-full bg-brand" /> : null}
+                </span>
               </Link>
             );
           })}
@@ -239,7 +255,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="mt-4 rounded-brand border border-line bg-surface p-3">
         <div className="flex items-center gap-1.5 text-[10px] font-bold text-ink-soft"><BookOpen className="h-3 w-3 text-brand" /> تحتاج مساعدة؟</div>
         <Link href="/dashboard/learn" className="mt-1.5 block text-[11px] leading-5 text-subtle hover:text-ink">
-          أدلة إعداد المتجر والطلبات والشحن داخل مركز التعلم.
+          أدلة قصيرة لإعداد المتجر والطلبات والشحن في الدليل السريع.
         </Link>
       </div>
     </nav>
@@ -427,7 +443,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                       <div className="mt-0.5 text-[10px] text-subtle">{store.storeName}</div>
                     </div>
                     <Link href="/dashboard/settings" className="mt-1 flex items-center gap-2 rounded-brand-sm px-3 py-2 text-[11px] text-ink-soft hover:bg-surface hover:text-ink"><Settings className="h-3.5 w-3.5" /> إعدادات المتجر</Link>
-                    <Link href="/dashboard/learn" className="flex items-center gap-2 rounded-brand-sm px-3 py-2 text-[11px] text-ink-soft hover:bg-surface hover:text-ink"><GraduationCap className="h-3.5 w-3.5" /> مركز التعلم</Link>
+                    <Link href="/dashboard/learn" className="flex items-center gap-2 rounded-brand-sm px-3 py-2 text-[11px] text-ink-soft hover:bg-surface hover:text-ink"><GraduationCap className="h-3.5 w-3.5" /> الدليل السريع</Link>
                     <button onClick={handleLogout} className="flex w-full items-center gap-2 rounded-brand-sm px-3 py-2 text-[11px] text-danger hover:bg-danger-soft"><LogOut className="h-3.5 w-3.5" /> تسجيل الخروج</button>
                   </div>
                 ) : null}
@@ -435,7 +451,30 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          <main className="mx-auto w-full max-w-[1440px] px-4 pb-28 pt-5 sm:px-6 lg:pb-10">{children}</main>
+          <main className="mx-auto w-full max-w-[1440px] px-4 pb-28 pt-5 sm:px-6 lg:pb-10">
+            {store.status === "pending" ? (
+              <div className="mb-4">
+                <Alert tone="warning" title="متجرك بانتظار موافقة الإدارة">
+                  أرسلت متجرك للمراجعة. يمكنك تجهيز المنتجات والطلبات الآن، لكن واجهة المتجر لن تفتح للعملاء حتى تعتمده إدارة سند.
+                </Alert>
+              </div>
+            ) : null}
+            {store.status === "rejected" ? (
+              <div className="mb-4">
+                <Alert tone="error" title="طلب فتح المتجر يحتاج تعديلاً">
+                  راجع بيانات متجرك أو تواصل مع إدارة سند. لن يظهر المتجر للعملاء حتى يتم اعتماده.
+                </Alert>
+              </div>
+            ) : null}
+            {store.status === "suspended" ? (
+              <div className="mb-4">
+                <Alert tone="error" title="المتجر موقوف مؤقتاً">
+                  أوقفت إدارة سند واجهة المتجر. تواصل مع الإدارة لمعرفة سبب الإيقاف وطريقة الاستئناف.
+                </Alert>
+              </div>
+            ) : null}
+            {children}
+          </main>
 
           {/* Mobile bottom navigation */}
           <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">

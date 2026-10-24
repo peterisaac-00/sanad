@@ -248,8 +248,8 @@ export const PricingView: React.FC<PricingViewProps> = ({ currentLang, onOpenSto
           </h4>
           <p className="text-xs text-ink-soft max-w-xl">
             {currentLang === 'ar'
-              ? 'يمكنك إلغاء اشتراكك الشهري في أي وقت بنقرة زر واحدة من لوحة التحكم. بيانات منتجاتك وقوائم عملائك ملكك دائماً ويمكنك تصديرها بملفات Excel / CSV بدون أي عوائق.'
-              : 'You can cancel your monthly plan anytime with one click. Your product data, catalogs, and customer lists belong exclusively to you.'}
+              ? 'يمكنك إلغاء تجديد اشتراكك الشهري بالتواصل مع الدعم قبل موعد التجديد. بيانات منتجاتك وقوائم عملائك ملكك دائماً، ويمكنك تصدير الطلبات والعملاء بملفات CSV بدون عوائق.'
+              : 'You can cancel renewal by contacting support before the renewal date. Your product data, catalogs, and customer lists belong to you, and orders and customers can be exported as CSV.'}
           </p>
         </div>
 

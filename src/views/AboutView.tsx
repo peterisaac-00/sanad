@@ -66,8 +66,8 @@ export const AboutView: React.FC<AboutViewProps> = ({ currentLang, onOpenStoreMo
           </h3>
           <p className="text-xs text-ink-soft leading-relaxed">
             {currentLang === 'ar'
-              ? 'بيانات متجرك، منتجاتك، عملاؤك، وأرقام هواتفهم ملكية حصرية لك وحدك. نوفر لك أدوات تصدير كاملة بملفات Excel في أي وقت بدون أي تعقيد.'
-              : 'Your store records, catalog, and customers belong strictly to you. Export your entire dataset anytime in open formats.'}
+              ? 'بيانات متجرك، منتجاتك، عملاؤك، وأرقام هواتفهم ملكية حصرية لك وحدك. يمكنك تصدير الطلبات والعملاء بملفات CSV في أي وقت؛ تصدير كامل البيانات بصيغ أخرى قيد التطوير.'
+              : 'Your store records, catalog, and customers belong strictly to you. Export orders and customers as CSV at any time; a complete export in other formats is planned.'}
           </p>
         </div>
       </div>
@@ -90,8 +90,8 @@ export const AboutView: React.FC<AboutViewProps> = ({ currentLang, onOpenStoreMo
             </span>
             <span>
               {currentLang === 'ar'
-                ? 'الاشتراك الشهري (100 ج.م) يمنحك المرونة الكاملة للإلغاء بنقرة زر في أي وقت. الاشتراك السنوي (1,000 ج.م) يوفر لك 200 ج.م ويمنحك استقراراً لمدة 12 شهراً كاملاً.'
-                : 'Monthly plans (100 EGP) offer total cancellation freedom anytime. Annual plans (1,000 EGP) save 200 EGP and secure 12 months of service.'}
+                ? 'الاشتراك الشهري (100 ج.م) يتجدد شهرياً ويمكنك إلغاء التجديد بالتواصل مع الدعم قبل موعده. الاشتراك السنوي (1,000 ج.م) يوفر لك 200 ج.م ويغطي 12 شهراً كاملاً.'
+                : 'Monthly plans (100 EGP) renew monthly; contact support before renewal to cancel. Annual plans (1,000 EGP) save 200 EGP and cover 12 full months.'}
             </span>
           </div>
 
@@ -101,8 +101,8 @@ export const AboutView: React.FC<AboutViewProps> = ({ currentLang, onOpenStoreMo
             </span>
             <span>
               {currentLang === 'ar'
-                ? 'المنصة لا تحتجز أي أموال تخص مبيعاتك نهائياً؛ أموال الدفع الإلكتروني تذهب من بوابة الدفع لحسابك البنكي مباشرة، وأموال الـ COD توردها شركة الشحن لحسابك مباشرة.'
-                : 'Sanad never acts as a funds custodian. Gateway payouts flow to your bank; courier COD cash is remitted directly to you.'}
+                ? 'المنصة لا تحتجز أي أموال تخص مبيعاتك. الدفع عند الاستلام يُحصَّل ويُورَّد من شركة الشحن إلى حسابك مباشرة. الدفع الإلكتروني غير متاح حالياً؛ وعند إضافته لاحقاً ستذهب الأموال من بوابة الدفع إلى حسابك البنكي مباشرة.'
+                : 'Sanad never acts as a funds custodian. COD cash is collected and remitted by the courier directly to you. Online payments are not available yet; when added, payouts will flow from the gateway to your bank directly.'}
             </span>
           </div>
         </div>

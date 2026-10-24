@@ -30,7 +30,7 @@ declare global {
   namespace Express {
     interface Request {
       auth?: AuthContext;
-      ownedStore?: { id: string; subdomain: string };
+      ownedStore?: { id: string; subdomain: string; currency: string };
     }
   }
 }
@@ -108,7 +108,7 @@ export async function requireStoreOwnership(req: Request, _res: Response, next: 
   const subdomain = String(req.params.subdomain || "").toLowerCase();
   const store = await prisma.store.findUnique({
     where: { subdomain },
-    select: { id: true, subdomain: true },
+    select: { id: true, subdomain: true, currency: true },
   });
   if (!store) {
     next(new ApiError(404, "STORE_NOT_FOUND", "Store not found."));
@@ -315,4 +315,14 @@ export const mediaLimiter = distributedRateLimit({
     const merchant = limitKeys.merchant(req, "media");
     return merchant ? [merchant] : [];
   },
+});
+
+/** Storefront visit beacons are cheap, but still bounded per IP. */
+export const visitLimiter = distributedRateLimit({
+  name: "storefront-visits",
+  windowMs: 15 * MINUTE,
+  limit: 120,
+  identities: (req) => [ip(req, "storefront-visits")],
+  code: "VISIT_RATE_LIMITED",
+  message: "Too many visit beacons. Please wait before trying again.",
 });

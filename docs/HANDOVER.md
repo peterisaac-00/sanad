@@ -42,11 +42,18 @@ All variables are documented in `.env.example`. The critical ones:
 Store them in your hosting provider's secret manager (never in git, chat, or
 screenshots).
 
-Promote a merchant to admin with SQL (no shared secret exists by design):
+There is no seeded admin account and no separate admin login. Register normally,
+then promote that merchant account with SQL:
 
 ```sql
 UPDATE merchants SET role='admin' WHERE email='owner@example.com';
 ```
+
+Sign out and back in (or refresh the page), then open `/admin`. The admin area
+also has direct links for stores, subscription payments, visits, and leads:
+`/admin/stores`, `/admin/payments`, `/admin/visits`, `/admin/leads`. The role
+is checked from PostgreSQL on every admin API request, so a merchant cannot
+self-promote through the UI or a request header.
 
 Admins can list every lead via `GET /api/admin/leads`. Merchants always see
 only their own store's leads via `GET /api/leads`.
@@ -54,9 +61,10 @@ only their own store's leads via `GET /api/leads`.
 ## 3. Create the first merchant account
 
 Option A — self-serve UI: open the site, **Create account**, then finish the
-five-step onboarding wizard. The store is only public after the merchant
-presses publish; before that `/store/:subdomain` shows a branded
-“قيد التجهيز” page.
+five-step onboarding wizard. Completing onboarding submits the store for review;
+it does not open it. A platform admin must approve the store from `/admin/stores`
+before customers can reach `/store/:subdomain`. While the store is pending,
+rejected, or suspended, the public URL is closed.
 
 Option B — API:
 
@@ -82,6 +90,9 @@ Invoke-RestMethod -Method PATCH https://shop.example.com/api/onboarding `
 Invoke-RestMethod -Method POST https://shop.example.com/api/onboarding/complete -WebSession $session
 ```
 
+An admin must then approve the store from `/admin/stores`; approval records
+`activatedAt` and is what makes the published storefront publicly accessible.
+
 The dashboard is at `/dashboard`; the public storefront is at
 `/store/<subdomain>`.
 
@@ -100,8 +111,9 @@ Keep daily dumps off-site. Test restores quarterly.
 Product/logo/cover uploads are stored on disk under `STORAGE_DIR`
 (default `data/uploads`) and served at `/uploads`. Back up that directory
 together with the database; a DB restore without it leaves broken image URLs
-(no data is lost, but media must be re-uploaded). If you switch to S3 later,
-back up the bucket instead.
+(no data is lost, but media must be re-uploaded). S3 is not supported yet:
+selecting `STORAGE_DRIVER=s3` stops the app at startup. When a real adapter
+ships, back up that bucket instead.
 
 ## 5. Rotate SESSION_SECRET
 
@@ -126,11 +138,11 @@ merchant) and rotate `SESSION_SECRET`.
 
 | Feature | Current behavior | To enable more |
 |---------|------------------|----------------|
-| Media upload | Images are validated (JPEG/PNG/WebP/GIF/SVG) and stored under `STORAGE_DIR`; `/uploads` serves them | Set `STORAGE_DRIVER=s3` only after installing an S3 adapter; today it returns `STORAGE_INTEGRATION_NOT_CONFIGURED` |
+| Media upload | Images are validated (JPEG/PNG/WebP/GIF/SVG) and stored under `STORAGE_DIR`; `/uploads` serves them | S3 is not implemented: `STORAGE_DRIVER=s3` exits at startup. Use `local` until an adapter ships |
 | Online payments | COD is complete; online checkout is rejected with a clear error | Add a provider-specific adapter, then set `PAYMENT_PROVIDER` + `PAYMENT_SECRET_KEY` |
 | AI assistant | Disabled unless an OpenAI-compatible endpoint is configured | Set `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL` |
 | WhatsApp | `wa.me` links are real; abandoned-cart reminders open a link | Auto-send needs Cloud API credentials **and** an approved template |
-| Shipping | Zones, rates, COD fees, free-shipping thresholds and tracking links are real | Carrier API adapter is manual/future work |
+| Shipping | Zones, rates, COD fees, free-shipping thresholds and customer order-tracking links are real | Carrier API/tracking adapter is manual/future work |
 | Abandoned carts | Captured from real storefront carts; merchant can mark/remind | Automatic messages require WhatsApp/SMS integration |
 
 No integration fakes success. When something is not configured, the UI/API
@@ -152,25 +164,22 @@ shows a configuration error instead of pretending the operation happened.
 | Storefront shows “قيد التجهيز” | store has not completed onboarding | finish the wizard and press publish (`POST /api/onboarding/complete`) |
 | `503 PAYMENT_PROVIDER_NOT_CONFIGURED` / `PAYMENT_ADAPTER_MISSING` | online payment is disabled or has no adapter | use COD or install a payment adapter; this is intentional, not a bug |
 | `503 AI_NOT_CONFIGURED` | no AI provider configured | set `AI_BASE_URL` + `AI_API_KEY` |
-| `413 MEDIA_TOO_LARGE` / `503 STORAGE_INTEGRATION_NOT_CONFIGURED` | upload exceeds `MEDIA_MAX_BYTES` or S3 selected without an adapter | raise the limit / use `STORAGE_DRIVER=local` |
+| `413 MEDIA_TOO_LARGE` / app exits on `STORAGE_DRIVER=s3` | upload exceeds `MEDIA_MAX_BYTES`, or S3 was selected without an adapter | raise the limit / use `STORAGE_DRIVER=local` |
 | Register says email is taken | intentional: duplicate emails get 409 so merchants get a clear error; enumeration is blunted by the auth rate limit (30/15 min) | accepted tradeoff, do not "fix" by hiding it |
 
 Logs are structured (pino JSON). Passwords/tokens/cookies are redacted.
 
 ## 9. Out of scope / future work
 
-- Subscription billing is out of scope: every store is created with the
-  server-assigned default plan (`annual`), `plan` is not client-writable via
-  register or `PATCH /api/account/store`, and there are no payment, upgrade,
-  downgrade, or invoicing flows. Handle billing entirely outside the app
-  (e.g. manual invoicing or a billing provider) and change plans with direct
-  database updates until a billing module is built.
+- Automatic subscription charging/renewal is out of scope. Owners submit
+  monthly/annual payment details manually, and an admin reviews them from
+  `/admin/payments`. Approval updates `Store.plan` and
+  `Store.subscriptionPaidUntil`; it never changes the merchant wallet balance.
 - Email verification, password reset, 2FA, social login.
 - Multiple stores per merchant (schema-ready; API/UI assume one).
 - Online payment provider adapter (Paymob/Fawry/Mada) — COD is complete.
 - S3/object-storage adapter; local disk is the supported driver today.
 - Automatic WhatsApp/Cloud API sends (approved templates) and carrier APIs.
-- Admin/back-office UI (leads are API-only; use `GET /api/admin/leads` with an admin merchant + scripts).
 - Automated DB/upload backups (operator cron, see §4).
 - Horizontal scaling notes: sessions live in Postgres (shared-nothing safe);
   use sticky-less replicas + a managed DB; rate limits are per-instance memory.

@@ -151,8 +151,8 @@ export const CountriesView: React.FC<CountriesViewProps> = ({ currentLang, onOpe
             </p>
             <div className="pt-2 text-[11px] text-subtle">
               {currentLang === 'ar'
-                ? 'يدعم نظام سند التتبع الكامل لدورة حياة الطرد وتأكيد العناوين لتفادي المرتجعات.'
-                : 'Sanad provides automated verification workflows to minimize delivery drops.'}
+                ? 'يدعم سند تسجيل حالة الطلب وخطوات التأكيد يدوياً؛ لا يوجد ربط آلي بشركات الشحن أو تتبع شحنات مباشر.'
+                : 'Sanad supports manual order status and confirmation steps; there is no carrier integration or live shipment tracking.'}
             </div>
           </div>
 

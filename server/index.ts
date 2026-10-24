@@ -84,6 +84,8 @@ import { settingsRouter } from "./routes/settings.js";
 import { storefrontRouter } from "./routes/storefront.js";
 import { onboardingRouter } from "./routes/onboarding.js";
 import { mediaRouter } from "./routes/media.js";
+import { adminRouter } from "./routes/admin.js";
+import { assertOwnerMayEditStore } from "./services/storePolicy.js";
 
 export const app = express();
 
@@ -255,9 +257,11 @@ app.post(
             countryCode,
             currency: storeCurrency,
             plan: "annual",
-            // Kept active so the storefront and checkout are usable while the
-            // merchant finishes onboarding. Publication is tracked separately.
-            status: "active",
+            // New stores stay pending until a platform admin approves them.
+            // Publishing during onboarding only prepares the storefront; it
+            // does not bypass this gate.
+            status: "pending",
+            activatedAt: null,
             onboardingStep: 1,
             onboardingCompleted: false,
             publishedAt: null,
@@ -776,6 +780,7 @@ app.patch(
   asyncHandler(async (req, res) => {
     if (!req.auth!.storeId) throw new ApiError(404, "STORE_NOT_FOUND", "No store linked to this account.");
     const b = req.body;
+    assertOwnerMayEditStore(b);
     if (b.onlinePaymentEnabled === true && !paymentService.configured) {
       throw new ApiError(
         409,
@@ -844,20 +849,8 @@ app.get(
   })
 );
 
-app.get(
-  "/api/admin/leads",
-  asyncHandler(requireAuth),
-  asyncHandler(async (req, res) => {
-    const merchant = await prisma.merchant.findUnique({ where: { id: req.auth!.merchantId } });
-    if (!merchant || merchant.role !== "admin") {
-      throw new ApiError(403, "FORBIDDEN", "Admin access required.");
-    }
-    const rows = await prisma.lead.findMany({ orderBy: { createdAt: "desc" }, take: 200 });
-    res.json({ leads: rows });
-  })
-);
-
 // ---- domain routers ----
+app.use("/api/admin", adminRouter);
 app.use("/api/onboarding", onboardingRouter);
 app.use(productsRouter);
 app.use(categoriesRouter);
