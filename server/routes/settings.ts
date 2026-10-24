@@ -23,6 +23,37 @@ import { integrationStatus } from "../services/integrations.js";
 
 export const settingsRouter = Router();
 
+/**
+ * Verification tokens are write-only: they are returned once when a domain is
+ * created or rotated, never by list/verify responses. Domain records are
+ * otherwise safe to serialise.
+ */
+function sanitizeDomain(row: {
+  id: string;
+  storeId: string;
+  domain: string;
+  status: string;
+  createdAt: Date;
+  verifiedAt: Date | null;
+}) {
+  return {
+    id: row.id,
+    storeId: row.storeId,
+    domain: row.domain,
+    status: row.status,
+    createdAt: row.createdAt,
+    verifiedAt: row.verifiedAt,
+  };
+}
+
+function domainChallenge(domain: string, value: string) {
+  return {
+    type: "TXT" as const,
+    name: `_sanad-verification.${domain}`,
+    value,
+  };
+}
+
 settingsRouter.get(
   "/api/stores/:subdomain/settings",
   asyncHandler(requireAuth),
@@ -45,9 +76,19 @@ settingsRouter.get(
       store,
       branding,
       merchant: merchant
-        ? { id: merchant.id, email: merchant.email, firstName: merchant.firstName, lastName: merchant.lastName, name: merchant.name, phone: merchant.phone }
+        ? {
+            id: merchant.id,
+            email: merchant.email,
+            firstName: merchant.firstName,
+            lastName: merchant.lastName,
+            name: merchant.name,
+            phone: merchant.phone,
+            role: merchant.role,
+            email_verified: Boolean(merchant.emailVerifiedAt),
+            two_factor_enabled: merchant.twoFactorEnabled,
+          }
         : null,
-      domains,
+      domains: domains.map(sanitizeDomain),
       team,
       integrations: integrationStatus(),
       usage: { products: productCount, orders: orderCount, customers: customerCount },
@@ -144,7 +185,7 @@ settingsRouter.get(
       where: { storeId: req.ownedStore!.id },
       orderBy: { createdAt: "desc" },
     });
-    res.json({ domains });
+    res.json({ domains: domains.map(sanitizeDomain) });
   })
 );
 
@@ -159,6 +200,7 @@ settingsRouter.post(
     const domain = req.body.domain as string;
     const taken = await prisma.storeDomain.findUnique({ where: { domain }, select: { id: true } });
     if (taken) throw new ApiError(409, "DOMAIN_TAKEN", "This domain is already connected to a store.");
+    const verificationToken = `sanad-verify=${randomBytes(16).toString("hex")}`;
     try {
       const row = await prisma.storeDomain.create({
         data: {
@@ -166,10 +208,19 @@ settingsRouter.post(
           storeId,
           domain,
           status: "pending",
-          verificationToken: `sanad-verify=${randomBytes(16).toString("hex")}`,
+          verificationToken,
         },
       });
-      res.status(201).json({ domain: row });
+      await writeAudit({
+        storeId,
+        merchantId: req.auth!.merchantId,
+        action: "domain.added",
+        entity: "store_domain",
+        entityId: row.id,
+        ip: req.ip,
+      });
+      // The DNS value is returned exactly once, at creation time.
+      res.status(201).json({ domain: sanitizeDomain(row), challenge: domainChallenge(row.domain, verificationToken) });
     } catch (e: unknown) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
         throw new ApiError(409, "DOMAIN_TAKEN", "This domain is already connected to a store.");
@@ -189,27 +240,72 @@ settingsRouter.post(
     const row = await prisma.storeDomain.findFirst({ where: { id: req.params.id, storeId } });
     if (!row) throw new ApiError(404, "DOMAIN_NOT_FOUND", "Domain not found.");
     if (row.status === "verified") {
-      res.json({ domain: row, verified: true });
+      res.json({ domain: sanitizeDomain(row), verified: true, status: "verified" });
       return;
     }
-    let records: string[] = [];
+    let verified = false;
     try {
       const txt = await resolveTxt(`_sanad-verification.${row.domain}`);
-      records = txt.map((chunks) => chunks.join(""));
+      const records = txt.map((chunks) => chunks.join("").trim());
+      // Exact match only: a record that merely embeds the token is not proof.
+      verified = records.includes(row.verificationToken);
     } catch {
-      records = [];
+      verified = false;
     }
-    const verified = records.some((record) => record.includes(row.verificationToken));
     const domain = await prisma.storeDomain.update({
       where: { id: row.id },
       data: { status: verified ? "verified" : "pending", verifiedAt: verified ? new Date() : null },
     });
+    if (verified) {
+      await writeAudit({
+        storeId,
+        merchantId: req.auth!.merchantId,
+        action: "domain.verified",
+        entity: "store_domain",
+        entityId: row.id,
+        ip: req.ip,
+      });
+    }
+    // Never echo the token or arbitrary TXT records: only the decision and
+    // generic setup instructions leave the server.
     res.json({
-      domain,
+      domain: sanitizeDomain(domain),
       verified,
-      observedRecords: records,
-      instructions: `أضف سجل TXT على ${"_sanad-verification." + row.domain} بالقيمة: ${row.verificationToken}`,
+      status: domain.status,
+      instructions: verified
+        ? "تم التحقق من النطاق بنجاح."
+        : `أضف سجل TXT على _sanad-verification.${row.domain} بالقيمة التي ظهرت عند إضافة النطاق، ثم أعد المحاولة.`,
     });
+  })
+);
+
+settingsRouter.post(
+  "/api/stores/:subdomain/domains/:id/challenge",
+  asyncHandler(requireAuth),
+  validateParams(idParamSchema),
+  asyncHandler(requireStoreOwnership),
+  asyncHandler(async (req, res) => {
+    const storeId = req.ownedStore!.id;
+    const row = await prisma.storeDomain.findFirst({ where: { id: req.params.id, storeId } });
+    if (!row) throw new ApiError(404, "DOMAIN_NOT_FOUND", "Domain not found.");
+    if (row.status === "verified") {
+      throw new ApiError(409, "DOMAIN_ALREADY_VERIFIED", "A verified domain does not need a new verification record.");
+    }
+    const verificationToken = `sanad-verify=${randomBytes(16).toString("hex")}`;
+    const domain = await prisma.storeDomain.update({
+      where: { id: row.id },
+      data: { verificationToken, status: "pending", verifiedAt: null },
+    });
+    await writeAudit({
+      storeId,
+      merchantId: req.auth!.merchantId,
+      action: "domain.challenge_rotated",
+      entity: "store_domain",
+      entityId: row.id,
+      ip: req.ip,
+    });
+    // One-time disclosure; subsequent GETs never contain the token.
+    res.json({ domain: sanitizeDomain(domain), challenge: domainChallenge(domain.domain, verificationToken) });
   })
 );
 

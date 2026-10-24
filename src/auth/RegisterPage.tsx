@@ -80,8 +80,15 @@ export function RegisterPage() {
         password: form.password,
         acceptTerms: true,
       });
+      if (result.email_verification?.required) {
+        const params = new URLSearchParams();
+        if (result.email_verification.debug_token) params.set("token", result.email_verification.debug_token);
+        else params.set("email", form.email.trim().toLowerCase());
+        navigate(`/auth/verify-email?${params.toString()}`, { replace: true });
+        return;
+      }
       setSession({ merchant: result.merchant, store: result.store });
-      navigate("/onboarding", { replace: true });
+      navigate(result.next && result.next.startsWith("/") ? result.next : "/onboarding", { replace: true });
     } catch (err: any) {
       setError(safeError(err));
     } finally {

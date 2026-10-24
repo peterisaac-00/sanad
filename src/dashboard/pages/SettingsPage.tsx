@@ -5,9 +5,12 @@ import {
   CheckCircle2,
   Globe,
   KeyRound,
+  MailCheck,
   RefreshCw,
   ScrollText,
   Shield,
+  ShieldCheck,
+  Smartphone,
   Trash2,
   UserPlus,
   Users,
@@ -15,6 +18,7 @@ import {
 import { api, mediaUrl } from "../../lib/api";
 import { COUNTRIES_DATA } from "../../data/countries";
 import { CURRENCIES, dateTime, number, safeError } from "../../lib/format";
+import { Link } from "../../lib/router";
 import { useAsync } from "../../lib/useAsync";
 import {
   Alert,
@@ -156,14 +160,23 @@ export function SettingsPage() {
   const [domainInput, setDomainInput] = useState("");
   const [domainBusy, setDomainBusy] = useState(false);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [rotatingId, setRotatingId] = useState<string | null>(null);
+  const [domainChallenges, setDomainChallenges] = useState<
+    Record<string, { type: "TXT"; name: string; value: string }>
+  >({});
   const [deletingDomain, setDeletingDomain] = useState<any | null>(null);
+
+  const rememberChallenge = (domainId: string, challenge: { type: "TXT"; name: string; value: string }) => {
+    setDomainChallenges((current) => ({ ...current, [domainId]: challenge }));
+  };
 
   const addDomain = async () => {
     if (!domainInput.trim()) return;
     setDomainBusy(true);
     try {
-      await api.settings.addDomain(subdomain, domainInput.trim().toLowerCase());
-      toast.success("تمت إضافة النطاق. أضف سجل TXT للتحقق.");
+      const result = await api.settings.addDomain(subdomain, domainInput.trim().toLowerCase());
+      rememberChallenge(result.domain.id, result.challenge);
+      toast.success("تمت إضافة النطاق. أضف سجل TXT الظاهر للتحقق.");
       setDomainInput("");
       reload();
     } catch (err: any) {
@@ -178,12 +191,26 @@ export function SettingsPage() {
     try {
       const result = await api.settings.verifyDomain(subdomain, domain.id);
       if (result.verified) toast.success("تم التحقق من النطاق بنجاح.");
-      else toast.error("لم يتم العثور على سجل التحقق بعد. تأكد من إضافته ثم أعد المحاولة.");
+      else toast.error(result.instructions || "لم يتم العثور على سجل التحقق بعد. تأكد من إضافته ثم أعد المحاولة.");
       reload();
     } catch (err: any) {
       toast.error(safeError(err));
     } finally {
       setVerifyingId(null);
+    }
+  };
+
+  const rotateDomainChallenge = async (domain: any) => {
+    setRotatingId(domain.id);
+    try {
+      const result = await api.settings.rotateDomainChallenge(subdomain, domain.id);
+      rememberChallenge(domain.id, result.challenge);
+      toast.success("تم إصدار قيمة تحقق جديدة. استبدل السجل القديم في DNS.");
+      reload();
+    } catch (err: any) {
+      toast.error(safeError(err));
+    } finally {
+      setRotatingId(null);
     }
   };
 
@@ -255,6 +282,126 @@ export function SettingsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteDraft, setDeleteDraft] = useState({ password: "", confirmation: "" });
   const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
+
+  /* ---- two-factor authentication ---- */
+  const twoFactorEnabled = Boolean(data?.merchant?.two_factor_enabled);
+  const emailVerified = Boolean(data?.merchant?.email_verified);
+  const [twoFactorStart, setTwoFactorStart] = useState(false);
+  const [twoFactorPassword, setTwoFactorPassword] = useState("");
+  const [twoFactorSetup, setTwoFactorSetup] = useState<{ secret: string; otpauth_url: string } | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [twoFactorBusy, setTwoFactorBusy] = useState(false);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [disableOpen, setDisableOpen] = useState(false);
+  const [disableDraft, setDisableDraft] = useState({ password: "", code: "" });
+  const [disableBusy, setDisableBusy] = useState(false);
+
+  const startTwoFactor = async () => {
+    if (!twoFactorPassword) {
+      toast.error("أدخل كلمة المرور الحالية للمتابعة.");
+      return;
+    }
+    setTwoFactorBusy(true);
+    try {
+      const result = await api.twoFactor.setup(twoFactorPassword);
+      setTwoFactorSetup({ secret: result.secret, otpauth_url: result.otpauth_url });
+      setTwoFactorPassword("");
+      setTwoFactorCode("");
+      toast.success("امسح الرمز أو أدخله يدوياً في تطبيق المصادقة.");
+    } catch (err: any) {
+      toast.error(safeError(err));
+    } finally {
+      setTwoFactorBusy(false);
+    }
+  };
+
+  const enableTwoFactor = async () => {
+    const code = twoFactorCode.replace(/\D/g, "");
+    if (code.length !== 6) {
+      toast.error("أدخل الرمز المكوّن من 6 أرقام من تطبيق المصادقة.");
+      return;
+    }
+    setTwoFactorBusy(true);
+    try {
+      const result = await api.twoFactor.enable(code);
+      setRecoveryCodes(result.recovery_codes || []);
+      setTwoFactorSetup(null);
+      setTwoFactorCode("");
+      toast.success("تم تفعيل المصادقة الثنائية. احفظ رموز الاسترداد الآن.");
+      reload();
+    } catch (err: any) {
+      toast.error(safeError(err));
+    } finally {
+      setTwoFactorBusy(false);
+    }
+  };
+
+  const disableTwoFactor = async () => {
+    if (!disableDraft.password) {
+      toast.error("أدخل كلمة المرور الحالية.");
+      return;
+    }
+    if (!disableDraft.code.trim()) {
+      toast.error("أدخل رمز المصادقة أو أحد رموز الاسترداد.");
+      return;
+    }
+    setDisableBusy(true);
+    try {
+      await api.twoFactor.disable(disableDraft.password, disableDraft.code.trim());
+      toast.success("تم تعطيل المصادقة الثنائية.");
+      setDisableOpen(false);
+      setDisableDraft({ password: "", code: "" });
+      setRecoveryCodes([]);
+      reload();
+    } catch (err: any) {
+      toast.error(safeError(err));
+    } finally {
+      setDisableBusy(false);
+    }
+  };
+
+  /* ---- sessions & email verification ---- */
+  const [revokeOpen, setRevokeOpen] = useState(false);
+  const [revokeBusy, setRevokeBusy] = useState(false);
+  const [verificationBusy, setVerificationBusy] = useState(false);
+  const [debugVerifyToken, setDebugVerifyToken] = useState("");
+
+  const revokeOtherSessions = async () => {
+    setRevokeBusy(true);
+    try {
+      const result = await api.revokeOtherSessions();
+      toast.success(result.revoked > 0 ? `تم إنهاء ${result.revoked} جلسة أخرى.` : "لا توجد جلسات أخرى نشطة.");
+      setRevokeOpen(false);
+    } catch (err: any) {
+      toast.error(safeError(err));
+    } finally {
+      setRevokeBusy(false);
+    }
+  };
+
+  const resendVerification = async () => {
+    const email = data?.merchant?.email;
+    if (!email) return;
+    setVerificationBusy(true);
+    try {
+      const result = await api.resendVerification(email);
+      if (result.already_verified) {
+        toast.success("بريدك مؤكد بالفعل.");
+      } else if (result.sent) {
+        toast.success("تم إرسال رابط التحقق إلى بريدك.");
+      } else if (!result.email_configured) {
+        toast.error("إرسال البريد غير مهيأ على الخادم، لذا لم يُرسل رابط فعلي.");
+      } else {
+        toast.error("تعذر إرسال البريد حالياً. حاول لاحقاً.");
+      }
+      setDebugVerifyToken(result.debug_token || "");
+      if (result.already_verified) reload();
+    } catch (err: any) {
+      toast.error(safeError(err));
+    } finally {
+      setVerificationBusy(false);
+    }
+  };
 
   const deleteAccount = async () => {
     if (deleteDraft.confirmation !== "DELETE") {
@@ -485,10 +632,23 @@ export function SettingsPage() {
                         )}
                       </div>
                       {domain.status !== "verified" ? (
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-subtle">
-                          <span>سجل TXT على <span className="font-mono" dir="ltr">_sanad-verification.{domain.domain}</span> بالقيمة:</span>
-                          <span className="font-mono text-subtle" dir="ltr">{domain.verificationToken}</span>
-                          <CopyButton value={domain.verificationToken} label="" />
+                        <div className="mt-1.5 space-y-1 text-[10px] leading-5 text-subtle">
+                          {domainChallenges[domain.id] ? (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span>
+                                سجل TXT على{" "}
+                                <span className="font-mono" dir="ltr">{domainChallenges[domain.id].name}</span> بالقيمة:
+                              </span>
+                              <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-[10px] text-ink" dir="ltr">
+                                {domainChallenges[domain.id].value}
+                              </code>
+                              <CopyButton value={domainChallenges[domain.id].value} label="" />
+                            </div>
+                          ) : (
+                            <div>
+                              لأسباب أمنية لا تُعرض قيمة التحقق مرة أخرى بعد مغادرة الصفحة. أصدر قيمة جديدة إن احتجت.
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="mt-1 text-[10px] text-subtle">تم التوثيق {dateTime(domain.verifiedAt)}</div>
@@ -496,7 +656,24 @@ export function SettingsPage() {
                     </div>
                     <div className="flex items-center gap-1.5">
                       {domain.status !== "verified" ? (
-                        <Button variant="outline" size="sm" loading={verifyingId === domain.id} onClick={() => verifyDomain(domain)}>تحقق الآن</Button>
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            loading={rotatingId === domain.id}
+                            onClick={() => rotateDomainChallenge(domain)}
+                          >
+                            قيمة تحقق جديدة
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            loading={verifyingId === domain.id}
+                            onClick={() => verifyDomain(domain)}
+                          >
+                            تحقق الآن
+                          </Button>
+                        </>
                       ) : null}
                       <button onClick={() => setDeletingDomain(domain)} className="rounded-brand-sm p-2 text-subtle hover:bg-danger-soft hover:text-danger" title="حذف">
                         <Trash2 className="h-3.5 w-3.5" />
@@ -516,7 +693,7 @@ export function SettingsPage() {
               </Field>
               <Button className="w-full" loading={domainBusy} onClick={addDomain}>إضافة النطاق</Button>
               <div className="text-[10px] leading-5 text-subtle">
-                بعد الإضافة سنعرض لك سجل TXT المطلوب. نتحقق منه فعلياً عبر DNS، ولن يظهر النطاق كموثّق قبل ذلك.
+                بعد الإضافة سنعرض لك قيمة TXT مرة واحدة فقط. نتحقق منها فعلياً عبر DNS، ولن يظهر النطاق كموثّق قبل ذلك. إن فقدت القيمة يمكنك إصدار قيمة جديدة من القائمة.
               </div>
             </div>
           </Card>
@@ -596,19 +773,167 @@ export function SettingsPage() {
             <div className="mb-3 flex items-center gap-1.5 text-xs font-bold text-ink"><KeyRound className="h-3.5 w-3.5 text-brand" /> تغيير كلمة المرور</div>
             <div className="space-y-3">
               <Field label="كلمة المرور الحالية" required>
-                <Input type="password" value={passwordDraft.current} onChange={(e) => setPasswordDraft({ ...passwordDraft, current: e.target.value })} dir="ltr" />
+                <Input type="password" value={passwordDraft.current} onChange={(e) => setPasswordDraft({ ...passwordDraft, current: e.target.value })} dir="ltr" autoComplete="current-password" />
               </Field>
               <Field label="كلمة المرور الجديدة" required hint="8 أحرف على الأقل">
-                <Input type="password" value={passwordDraft.next} onChange={(e) => setPasswordDraft({ ...passwordDraft, next: e.target.value })} dir="ltr" />
+                <Input type="password" value={passwordDraft.next} onChange={(e) => setPasswordDraft({ ...passwordDraft, next: e.target.value })} dir="ltr" autoComplete="new-password" />
               </Field>
               <Field label="تأكيد كلمة المرور" required>
-                <Input type="password" value={passwordDraft.confirm} onChange={(e) => setPasswordDraft({ ...passwordDraft, confirm: e.target.value })} dir="ltr" />
+                <Input type="password" value={passwordDraft.confirm} onChange={(e) => setPasswordDraft({ ...passwordDraft, confirm: e.target.value })} dir="ltr" autoComplete="new-password" />
               </Field>
               <Button loading={passwordBusy} onClick={changePassword}>تحديث كلمة المرور</Button>
+              <p className="text-[10px] leading-5 text-subtle">
+                عند التغيير تبقى جلستك الحالية فقط، وتُنهى جميع الجلسات الأخرى تلقائياً.
+              </p>
             </div>
           </Card>
 
-          <Card className="border-danger-line p-4">
+          <Card className="p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-ink">
+                <Smartphone className="h-3.5 w-3.5 text-brand" /> المصادقة الثنائية (2FA)
+              </div>
+              <Badge tone={twoFactorEnabled ? "bg-success-soft text-success border-success-line" : "bg-surface text-subtle border-line"}>
+                {twoFactorEnabled ? "مفعّلة" : "غير مفعّلة"}
+              </Badge>
+            </div>
+
+            {recoveryCodes.length > 0 ? (
+              <div className="space-y-3">
+                <Alert tone="warning" title="احفظ رموز الاسترداد الآن">
+                  تُعرض هذه الرموز مرة واحدة فقط. كل رمز يعمل مرة واحدة إذا فقدت تطبيق المصادقة. لا نستطيع عرضها مرة أخرى.
+                </Alert>
+                <div className="grid grid-cols-2 gap-2 rounded-brand border border-line bg-surface p-3">
+                  {recoveryCodes.map((recoveryCode) => (
+                    <code key={recoveryCode} className="font-mono text-[11px] text-ink" dir="ltr">{recoveryCode}</code>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <CopyButton value={recoveryCodes.join("\n")} label="نسخ الرموز" />
+                  <Button variant="outline" size="sm" onClick={() => setRecoveryCodes([])}>حفظتها — إخفاء</Button>
+                </div>
+              </div>
+            ) : twoFactorEnabled ? (
+              <div className="space-y-3">
+                <p className="text-[11px] leading-6 text-subtle">
+                  تسجيل الدخول يتطلب رمزاً من تطبيق المصادقة أو أحد رموز الاسترداد. تعطيلها يوقف الحماية الإضافية لحسابك.
+                </p>
+                <Button variant="outline" onClick={() => { setDisableDraft({ password: "", code: "" }); setDisableOpen(true); }}>
+                  تعطيل المصادقة الثنائية
+                </Button>
+              </div>
+            ) : twoFactorSetup ? (
+              <div className="space-y-3">
+                <p className="text-[11px] leading-6 text-subtle">
+                  أضف الحساب إلى تطبيق مصادقة (Google Authenticator أو Authy أو 1Password) ثم أدخل الرمز الظاهر.
+                </p>
+                <div className="flex flex-wrap items-center gap-2 rounded-brand border border-line bg-surface p-3">
+                  <span className="text-[10px] text-subtle">المفتاح اليدوي:</span>
+                  <code className="break-all font-mono text-[11px] text-ink" dir="ltr">{twoFactorSetup.secret}</code>
+                  <CopyButton value={twoFactorSetup.secret} label="" />
+                </div>
+                <a
+                  href={twoFactorSetup.otpauth_url}
+                  className="inline-flex text-[10px] font-semibold text-brand underline"
+                  dir="ltr"
+                >
+                  فتح في تطبيق المصادقة
+                </a>
+                <Field label="رمز التحقق" required hint="6 أرقام من التطبيق">
+                  <Input
+                    value={twoFactorCode}
+                    onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    dir="ltr"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    className="font-mono tracking-[0.35em]"
+                    placeholder="123456"
+                  />
+                </Field>
+                <div className="flex flex-wrap gap-2">
+                  <Button loading={twoFactorBusy} onClick={enableTwoFactor}>تفعيل المصادقة</Button>
+                  <Button variant="ghost" onClick={() => { setTwoFactorSetup(null); setTwoFactorCode(""); }}>إلغاء</Button>
+                </div>
+              </div>
+            ) : twoFactorStart ? (
+              <div className="space-y-3">
+                <p className="text-[11px] leading-6 text-subtle">
+                  أدخل كلمة المرور الحالية لتأكيد هويتك، ثم سنعرض مفتاحاً لإضافته إلى تطبيق المصادقة.
+                </p>
+                <Field label="كلمة المرور الحالية" required>
+                  <Input
+                    type="password"
+                    value={twoFactorPassword}
+                    onChange={(e) => setTwoFactorPassword(e.target.value)}
+                    dir="ltr"
+                    autoComplete="current-password"
+                  />
+                </Field>
+                <div className="flex flex-wrap gap-2">
+                  <Button loading={twoFactorBusy} onClick={startTwoFactor}>بدء التفعيل</Button>
+                  <Button variant="ghost" onClick={() => { setTwoFactorStart(false); setTwoFactorPassword(""); }}>إلغاء</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-[11px] leading-6 text-subtle">
+                  أضف طبقة حماية ثانية: حتى لو عُرفت كلمة المرور، لن يتمكن أحد من الدخول بدون رمز تطبيق المصادقة.
+                </p>
+                <Button onClick={() => setTwoFactorStart(true)}>تفعيل المصادقة الثنائية</Button>
+              </div>
+            )}
+          </Card>
+
+          <Card className="p-4 lg:col-span-2">
+            <div className="mb-3 flex items-center gap-1.5 text-xs font-bold text-ink">
+              <ShieldCheck className="h-3.5 w-3.5 text-brand" /> الجلسات والبريد
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-brand border border-line bg-surface p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-ink">
+                    <MailCheck className="h-3.5 w-3.5 text-subtle" /> البريد الإلكتروني
+                  </div>
+                  <Badge tone={emailVerified ? "bg-success-soft text-success border-success-line" : "bg-warning-soft text-warning border-warning-line"}>
+                    {emailVerified ? "مؤكد" : "بانتظار التأكيد"}
+                  </Badge>
+                </div>
+                <div className="mt-2 text-[11px] text-subtle" dir="ltr">{data?.merchant?.email || "—"}</div>
+                {!emailVerified ? (
+                  <div className="mt-3 space-y-2">
+                    <Button variant="outline" size="sm" loading={verificationBusy} onClick={resendVerification}>
+                      إعادة إرسال رابط التحقق
+                    </Button>
+                    {debugVerifyToken ? (
+                      <div className="text-[10px] leading-5 text-warning">
+                        بيئة تطوير فقط —{" "}
+                        <Link href={`/auth/verify-email?token=${encodeURIComponent(debugVerifyToken)}`} className="underline">
+                          افتح رابط التحقق
+                        </Link>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="mt-2 text-[10px] leading-5 text-subtle">تم تأكيد ملكية هذا البريد.</div>
+                )}
+              </div>
+
+              <div className="rounded-brand border border-line bg-surface p-3">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-ink">
+                  <Shield className="h-3.5 w-3.5 text-subtle" /> الجلسات النشطة
+                </div>
+                <p className="mt-2 text-[10px] leading-5 text-subtle">
+                  إنهاء كل الجلسات الأخرى يحمي حسابك إذا استخدمت جهازاً مشتركاً أو شككت في تسريب كلمة المرور. تبقى جلستك الحالية نشطة.
+                </p>
+                <div className="mt-3">
+                  <Button variant="outline" size="sm" onClick={() => setRevokeOpen(true)}>إنهاء الجلسات الأخرى</Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="border-danger-line p-4 lg:col-span-2">
             <div className="mb-3 text-xs font-bold text-danger">حذف الحساب نهائياً</div>
             <p className="text-[11px] leading-6 text-subtle">
               سيتم حذف حسابك وبيانات تسجيل الدخول. إذا كنت التاجر الوحيد على المتجر فسيُحذف المتجر معه هو وكل بياناته.
@@ -652,8 +977,10 @@ export function SettingsPage() {
               {Object.entries(ROLES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
             </Select>
           </Field>
-          <Alert tone="warning" title="ملاحظة صادقة">
-            إرسال البريد غير مهيأ حالياً، لذا ستُنشأ الدعوة داخل النظام فقط ولن نؤكد إرسال بريد لم يحدث.
+          <Alert tone={data?.invitation_email_configured ? "info" : "warning"} title="ملاحظة صادقة">
+            {data?.invitation_email_configured
+              ? "ستُرسل الدعوة إلى البريد المحدد بعد الإنشاء."
+              : "إرسال البريد غير مهيأ حالياً، لذا ستُنشأ الدعوة داخل النظام فقط ولن نؤكد إرسال بريد لم يحدث."}
           </Alert>
         </div>
       </Modal>
@@ -683,6 +1010,55 @@ export function SettingsPage() {
           </Alert>
         </div>
       </Modal>
+
+      <Modal
+        open={disableOpen}
+        onClose={() => setDisableOpen(false)}
+        title="تعطيل المصادقة الثنائية"
+        description="أكد كلمة المرور ورمز المصادقة الحالي. يمكنك استخدام أحد رموز الاسترداد بدلاً من رمز التطبيق."
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDisableOpen(false)}>إلغاء</Button>
+            <Button variant="danger" loading={disableBusy} onClick={disableTwoFactor}>تعطيل المصادقة</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <Field label="كلمة المرور الحالية" required>
+            <Input
+              type="password"
+              value={disableDraft.password}
+              onChange={(e) => setDisableDraft({ ...disableDraft, password: e.target.value })}
+              dir="ltr"
+              autoComplete="current-password"
+            />
+          </Field>
+          <Field label="رمز المصادقة أو الاسترداد" required>
+            <Input
+              value={disableDraft.code}
+              onChange={(e) => setDisableDraft({ ...disableDraft, code: e.target.value })}
+              dir="ltr"
+              autoComplete="one-time-code"
+              className="font-mono"
+              placeholder="123456"
+            />
+          </Field>
+          <Alert tone="warning">
+            بعد التعطيل لن يُطلب رمز إضافي عند تسجيل الدخول. ستظل جلستك الحالية فقط نشطة وتُنهى الجلسات الأخرى.
+          </Alert>
+        </div>
+      </Modal>
+
+      <ConfirmDialog
+        open={revokeOpen}
+        title="إنهاء الجلسات الأخرى"
+        description="سيتم تسجيل الخروج من كل الأجهزة والمتصفحات الأخرى، وتبقى جلستك الحالية نشطة."
+        confirmLabel="إنهاء الجلسات"
+        loading={revokeBusy}
+        onConfirm={revokeOtherSessions}
+        onClose={() => setRevokeOpen(false)}
+      />
 
       <ConfirmDialog
         open={Boolean(deletingDomain)}

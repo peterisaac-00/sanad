@@ -387,7 +387,10 @@ export function StorefrontCheckoutPage() {
       checkoutKey.current = "";
       const phone = encodeURIComponent(form.customer_phone.trim());
       clearCart();
-      navigate(`${base}/order/${result.order.orderNumber}?phone=${phone}&success=1`, { replace: true });
+      const tracking = result.tracking_token
+        ? `token=${encodeURIComponent(result.tracking_token)}`
+        : `phone=${phone}`;
+      navigate(`${base}/order/${result.order.orderNumber}?${tracking}&success=1`, { replace: true });
       toast.success("تم استلام طلبك بنجاح.");
     } catch (err: any) {
       setSubmitError(checkoutErrorMessage(err));
@@ -740,7 +743,7 @@ function TrackForm({
         </div>
         <h1 className={cn("font-heading text-xl font-bold", theme.heading)}>تتبع طلبك</h1>
         <p className={cn("mt-1 text-[11px] leading-6", theme.muted)}>
-          أدخل رقم الطلب ورقم الهاتف المستخدم عند الشراء لعرض حالة الطلب وتفاصيله.
+          أدخل رقم الطلب ورقم الهاتف المستخدم عند الشراء لعرض حالة الطلب وتفاصيله. يظهر رقم الهاتف مخفياً جزئياً بعد التحقق.
         </p>
       </div>
       {error || localError ? (
@@ -788,15 +791,28 @@ export function StorefrontOrderPage({ orderNumber }: { orderNumber: string }) {
   const { subdomain, base, store, theme, currency } = useStorefront();
   const query = useQuery();
   const phone = query.get("phone") || "";
+  const token = query.get("token") || "";
   const success = query.get("success") === "1";
+  const hasCredentials = Boolean(token || phone);
   const result = useAsync(
     () =>
-      phone
-        ? api.storefront.order(subdomain, orderNumber, phone)
-        : Promise.reject(new Error("PHONE_REQUIRED")),
-    [subdomain, orderNumber, phone]
+      hasCredentials
+        ? api.storefront.order(subdomain, orderNumber, token ? { token } : { phone })
+        : Promise.resolve(null),
+    [subdomain, orderNumber, phone, token, hasCredentials]
   );
   const order = result.data?.order;
+
+  // After a successful phone lookup, swap the phone out of the address bar
+  // for the signed token the server just issued, so it stays out of history.
+  useEffect(() => {
+    const freshToken = result.data?.tracking_token;
+    if (!freshToken || !phone || token) return;
+    const params = new URLSearchParams();
+    params.set("token", freshToken);
+    if (success) params.set("success", "1");
+    window.history.replaceState(window.history.state, "", `${base}/order/${orderNumber}?${params.toString()}`);
+  }, [result.data?.tracking_token, phone, token, success, base, orderNumber]);
 
   useStorefrontSeo({
     title: `الطلب SND-${orderNumber} — ${store.store_name}`,
@@ -805,7 +821,7 @@ export function StorefrontOrderPage({ orderNumber }: { orderNumber: string }) {
     noindex: true,
   });
 
-  if (!phone) {
+  if (!hasCredentials) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-12">
         <TrackForm initialOrder={orderNumber} />
@@ -826,8 +842,10 @@ export function StorefrontOrderPage({ orderNumber }: { orderNumber: string }) {
           initialPhone={phone}
           error={
             status === 404
-              ? "لم نعثر على طلب بهذا الرقم وهذا الهاتف. تحقق من البيانات أو تواصل مع المتجر."
-              : "تعذر تحميل الطلب. تحقق من رقم الهاتف وحاول مجدداً."
+              ? token
+                ? "انتهت صلاحية رابط التتبع أو أنه غير صالح. أدخل رقم الهاتف المستخدم في الطلب لعرضه."
+                : "لم نعثر على طلب بهذا الرقم وهذا الهاتف. تحقق من البيانات أو تواصل مع المتجر."
+              : "تعذر تحميل الطلب. تحقق من بيانات التتبع وحاول مجدداً."
           }
         />
       </div>

@@ -4,6 +4,7 @@ import { ApiError } from "../errors.js";
 import { allocateOrderNumber } from "./orders.js";
 import { paymentService, whatsappLink } from "./integrations.js";
 import { customerIdentity, normalizePhone } from "../identity.js";
+import { createTrackingToken, trackingUrl } from "./tracking.js";
 
 export interface CheckoutItemInput {
   sku?: string;
@@ -310,6 +311,21 @@ export async function quoteShipping(
   };
 }
 
+function trackingForOrder(input: {
+  order: { id: string; storeId: string; orderNumber: number };
+  subdomain: string;
+}) {
+  const token = createTrackingToken({
+    orderId: input.order.id,
+    storeId: input.order.storeId,
+    orderNumber: input.order.orderNumber,
+  });
+  return {
+    tracking_token: token,
+    tracking_url: trackingUrl({ subdomain: input.subdomain, orderNumber: input.order.orderNumber, token }),
+  };
+}
+
 function shippingFromStoredOrder(order: {
   shippingZoneId: string | null;
   shippingFee: number;
@@ -371,6 +387,7 @@ export async function createCheckout(input: {
         order: existing,
         shipping: shippingFromStoredOrder(existing),
         whatsapp_url: input.store.whatsapp ? whatsappLink(input.store.whatsapp, `طلب جديد SND-${existing.orderNumber}`) : null,
+        ...trackingForOrder({ order: existing, subdomain: input.store.subdomain }),
       };
     }
   }
@@ -650,6 +667,7 @@ export async function createCheckout(input: {
           whatsapp_url: input.store.whatsapp
             ? whatsappLink(input.store.whatsapp, `طلب جديد SND-${existing.orderNumber}`)
             : null,
+          ...trackingForOrder({ order: existing, subdomain: input.store.subdomain }),
         };
       }
     }
@@ -664,5 +682,6 @@ export async function createCheckout(input: {
     order: refreshed,
     shipping: shippingForResponse ?? shippingFromStoredOrder(order),
     whatsapp_url: input.store.whatsapp ? whatsappLink(input.store.whatsapp, `طلب جديد SND-${orderNumber}`) : null,
+    ...trackingForOrder({ order, subdomain: input.store.subdomain }),
   };
 }

@@ -77,28 +77,28 @@
 
 ## Uploads and Media
 
-- [ ] **R4.1 — Block unsanitized SVG.** `media.ts`, `index.ts`: SVG is stored and served as-is from `/uploads`. Reject SVG by default; if required, sanitize it and serve media from an isolated domain with strict CSP and `nosniff`. **Done when** `<script>`/`onload` payloads cannot execute.
-- [ ] **R9.3 — Validate actual image content.** `media.ts`: validation trusts client MIME and base64 syntax. Check magic bytes, decode/re-encode, strip metadata, cap dimensions, and reject polyglot files. **Done when** a fake PNG or polyglot upload is rejected.
+- [x] **R4.1 — Block unsanitized SVG.** SVG uploads are rejected. `/uploads` serves only an extension allowlist (`.jpg/.jpeg/.png/.webp/.gif`) with `nosniff`, a sandboxing CSP, CORP and COEP, so stored content can never execute as HTML/JS on the app origin. **Done when** `<script>`/`onload` payloads cannot execute.
+- [x] **R9.3 — Validate actual image content.** `media.ts` checks magic bytes against the declared MIME, decodes with `sharp` (`failOn: error`, pixel cap), re-encodes every accepted image (stripping metadata/trailing polyglot data), enforces dimension/frame limits, and rejects SVG. **Done when** a fake PNG or polyglot upload is rejected.
 
 ## Request Integrity
 
-- [ ] **R4.2 — Reject mutations without Origin/Referer in production.** `middleware.ts`: missing both headers currently passes. Reject undocumented cross-origin mutations, or add double-submit CSRF tokens with `SameSite=Strict` where flows allow. **Done when** a browser POST without a source returns 403.
-- [ ] **R4.3 — Use distributed rate limiting.** `middleware.ts`, README: limits are per process and reset on restart. Move to Redis/shared storage and test behind a reverse proxy. **Done when** a limit hit on replica A blocks replica B.
-- [ ] **R4.5 — Define `trust proxy` explicitly.** Use known hops or proxy addresses, then verify `req.ip` in Docker/cloud. **Done when** client IPs cannot be spoofed through untrusted headers.
+- [x] **R4.2 — Reject mutations without Origin/Referer in production.** `middleware.ts` exports a pure `evaluateCsrfRequest`; production rejects mutations with neither `Origin` nor `Referer`, `null` origins and cross-site sources. **Done when** a browser POST without a source returns 403.
+- [x] **R4.3 — Use distributed rate limiting.** Limits use PostgreSQL `rate_limit_buckets` with a single atomic upsert, shared by every replica (no Redis dependency). Dedicated budgets cover auth/email, public writes, tracking, carts, exports and media. **Done when** a limit hit on replica A blocks replica B.
+- [x] **R4.5 — Define `trust proxy` explicitly.** `TRUST_PROXY=true` is rejected at boot; only a hop count or explicit proxy IP/CIDR list is accepted, and the setting is applied to Express. **Done when** client IPs cannot be spoofed through untrusted headers.
 
 ## Accounts and Sessions
 
-- [ ] **R4.4 — Add verification, reset, 2FA, and session revocation.** No email verification, secure reset, or MFA. Add short-lived single-use reset tokens, 2FA for privileged accounts, and revoke all other sessions on password change. **Done when** old sessions fail after a password change and reset tokens cannot be reused.
+- [x] **R4.4 — Add verification, reset, 2FA, and session revocation.** Email verification and reset use hashed, single-use, expiring tokens; TOTP 2FA (AES-256-GCM secrets, HMAC-hashed one-time recovery codes) is available to every account; password change keeps the current session and revokes others; reset revokes all sessions; `POST /api/auth/sessions/revoke-others` is explicit. **Done when** old sessions fail after a password change and reset tokens cannot be reused.
 
 ## Data Protection
 
-- [ ] **R4.6 — Protect exported PII.** Exports rely on session auth only. Add role-aware authorization, an audit event per export, streaming/rate limits, retention rules for carts and audit logs, and PII masking in logs. **Done when** a viewer cannot export PII and every export is attributable.
-- [ ] **R4.7 — Stop leaking DNS records and verification tokens.** `settings.ts`: return only `verified`, `status`, and instructions; do not echo all TXT records or the token. **Done when** the verification response contains neither.
+- [x] **R4.6 — Protect exported PII.** Exports require an allowed role (`admin`, `owner`, `merchant`, `manager`), write an audit event, use a dedicated distributed limiter, stream with `no-store`, cap rows (`EXPORT_MAX_ROWS`, `413 EXPORT_TOO_LARGE`) and neutralize CSV formulas. Logs mask phone/email and redact tokens; carts/audit logs/sessions/tokens/buckets have retention sweeps. **Done when** a viewer cannot export PII and every export is attributable.
+- [x] **R4.7 — Stop leaking DNS records and verification tokens.** Domain verification tokens are returned only once at creation/rotation; list, settings and verify responses return only sanitized domain state, `verified`, `status` and generic instructions. **Done when** the verification response contains neither.
 
 ## Public Endpoint Abuse
 
-- [ ] **R7.8 — Harden order tracking.** `GET /api/storefront/:subdomain/orders/:orderNumber?phone=` uses sequential numbers plus phone lookup with only general write limits. Add a dedicated rate limit and preferably an OTP or signed tracking token; minimize returned PII. **Done when** enumeration attempts are blocked.
-- [ ] **R5.3 — Add abandoned-cart TTL and anti-abuse.** Add a retention job, reject empty carts without a customer signal, use distributed limits, and add CAPTCHA if abuse appears. **Done when** stale carts expire and the table cannot be flooded anonymously.
+- [x] **R7.8 — Harden order tracking.** Checkout returns an HMAC-signed, expiring tracking token bound to one store/order; phone fallback remains for recovery. A dedicated distributed limiter blocks enumeration, responses mask the phone and omit order id/address/email. **Done when** enumeration attempts are blocked.
+- [x] **R5.3 — Add abandoned-cart TTL and anti-abuse.** A retention job sweeps stale carts; empty carts without a phone/email signal are rejected; writes use a dedicated distributed limiter and contacts are normalized. CAPTCHA can be added later if abuse appears. **Done when** stale carts expire and the table cannot be flooded anonymously.
 
 ---
 
@@ -265,21 +265,21 @@ Phase 1’s regression suite already covers the accounting, coupon, refund, paym
 - [x] Revenue, AOV, top products, and status counts
 - [x] Concurrent coupons and refunds
 - [x] Loyalty grant/revoke
-- [ ] SVG and magic-byte validation (Phase 2)
+- [x] SVG and magic-byte validation (Phase 2)
 - [ ] Checkout/payment idempotency: checkout and manual payments complete; real provider remains Phase 3
 - [x] PostgreSQL and full test run
-- [ ] Password-change session invalidation (Phase 2)
+- [x] Password-change session invalidation (Phase 2)
 - [ ] Disable or document unimplemented toggles (Phase 3)
 
 **P1 — before expansion**
-- [ ] Redis rate limiting (Phase 2)
-- [ ] Email verification, reset, and 2FA (Phase 2)
+- [x] Distributed rate limiting via PostgreSQL shared buckets (Phase 2)
+- [x] Email verification, reset, and 2FA (Phase 2)
 - [ ] Team authentication and RBAC (Phase 4)
 - [ ] Admin back-office (Phase 4)
 - [ ] Custom domains end to end (Phase 4)
 - [ ] Dynamic sitemap and SSR/prerender (Phase 5)
 - [ ] Image processing and thumbnails (Phase 5)
-- [ ] Cart/audit retention (Phase 2/6)
+- [x] Cart/audit retention (Phase 2/6)
 
 **P2 — UX and performance**
 - [ ] Code splitting and lazy routes (Phase 5)

@@ -28,6 +28,7 @@ import {
   attachAuth,
   csrfOriginCheck,
   authLimiter,
+  emailLimiter,
   publicWriteLimiter,
 } from "./middleware.js";
 import {
@@ -36,12 +37,31 @@ import {
   registerSchema,
   loginSchema,
   changePasswordSchema,
+  emailOnlySchema,
+  verifyEmailSchema,
+  resetPasswordSchema,
+  twoFactorSetupSchema,
+  twoFactorCodeSchema,
+  twoFactorDisableSchema,
   subdomainParamSchema,
   storeUpdateSchema,
   leadBodySchema,
 } from "./validate.js";
 import { ensureStoreDefaults, uniqueSubdomain, writeAudit } from "./services/account.js";
 import { paymentService } from "./services/integrations.js";
+import { issueAuthToken, consumeAuthToken } from "./services/authTokens.js";
+import { sendPasswordResetEmail, sendVerificationEmail } from "./services/email.js";
+import { verifySecondFactor } from "./services/twoFactor.js";
+import { encryptSecret, decryptSecret } from "./crypto.js";
+import {
+  generateRecoveryCodes,
+  generateTotpSecret,
+  hashRecoveryCode,
+  otpauthUrl,
+  verifyTotp,
+} from "./totp.js";
+import { startRetentionSweep } from "./retention.js";
+import { UPLOAD_EXTENSIONS } from "./services/media.js";
 
 // Feature routers
 import { productsRouter } from "./routes/products.js";
@@ -113,6 +133,9 @@ function toMerchantJson(row: Merchant) {
     first_name: row.firstName,
     last_name: row.lastName,
     phone: row.phone,
+    role: row.role,
+    email_verified: Boolean(row.emailVerifiedAt),
+    two_factor_enabled: row.twoFactorEnabled,
   };
 }
 
@@ -126,6 +149,51 @@ async function createSession(merchantId: string): Promise<string> {
     },
   });
   return token;
+}
+
+/**
+ * Debug tokens exist only outside production and only when the message could
+ * not actually be delivered, so a developer is never locked out of an
+ * unconfigured local environment. They are never returned in production.
+ */
+function debugToken(token: string, sent: boolean): string | undefined {
+  return !env.isProduction && !sent ? token : undefined;
+}
+
+function verificationLink(token: string): string {
+  return `${env.appUrl}/auth/verify-email?token=${encodeURIComponent(token)}`;
+}
+
+function passwordResetLink(token: string): string {
+  return `${env.appUrl}/auth/reset-password?token=${encodeURIComponent(token)}`;
+}
+
+async function issueVerification(merchant: { id: string; email: string }) {
+  const token = await issueAuthToken({
+    merchantId: merchant.id,
+    type: "email_verification",
+    ttlMinutes: env.email.verificationTtlMinutes,
+  });
+  const sent = await sendVerificationEmail({
+    to: merchant.email,
+    link: verificationLink(token),
+    ttlMinutes: env.email.verificationTtlMinutes,
+  });
+  return { sent, debug_token: debugToken(token, sent) };
+}
+
+async function issuePasswordReset(merchant: { id: string; email: string }) {
+  const token = await issueAuthToken({
+    merchantId: merchant.id,
+    type: "password_reset",
+    ttlMinutes: env.email.resetTtlMinutes,
+  });
+  const sent = await sendPasswordResetEmail({
+    to: merchant.email,
+    link: passwordResetLink(token),
+    ttlMinutes: env.email.resetTtlMinutes,
+  });
+  return { sent, debug_token: debugToken(token, sent) };
 }
 
 // ---- health (public): liveness + database connectivity ----
@@ -224,22 +292,40 @@ app.post(
       throw e;
     }
 
-    const token = await createSession(merchantId);
-    res.cookie(sessionCookieName(), token, sessionCookieOptions());
     const store = await prisma.store.findUnique({ where: { id: storeId } });
     const merchant = (await prisma.merchant.findUnique({ where: { id: merchantId } })) as Merchant;
+    const verification = await issueVerification({ id: merchant.id, email: merchant.email });
+
+    // When verification is mandatory, registration proves the account exists
+    // but does not grant a console session until the email link is consumed.
+    if (!env.email.requireVerification) {
+      const token = await createSession(merchantId);
+      res.cookie(sessionCookieName(), token, sessionCookieOptions());
+    }
+
     await writeAudit({
       storeId,
       merchantId,
       action: "account.registered",
       entity: "merchant",
       entityId: merchantId,
+      metadata: { email_sent: verification.sent },
       ip: req.ip,
     });
     res.status(201).json({
       merchant: toMerchantJson(merchant),
       store,
-      next: store?.onboardingCompleted ? "/dashboard" : "/onboarding",
+      next: env.email.requireVerification
+        ? "/auth/verify-email"
+        : store?.onboardingCompleted
+          ? "/dashboard"
+          : "/onboarding",
+      email_verification: {
+        required: env.email.requireVerification,
+        email_configured: env.email.configured,
+        sent: verification.sent,
+        ...(verification.debug_token ? { debug_token: verification.debug_token } : {}),
+      },
     });
   })
 );
@@ -249,7 +335,7 @@ app.post(
   authLimiter,
   validateBody(loginSchema),
   asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, totp, recovery_code } = req.body;
     const merchant = await prisma.merchant.findUnique({ where: { email } });
     if (!merchant) {
       await verifyUnknownEmail(password);
@@ -261,6 +347,32 @@ app.post(
       password
     );
     if (!ok) throw new ApiError(401, "INVALID_CREDENTIALS", "Invalid email or password.");
+
+    if (merchant.twoFactorEnabled) {
+      if (!totp && !recovery_code) {
+        throw new ApiError(401, "TWO_FACTOR_REQUIRED", "Enter your authenticator code to finish signing in.");
+      }
+      const secondFactor = await verifySecondFactor({
+        merchantId: merchant.id,
+        totp: totp || undefined,
+        recoveryCode: recovery_code || undefined,
+      });
+      if (!secondFactor) {
+        throw new ApiError(
+          401,
+          "INVALID_TWO_FACTOR_CODE",
+          "The authentication code is invalid or has already been used."
+        );
+      }
+    }
+
+    if (env.email.requireVerification && !merchant.emailVerifiedAt) {
+      throw new ApiError(
+        403,
+        "EMAIL_NOT_VERIFIED",
+        "Verify your email address before signing in. You can request a new verification link."
+      );
+    }
 
     if (needsRehash) {
       const upgraded = await hashPasswordArgon2(password);
@@ -336,6 +448,292 @@ app.post(
         : [prisma.session.deleteMany({ where: { merchantId: merchant.id } })]),
     ]);
     res.json({ ok: true });
+  })
+);
+
+// ---- email verification / password reset ----
+app.post(
+  "/api/auth/verify-email",
+  authLimiter,
+  validateBody(verifyEmailSchema),
+  asyncHandler(async (req, res) => {
+    const consumed = await consumeAuthToken({ token: req.body.token, type: "email_verification" });
+    if (!consumed) {
+      throw new ApiError(400, "VERIFICATION_INVALID", "This verification link is invalid, expired, or already used.");
+    }
+    const merchant = await prisma.merchant.update({
+      where: { id: consumed.merchantId },
+      data: { emailVerifiedAt: new Date() },
+    });
+    await writeAudit({
+      storeId: merchant.storeId,
+      merchantId: merchant.id,
+      action: "account.email_verified",
+      entity: "merchant",
+      entityId: merchant.id,
+      ip: req.ip,
+    });
+    res.json({ ok: true, email_verified: true });
+  })
+);
+
+app.post(
+  "/api/auth/verify-email/resend",
+  emailLimiter,
+  validateBody(emailOnlySchema),
+  asyncHandler(async (req, res) => {
+    // Public on purpose: when verification is mandatory, registration does not
+    // grant a session, so an authenticated-only resend would strand the user.
+    // The response is identical for unknown and verified addresses.
+    const merchant = await prisma.merchant.findUnique({ where: { email: req.body.email } });
+    if (!merchant) {
+      res.json({ ok: true, already_verified: false, email_configured: env.email.configured, sent: false });
+      return;
+    }
+    if (merchant.emailVerifiedAt) {
+      res.json({ ok: true, already_verified: true, email_configured: env.email.configured, sent: false });
+      return;
+    }
+    const verification = await issueVerification({ id: merchant.id, email: merchant.email });
+    await writeAudit({
+      storeId: merchant.storeId,
+      merchantId: merchant.id,
+      action: "account.verification_resent",
+      entity: "merchant",
+      entityId: merchant.id,
+      metadata: { email_sent: verification.sent },
+      ip: req.ip,
+    });
+    res.json({
+      ok: true,
+      already_verified: false,
+      email_configured: env.email.configured,
+      sent: verification.sent,
+      ...(verification.debug_token ? { debug_token: verification.debug_token } : {}),
+    });
+  })
+);
+
+app.post(
+  "/api/auth/forgot-password",
+  emailLimiter,
+  validateBody(emailOnlySchema),
+  asyncHandler(async (req, res) => {
+    const merchant = await prisma.merchant.findUnique({ where: { email: req.body.email } });
+    // Always answer identically so the endpoint cannot be used to discover
+    // which email addresses have accounts.
+    let debug: string | undefined;
+    if (merchant) {
+      const reset = await issuePasswordReset({ id: merchant.id, email: merchant.email });
+      debug = reset.debug_token;
+      await writeAudit({
+        storeId: merchant.storeId,
+        merchantId: merchant.id,
+        action: "account.password_reset_requested",
+        entity: "merchant",
+        entityId: merchant.id,
+        metadata: { email_sent: reset.sent },
+        ip: req.ip,
+      });
+    }
+    res.json({ ok: true, ...(debug ? { debug_token: debug } : {}) });
+  })
+);
+
+app.post(
+  "/api/auth/reset-password",
+  authLimiter,
+  validateBody(resetPasswordSchema),
+  asyncHandler(async (req, res) => {
+    const consumed = await consumeAuthToken({ token: req.body.token, type: "password_reset" });
+    if (!consumed) {
+      throw new ApiError(400, "RESET_INVALID", "This reset link is invalid, expired, or already used.");
+    }
+    const merchant = await prisma.merchant.findUnique({ where: { id: consumed.merchantId } });
+    if (!merchant) throw new ApiError(400, "RESET_INVALID", "This reset link is no longer valid.");
+    const hash = await hashPasswordArgon2(req.body.newPassword);
+    await prisma.$transaction([
+      prisma.merchant.update({
+        where: { id: merchant.id },
+        data: {
+          passwordHash: hash,
+          passwordSalt: null,
+          passwordAlgo: "argon2id",
+          // Consuming a reset link also proves control of the mailbox.
+          emailVerifiedAt: merchant.emailVerifiedAt ?? new Date(),
+        },
+      }),
+      // Every existing session is revoked: a password reset is a recovery
+      // action, so no device should keep access with the old credential.
+      prisma.session.deleteMany({ where: { merchantId: merchant.id } }),
+      prisma.authToken.updateMany({
+        where: { merchantId: merchant.id, type: "password_reset", usedAt: null },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+    await writeAudit({
+      storeId: merchant.storeId,
+      merchantId: merchant.id,
+      action: "account.password_reset",
+      entity: "merchant",
+      entityId: merchant.id,
+      ip: req.ip,
+    });
+    res.clearCookie(sessionCookieName(), { path: "/" });
+    res.json({ ok: true });
+  })
+);
+
+// ---- two-factor authentication ----
+app.post(
+  "/api/auth/2fa/setup",
+  asyncHandler(requireAuth),
+  validateBody(twoFactorSetupSchema),
+  asyncHandler(async (req, res) => {
+    const merchant = await prisma.merchant.findUnique({ where: { id: req.auth!.merchantId } });
+    if (!merchant) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required.");
+    const { ok } = await verifyMerchantPassword(
+      { password_hash: merchant.passwordHash, password_salt: merchant.passwordSalt, password_algo: merchant.passwordAlgo },
+      req.body.password
+    );
+    if (!ok) throw new ApiError(401, "INVALID_CREDENTIALS", "Password is incorrect.");
+    if (merchant.twoFactorEnabled) {
+      throw new ApiError(409, "TWO_FACTOR_ALREADY_ENABLED", "Two-factor authentication is already enabled.");
+    }
+
+    const secret = generateTotpSecret();
+    await prisma.merchant.update({
+      where: { id: merchant.id },
+      data: {
+        twoFactorSecret: encryptSecret(secret),
+        twoFactorEnabled: false,
+        twoFactorRecoveryCodes: [] as Prisma.InputJsonValue,
+      },
+    });
+    res.json({
+      secret,
+      otpauth_url: otpauthUrl({ secret, account: merchant.email }),
+      issuer: "Sanad",
+      account: merchant.email,
+    });
+  })
+);
+
+app.post(
+  "/api/auth/2fa/enable",
+  asyncHandler(requireAuth),
+  validateBody(twoFactorCodeSchema),
+  asyncHandler(async (req, res) => {
+    const merchant = await prisma.merchant.findUnique({ where: { id: req.auth!.merchantId } });
+    if (!merchant) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required.");
+    if (merchant.twoFactorEnabled) {
+      throw new ApiError(409, "TWO_FACTOR_ALREADY_ENABLED", "Two-factor authentication is already enabled.");
+    }
+    const secret = decryptSecret(merchant.twoFactorSecret);
+    if (!secret) {
+      throw new ApiError(409, "TWO_FACTOR_SETUP_REQUIRED", "Start two-factor setup before enabling it.");
+    }
+    if (!verifyTotp(secret, req.body.code)) {
+      throw new ApiError(400, "INVALID_TWO_FACTOR_CODE", "The authenticator code is invalid. Check your clock and try again.");
+    }
+
+    const recoveryCodes = generateRecoveryCodes();
+    await prisma.merchant.update({
+      where: { id: merchant.id },
+      data: {
+        twoFactorEnabled: true,
+        twoFactorRecoveryCodes: recoveryCodes.map(hashRecoveryCode) as Prisma.InputJsonValue,
+      },
+    });
+    await writeAudit({
+      storeId: merchant.storeId,
+      merchantId: merchant.id,
+      action: "account.two_factor_enabled",
+      entity: "merchant",
+      entityId: merchant.id,
+      ip: req.ip,
+    });
+    // Recovery codes are shown exactly once and never returned again.
+    res.json({ ok: true, recovery_codes: recoveryCodes });
+  })
+);
+
+app.post(
+  "/api/auth/2fa/disable",
+  asyncHandler(requireAuth),
+  validateBody(twoFactorDisableSchema),
+  asyncHandler(async (req, res) => {
+    const merchant = await prisma.merchant.findUnique({ where: { id: req.auth!.merchantId } });
+    if (!merchant) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required.");
+    if (!merchant.twoFactorEnabled) {
+      throw new ApiError(409, "TWO_FACTOR_NOT_ENABLED", "Two-factor authentication is not enabled.");
+    }
+    const { ok } = await verifyMerchantPassword(
+      { password_hash: merchant.passwordHash, password_salt: merchant.passwordSalt, password_algo: merchant.passwordAlgo },
+      req.body.password
+    );
+    if (!ok) throw new ApiError(401, "INVALID_CREDENTIALS", "Password is incorrect.");
+    const secondFactor = await verifySecondFactor({
+      merchantId: merchant.id,
+      totp: req.body.code,
+      recoveryCode: req.body.code,
+    });
+    if (!secondFactor) {
+      throw new ApiError(401, "INVALID_TWO_FACTOR_CODE", "The authentication code is invalid or has already been used.");
+    }
+
+    const current = req.cookies?.[sessionCookieName()];
+    await prisma.$transaction([
+      prisma.merchant.update({
+        where: { id: merchant.id },
+        data: {
+          twoFactorEnabled: false,
+          twoFactorSecret: null,
+          twoFactorRecoveryCodes: [] as Prisma.InputJsonValue,
+        },
+      }),
+      ...(typeof current === "string" && current
+        ? [
+            prisma.session.deleteMany({
+              where: { merchantId: merchant.id, NOT: { tokenHash: hashSessionToken(current) } },
+            }),
+          ]
+        : [prisma.session.deleteMany({ where: { merchantId: merchant.id } })]),
+    ]);
+    await writeAudit({
+      storeId: merchant.storeId,
+      merchantId: merchant.id,
+      action: "account.two_factor_disabled",
+      entity: "merchant",
+      entityId: merchant.id,
+      ip: req.ip,
+    });
+    res.json({ ok: true });
+  })
+);
+
+// ---- session management ----
+app.post(
+  "/api/auth/sessions/revoke-others",
+  asyncHandler(requireAuth),
+  asyncHandler(async (req, res) => {
+    const current = req.cookies?.[sessionCookieName()];
+    const result = await prisma.session.deleteMany({
+      where: {
+        merchantId: req.auth!.merchantId,
+        ...(typeof current === "string" && current ? { NOT: { tokenHash: hashSessionToken(current) } } : {}),
+      },
+    });
+    await writeAudit({
+      storeId: req.auth!.storeId,
+      merchantId: req.auth!.merchantId,
+      action: "account.sessions_revoked",
+      entity: "merchant",
+      entityId: req.auth!.merchantId,
+      metadata: { revoked: result.count },
+      ip: req.ip,
+    });
+    res.json({ ok: true, revoked: result.count });
   })
 );
 
@@ -481,8 +879,34 @@ app.use(settingsRouter);
 app.use(storefrontRouter);
 
 // ---- uploaded media (local storage driver) ----
+// Only inert raster images may be served. The extension allowlist plus
+// nosniff, a sandboxing CSP and a cross-origin resource policy prevent an
+// uploaded file from ever being interpreted as HTML/JS on the app origin.
 const uploadsDir = path.resolve(process.cwd(), env.storageDir);
-app.use("/uploads", express.static(uploadsDir, { fallthrough: true, maxAge: "7d" }));
+app.use(
+  "/uploads",
+  (req, res, next) => {
+    const extension = path.extname(req.path).toLowerCase();
+    if (!UPLOAD_EXTENSIONS.has(extension)) {
+      res.status(404).type("text/plain").send("Not found");
+      return;
+    }
+    next();
+  },
+  express.static(uploadsDir, {
+    fallthrough: true,
+    index: false,
+    dotfiles: "deny",
+    redirect: false,
+    maxAge: "7d",
+    setHeaders: (res) => {
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Content-Security-Policy", "default-src 'none'; img-src 'self'; style-src 'none'; sandbox");
+      res.setHeader("Cross-Origin-Resource-Policy", "same-site");
+      res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+    },
+  })
+);
 
 // ---- frontend build in production ----
 const distDir = path.join(process.cwd(), "dist");
@@ -518,6 +942,7 @@ async function waitForDatabase(attempts = 30, delayMs = 1000): Promise<void> {
 async function boot() {
   await waitForDatabase();
   startSessionCleanup();
+  startRetentionSweep();
   const server = app.listen(env.port, "0.0.0.0", () => {
     logger.info(`[sanad-backend] listening on http://localhost:${env.port} (env=${env.nodeEnv})`);
   });

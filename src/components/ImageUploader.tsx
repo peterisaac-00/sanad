@@ -104,7 +104,7 @@ export function ImageUploader({
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+        accept="image/jpeg,image/png,image/webp,image/gif"
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
@@ -213,7 +213,7 @@ export function MultiImageUploader({
         ref={inputRef}
         type="file"
         multiple
-        accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+        accept="image/jpeg,image/png,image/webp,image/gif"
         className="hidden"
         onChange={(e) => {
           if (e.target.files?.length) void upload(e.target.files);

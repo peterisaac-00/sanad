@@ -14,9 +14,12 @@ import {
   validateParams,
   validateQuery,
 } from "../validate.js";
-import { publicWriteLimiter } from "../middleware.js";
+import { cartLimiter, publicWriteLimiter, trackingLookupLimiter } from "../middleware.js";
 import { createCheckout, quoteShipping, resolveCheckoutLines, validateCoupon } from "../services/checkout.js";
 import { paymentService, whatsappLink } from "../services/integrations.js";
+import { createTrackingToken, trackingUrl, verifyTrackingToken } from "../services/tracking.js";
+import { normalizePhone } from "../identity.js";
+import { maskPhone } from "../privacy.js";
 
 export const storefrontRouter = Router();
 
@@ -493,7 +496,7 @@ storefrontRouter.post(
 
 storefrontRouter.post(
   "/api/storefront/:subdomain/cart",
-  publicWriteLimiter,
+  cartLimiter,
   validateParams(subdomainParamSchema),
   validateBody(cartTrackSchema),
   asyncHandler(async (req, res) => {
@@ -505,6 +508,17 @@ storefrontRouter.post(
       email: string;
       items: Array<{ sku: string; variantId: string; qty: number }>;
     };
+    const phone = normalizePhone(b.phone);
+    const email = b.email.trim().toLowerCase();
+    // An empty cart is only useful as a recovery lead when the shopper left a
+    // contact signal. Anything else is anonymous table flooding.
+    if (b.items.length === 0 && !phone && !email) {
+      throw new ApiError(
+        400,
+        "CART_EMPTY",
+        "Provide at least one item or a phone/email so the cart can be recovered."
+      );
+    }
     let lines: Array<{ sku: string; name: string; qty: number; price: number; image: string }> = [];
     let cartValue = 0;
     try {
@@ -528,16 +542,16 @@ storefrontRouter.post(
         storeId: store.id,
         cartToken: b.cartToken,
         customerName: b.customerName,
-        phone: b.phone,
-        email: b.email,
+        phone,
+        email,
         items: lines as unknown as Prisma.InputJsonValue,
         cartValue,
         recoveryStatus: "open",
       },
       update: {
         customerName: b.customerName,
-        phone: b.phone,
-        email: b.email,
+        phone,
+        email,
         items: lines as unknown as Prisma.InputJsonValue,
         cartValue,
         lastActivityAt: new Date(),
@@ -550,40 +564,71 @@ storefrontRouter.post(
 
 storefrontRouter.get(
   "/api/storefront/:subdomain/orders/:orderNumber",
+  trackingLookupLimiter,
   validateParams(subdomainParamSchema.extend({ orderNumber: z.string().regex(/^\d+$/) })),
   asyncHandler(async (req, res) => {
     const store = await activeStore(req.params.subdomain);
-    const phone = typeof req.query.phone === "string" ? req.query.phone : "";
-    if (!phone) throw new ApiError(400, "PHONE_REQUIRED", "Provide the phone number used for the order.");
-    const order = await prisma.order.findFirst({
-      where: {
-        storeId: store.id,
-        orderNumber: Number(req.params.orderNumber),
-        customerPhone: phone,
-      },
-      select: {
-        orderNumber: true,
-        status: true,
-        paymentStatus: true,
-        amountText: true,
-        amountEgp: true,
-        customerName: true,
-        customerPhone: true,
-        createdAt: true,
-        items: {
-          select: {
-            name: true,
-            qty: true,
-            unitPriceEgp: true,
-            imageUrl: true,
-            variantLabel: true,
-            sku: true,
-          },
+    const orderNumber = Number(req.params.orderNumber);
+    const token = typeof req.query.token === "string" ? req.query.token.trim() : "";
+    const phone = normalizePhone(typeof req.query.phone === "string" ? req.query.phone : "");
+
+    if (!token && !phone) {
+      throw new ApiError(
+        400,
+        "TRACKING_REQUIRED",
+        "Provide the signed tracking token from your confirmation page or the phone number used for the order."
+      );
+    }
+
+    const publicSelect = {
+      id: true,
+      orderNumber: true,
+      status: true,
+      paymentStatus: true,
+      amountText: true,
+      amountEgp: true,
+      customerName: true,
+      customerPhone: true,
+      createdAt: true,
+      items: {
+        select: {
+          name: true,
+          qty: true,
+          unitPriceEgp: true,
+          imageUrl: true,
+          variantLabel: true,
+          sku: true,
         },
       },
-    });
+    } as const;
+
+    let order;
+    if (token) {
+      const verified = verifyTrackingToken(token, { storeId: store.id, orderNumber });
+      if (!verified) throw new ApiError(404, "ORDER_NOT_FOUND", "Order not found.");
+      order = await prisma.order.findFirst({
+        where: { id: verified.orderId, storeId: store.id, orderNumber },
+        select: publicSelect,
+      });
+    } else {
+      order = await prisma.order.findFirst({
+        where: { storeId: store.id, orderNumber, customerPhone: phone },
+        select: publicSelect,
+      });
+    }
     if (!order) throw new ApiError(404, "ORDER_NOT_FOUND", "Order not found.");
-    res.json({ order, store: storefrontSettings(store) });
+
+    // The order id is never exposed, and the phone is masked in the response.
+    // A fresh signed token lets the customer revisit without a phone number
+    // in the URL or browser history.
+    const { id: orderId, customerPhone, ...publicOrder } = order;
+    const freshToken = createTrackingToken({ orderId, storeId: store.id, orderNumber });
+    res.json({
+      order: { ...publicOrder, customerPhone: maskPhone(customerPhone) },
+      tracking_token: freshToken,
+      tracking_url: trackingUrl({ subdomain: store.subdomain, orderNumber, token: freshToken }),
+      store: storefrontSettings(store),
+    });
   })
 );
 
@@ -609,6 +654,8 @@ storefrontRouter.post(
       order: result.order,
       shipping: result.shipping,
       whatsapp_url: result.whatsapp_url,
+      tracking_token: result.tracking_token,
+      tracking_url: result.tracking_url,
     });
   })
 );

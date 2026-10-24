@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma, newId } from "../db.js";
 import { ApiError } from "../errors.js";
 import { ORDER_TRANSITIONS } from "../validate.js";
+import { csvHeader, csvRow } from "./csv.js";
 
 /**
  * Order lifecycle shared by the merchant dashboard and the public storefront.
@@ -234,29 +235,30 @@ export async function bulkOrderStatus(input: {
   return results;
 }
 
+export const ORDER_EXPORT_COLUMNS = [
+  "orderNumber",
+  "createdAt",
+  "status",
+  "paymentStatus",
+  "paymentMethod",
+  "customerName",
+  "customerPhone",
+  "customerEmail",
+  "governorate",
+  "city",
+  "address",
+  "subtotal",
+  "discount",
+  "shippingFee",
+  "amountEgp",
+  "couponCode",
+  "itemsSummary",
+] as const;
+
+export function orderExportRow(row: Record<string, unknown>): string {
+  return csvRow(ORDER_EXPORT_COLUMNS.map((column) => row[column]));
+}
+
 export function ordersToCsv(rows: Array<Record<string, unknown>>): string {
-  const columns = [
-    "orderNumber",
-    "createdAt",
-    "status",
-    "paymentStatus",
-    "paymentMethod",
-    "customerName",
-    "customerPhone",
-    "customerEmail",
-    "governorate",
-    "city",
-    "address",
-    "subtotal",
-    "discount",
-    "shippingFee",
-    "amountEgp",
-    "couponCode",
-    "itemsSummary",
-  ];
-  const escape = (value: unknown) => {
-    const s = value == null ? "" : String(value);
-    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  return [columns.join(","), ...rows.map((r) => columns.map((c) => escape(r[c])).join(","))].join("\n");
+  return [csvHeader([...ORDER_EXPORT_COLUMNS]), ...rows.map(orderExportRow)].join("\n");
 }

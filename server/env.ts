@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { isIP } from "node:net";
+import { createHash } from "node:crypto";
 
 /**
  * Centralized, validated environment configuration.
@@ -31,6 +33,18 @@ const raw = {
   SHIPPING_PROVIDER: process.env.SHIPPING_PROVIDER || "",
   SHIPPING_API_KEY: process.env.SHIPPING_API_KEY || "",
   MEDIA_MAX_BYTES: process.env.MEDIA_MAX_BYTES || "5242880",
+  MEDIA_MAX_DIMENSION: process.env.MEDIA_MAX_DIMENSION || "6000",
+  SMTP_URL: process.env.SMTP_URL || "",
+  EMAIL_FROM: process.env.EMAIL_FROM || "",
+  REQUIRE_EMAIL_VERIFICATION: process.env.REQUIRE_EMAIL_VERIFICATION || "false",
+  EMAIL_VERIFICATION_TTL_MINUTES: process.env.EMAIL_VERIFICATION_TTL_MINUTES || "1440",
+  PASSWORD_RESET_TTL_MINUTES: process.env.PASSWORD_RESET_TTL_MINUTES || "60",
+  TRACKING_SECRET: process.env.TRACKING_SECRET || "",
+  TRACKING_TOKEN_TTL_DAYS: process.env.TRACKING_TOKEN_TTL_DAYS || "30",
+  TOTP_ENCRYPTION_KEY: process.env.TOTP_ENCRYPTION_KEY || "",
+  CART_RETENTION_DAYS: process.env.CART_RETENTION_DAYS || "30",
+  AUDIT_RETENTION_DAYS: process.env.AUDIT_RETENTION_DAYS || "365",
+  EXPORT_MAX_ROWS: process.env.EXPORT_MAX_ROWS || "50000",
 };
 
 const envSchema = z.object({
@@ -62,7 +76,20 @@ const envSchema = z.object({
   SHIPPING_PROVIDER: z.string(),
   SHIPPING_API_KEY: z.string(),
   MEDIA_MAX_BYTES: z.coerce.number().int().min(1024).max(20 * 1024 * 1024),
+  MEDIA_MAX_DIMENSION: z.coerce.number().int().min(256).max(12000),
+  SMTP_URL: z.union([z.literal(""), z.string().url()]),
+  EMAIL_FROM: z.union([z.literal(""), z.string().trim().max(320)]),
+  REQUIRE_EMAIL_VERIFICATION: z.enum(["true", "false"]),
+  EMAIL_VERIFICATION_TTL_MINUTES: z.coerce.number().int().min(5).max(10080),
+  PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(1440),
+  TRACKING_SECRET: z.string(),
+  TRACKING_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(365),
+  TOTP_ENCRYPTION_KEY: z.string(),
+  CART_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650),
+  AUDIT_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650),
+  EXPORT_MAX_ROWS: z.coerce.number().int().min(1).max(1_000_000),
 });
+
 
 const parsed = envSchema.safeParse(raw);
 if (!parsed.success) {
@@ -73,13 +100,49 @@ if (!parsed.success) {
   process.exit(1);
 }
 
-function parseTrustProxy(v: string): boolean | number {
-  if (v === "true") return true;
-  if (v === "false") return false;
-  const n = Number(v);
-  if (Number.isInteger(n) && n >= 0) return n;
-  console.error('[env] TRUST_PROXY must be "true", "false", or a non-negative integer.');
-  process.exit(1);
+/**
+ * Express accepts a boolean, a hop count, or a list of trusted proxy
+ * addresses/CIDRs. `true` is rejected on purpose: it trusts the entire
+ * X-Forwarded-For chain, so any client can spoof its own IP and bypass
+ * per-IP rate limits and audit attribution.
+ */
+export type TrustProxySetting = false | number | string[];
+
+const PROXY_PRESETS = new Set(["loopback", "linklocal", "uniquelocal"]);
+
+function validProxyToken(token: string): boolean {
+  if (PROXY_PRESETS.has(token)) return true;
+  const [address, bits] = token.split("/");
+  if (!address || isIP(address) === 0) return false;
+  if (bits === undefined) return true;
+  if (!/^\d{1,3}$/.test(bits)) return false;
+  const prefix = Number(bits);
+  return prefix >= 0 && prefix <= (isIP(address) === 6 ? 128 : 32);
+}
+
+export function parseTrustProxy(v: string): TrustProxySetting {
+  const value = v.trim();
+  if (value === "false" || value === "") return false;
+  if (value === "true") {
+    console.error(
+      '[env] TRUST_PROXY=true is unsafe (any client can spoof X-Forwarded-For). Use a hop count such as "1" or an explicit proxy IP/CIDR list.'
+    );
+    process.exit(1);
+  }
+  if (/^\d+$/.test(value)) {
+    const hops = Number(value);
+    if (hops >= 1 && hops <= 32) return hops;
+    console.error("[env] TRUST_PROXY hop count must be between 1 and 32.");
+    process.exit(1);
+  }
+  const tokens = value.split(",").map((s) => s.trim()).filter(Boolean);
+  if (!tokens.length || !tokens.every(validProxyToken)) {
+    console.error(
+      '[env] TRUST_PROXY must be "false", a positive hop count, or a comma-separated list of IP addresses/CIDRs ("loopback", "linklocal", "uniquelocal" are also accepted).'
+    );
+    process.exit(1);
+  }
+  return tokens;
 }
 
 const corsOrigins = parsed.data.CORS_ORIGIN.split(",")
@@ -93,6 +156,19 @@ if (corsOrigins.length === 0) {
 
 const isProduction = parsed.data.NODE_ENV === "production";
 const demoMode = parsed.data.DEMO_MODE === "true";
+const requireEmailVerification = parsed.data.REQUIRE_EMAIL_VERIFICATION === "true";
+const emailConfigured = Boolean(parsed.data.SMTP_URL && parsed.data.EMAIL_FROM);
+
+if (isProduction && requireEmailVerification && !emailConfigured) {
+  console.error(
+    "[env] REQUIRE_EMAIL_VERIFICATION=true requires SMTP_URL and EMAIL_FROM. Refusing to boot without a way to deliver verification links."
+  );
+  process.exit(1);
+}
+if ((parsed.data.SMTP_URL && !parsed.data.EMAIL_FROM) || (!parsed.data.SMTP_URL && parsed.data.EMAIL_FROM)) {
+  console.warn("[env] Set both SMTP_URL and EMAIL_FROM to enable email delivery. Email is currently disabled.");
+}
+
 
 // Never silently run demo data in production: an explicit demo password is required.
 let demoMerchantPassword = parsed.data.DEMO_MERCHANT_PASSWORD;
@@ -119,6 +195,22 @@ if (isProduction) {
   console.warn("[env] SESSION_SECRET not set: using an insecure dev default. Never use this in production.");
 }
 
+function derivedSecret(purpose: string): string {
+  return createHash("sha256").update(`sanad:${purpose}:${sessionSecret}`, "utf8").digest("hex");
+}
+
+let trackingSecret = parsed.data.TRACKING_SECRET || derivedSecret("tracking");
+if (isProduction && parsed.data.TRACKING_SECRET && parsed.data.TRACKING_SECRET.length < 32) {
+  console.error("[env] TRACKING_SECRET must be at least 32 characters when set in production. Refusing to boot.");
+  process.exit(1);
+}
+
+let totpEncryptionKey = parsed.data.TOTP_ENCRYPTION_KEY || derivedSecret("totp");
+if (isProduction && parsed.data.TOTP_ENCRYPTION_KEY && parsed.data.TOTP_ENCRYPTION_KEY.length < 32) {
+  console.error("[env] TOTP_ENCRYPTION_KEY must be at least 32 characters when set in production. Refusing to boot.");
+  process.exit(1);
+}
+
 export const env = {
   port: parsed.data.PORT,
   nodeEnv: parsed.data.NODE_ENV,
@@ -135,7 +227,27 @@ export const env = {
   storageDriver: parsed.data.STORAGE_DRIVER,
   storageDir: parsed.data.STORAGE_DIR,
   mediaMaxBytes: parsed.data.MEDIA_MAX_BYTES,
+  mediaMaxDimension: parsed.data.MEDIA_MAX_DIMENSION,
+  email: {
+    configured: emailConfigured,
+    smtpUrl: parsed.data.SMTP_URL,
+    from: parsed.data.EMAIL_FROM,
+    requireVerification: requireEmailVerification,
+    verificationTtlMinutes: parsed.data.EMAIL_VERIFICATION_TTL_MINUTES,
+    resetTtlMinutes: parsed.data.PASSWORD_RESET_TTL_MINUTES,
+  },
+  tracking: {
+    secret: trackingSecret,
+    ttlDays: parsed.data.TRACKING_TOKEN_TTL_DAYS,
+  },
+  totpEncryptionKey,
+  retention: {
+    cartDays: parsed.data.CART_RETENTION_DAYS,
+    auditDays: parsed.data.AUDIT_RETENTION_DAYS,
+  },
+  exportMaxRows: parsed.data.EXPORT_MAX_ROWS,
   ai: {
+
     configured: Boolean(parsed.data.AI_BASE_URL && parsed.data.AI_API_KEY),
     baseUrl: parsed.data.AI_BASE_URL,
     apiKey: parsed.data.AI_API_KEY,

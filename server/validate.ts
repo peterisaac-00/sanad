@@ -52,6 +52,9 @@ export const registerSchema = z.strictObject({
 export const loginSchema = z.strictObject({
   email: emailField,
   password: z.string().min(1, { message: "password is required" }).max(128),
+  // Second factor is collected in a separate step after the password check.
+  totp: z.string().trim().max(16).optional(),
+  recovery_code: z.string().trim().max(64).optional(),
 });
 
 export const changePasswordSchema = z
@@ -63,6 +66,31 @@ export const changePasswordSchema = z
     message: "newPassword must be different from currentPassword",
     path: ["newPassword"],
   });
+
+// ---- account recovery / 2FA ----
+export const emailOnlySchema = z.strictObject({ email: emailField });
+
+export const verifyEmailSchema = z.strictObject({
+  token: z.string().trim().min(20).max(128),
+});
+
+export const resetPasswordSchema = z.strictObject({
+  token: z.string().trim().min(20).max(128),
+  newPassword: passwordField,
+});
+
+export const twoFactorSetupSchema = z.strictObject({
+  password: z.string().min(1, { message: "password is required" }).max(128),
+});
+
+export const twoFactorCodeSchema = z.strictObject({
+  code: z.string().trim().min(6).max(64),
+});
+
+export const twoFactorDisableSchema = z.strictObject({
+  password: z.string().min(1, { message: "password is required" }).max(128),
+  code: z.string().trim().min(6).max(64),
+});
 
 export const subdomainParamSchema = z.strictObject({ subdomain: subdomainField });
 

@@ -5,7 +5,7 @@ dist-server
 .gitignore
 .env
 .env.local
-data
+/data
 coverage
 .vscode
 .idea

@@ -80,6 +80,19 @@ export interface RegisterPayload {
   acceptTerms?: boolean;
 }
 
+export interface EmailVerificationState {
+  required: boolean;
+  email_configured: boolean;
+  sent: boolean;
+  /** Development/testing only: never present when NODE_ENV=production. */
+  debug_token?: string;
+}
+
+export interface SecondFactorInput {
+  totp?: string;
+  recovery_code?: string;
+}
+
 export interface ProductInput {
   sku: string;
   name_ar?: string;
@@ -110,26 +123,71 @@ export const api = {
   health: () => req<{ ok: boolean }>("/api/health"),
 
   register: (p: RegisterPayload) =>
-    req<{ merchant: any; store: any; next?: string }>("/api/auth/register", {
+    req<{ merchant: any; store: any; next?: string; email_verification?: EmailVerificationState }>("/api/auth/register", {
       method: "POST",
       body: JSON.stringify(p),
     }),
 
-  login: (email: string, password: string) =>
+  login: (email: string, password: string, secondFactor?: SecondFactorInput) =>
     req<SessionPayload>("/api/auth/login", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, ...(secondFactor ?? {}) }),
     }),
 
   logout: () => req<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
 
   me: () => req<SessionPayload>("/api/auth/me"),
 
+  verifyEmail: (token: string) =>
+    req<{ ok: boolean; email_verified: boolean }>("/api/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
+
+  resendVerification: (email: string) =>
+    req<{ ok: boolean; already_verified: boolean; email_configured: boolean; sent: boolean; debug_token?: string }>(
+      "/api/auth/verify-email/resend",
+      { method: "POST", body: JSON.stringify({ email }) }
+    ),
+
+  forgotPassword: (email: string) =>
+    req<{ ok: boolean; debug_token?: string }>("/api/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (token: string, newPassword: string) =>
+    req<{ ok: boolean }>("/api/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, newPassword }),
+    }),
+
   changePassword: (currentPassword: string, newPassword: string) =>
     req<{ ok: boolean }>("/api/auth/password", {
       method: "POST",
       body: JSON.stringify({ currentPassword, newPassword }),
     }),
+
+  revokeOtherSessions: () =>
+    req<{ ok: boolean; revoked: number }>("/api/auth/sessions/revoke-others", { method: "POST" }),
+
+  twoFactor: {
+    setup: (password: string) =>
+      req<{ secret: string; otpauth_url: string; issuer: string; account: string }>("/api/auth/2fa/setup", {
+        method: "POST",
+        body: JSON.stringify({ password }),
+      }),
+    enable: (code: string) =>
+      req<{ ok: boolean; recovery_codes: string[] }>("/api/auth/2fa/enable", {
+        method: "POST",
+        body: JSON.stringify({ code }),
+      }),
+    disable: (password: string, code: string) =>
+      req<{ ok: boolean }>("/api/auth/2fa/disable", {
+        method: "POST",
+        body: JSON.stringify({ password, code }),
+      }),
+  },
 
   deleteAccount: (password: string) =>
     req<{ ok: boolean }>("/api/account", {
@@ -225,7 +283,13 @@ export const api = {
         body: JSON.stringify({ status }),
       }),
     checkout: (subdomain: string, body: CheckoutInput, idempotencyKey?: string) =>
-      req<{ order: any; shipping: any; whatsapp_url: string | null }>(`/api/stores/${enc(subdomain)}/checkout`, {
+      req<{
+        order: any;
+        shipping: any;
+        whatsapp_url: string | null;
+        tracking_token: string;
+        tracking_url: string;
+      }>(`/api/stores/${enc(subdomain)}/checkout`, {
         method: "POST",
         headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
         body: JSON.stringify(body),
@@ -496,9 +560,20 @@ export const api = {
       req<{ logs: any[] }>(`/api/stores/${enc(subdomain)}/audit-logs${qs({ limit })}`),
     domains: (subdomain: string) => req<{ domains: any[] }>(`/api/stores/${enc(subdomain)}/domains`),
     addDomain: (subdomain: string, domain: string) =>
-      req<{ domain: any }>(`/api/stores/${enc(subdomain)}/domains`, { method: "POST", body: JSON.stringify({ domain }) }),
+      req<{ domain: any; challenge: { type: "TXT"; name: string; value: string } }>(`/api/stores/${enc(subdomain)}/domains`, {
+        method: "POST",
+        body: JSON.stringify({ domain }),
+      }),
     verifyDomain: (subdomain: string, id: string) =>
-      req<any>(`/api/stores/${enc(subdomain)}/domains/${enc(id)}/verify`, { method: "POST" }),
+      req<{ domain: any; verified: boolean; status: string; instructions: string }>(
+        `/api/stores/${enc(subdomain)}/domains/${enc(id)}/verify`,
+        { method: "POST" }
+      ),
+    rotateDomainChallenge: (subdomain: string, id: string) =>
+      req<{ domain: any; challenge: { type: "TXT"; name: string; value: string } }>(
+        `/api/stores/${enc(subdomain)}/domains/${enc(id)}/challenge`,
+        { method: "POST" }
+      ),
     removeDomain: (subdomain: string, id: string) =>
       req<{ ok: boolean }>(`/api/stores/${enc(subdomain)}/domains/${enc(id)}`, { method: "DELETE" }),
     team: (subdomain: string) => req<{ team: any[]; invitation_email_configured: boolean }>(`/api/stores/${enc(subdomain)}/team`),
@@ -559,8 +634,13 @@ export const api = {
         items: { sku?: string; variantId?: string; qty: number }[];
       }
     ) => req<{ cart: any }>(`/api/storefront/${enc(subdomain)}/cart`, { method: "POST", body: JSON.stringify(body) }),
-    order: (subdomain: string, orderNumber: string, phone: string) =>
-      req<{ order: any; store: any }>(`/api/storefront/${enc(subdomain)}/orders/${enc(orderNumber)}${qs({ phone })}`),
+    order: (subdomain: string, orderNumber: string, opts: { phone?: string; token?: string }) =>
+      req<{
+        order: any;
+        store: any;
+        tracking_token: string;
+        tracking_url: string;
+      }>(`/api/storefront/${enc(subdomain)}/orders/${enc(orderNumber)}${qs({ phone: opts.phone, token: opts.token })}`),
   },
 
   myLeads: () => req<{ leads: any[] }>("/api/leads"),

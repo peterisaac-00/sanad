@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { asyncHandler } from "../errors.js";
 import { ApiError } from "../errors.js";
-import { requireAuth } from "../middleware.js";
+import { mediaLimiter, requireAuth } from "../middleware.js";
 import { validateBody } from "../validate.js";
 import { storeMedia } from "../services/media.js";
 import { prisma } from "../db.js";
@@ -18,6 +18,7 @@ const mediaBodySchema = z.strictObject({
 mediaRouter.post(
   "/",
   asyncHandler(requireAuth),
+  mediaLimiter,
   validateBody(mediaBodySchema),
   asyncHandler(async (req, res) => {
     if (!req.auth!.storeId) throw new ApiError(404, "STORE_NOT_FOUND", "No store linked to this account.");

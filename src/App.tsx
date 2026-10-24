@@ -6,6 +6,9 @@ import { usePath } from './lib/router';
 import { MarketingApp } from './marketing/MarketingApp';
 import { LoginPage } from './auth/LoginPage';
 import { RegisterPage } from './auth/RegisterPage';
+import { ForgotPasswordPage } from './auth/ForgotPasswordPage';
+import { ResetPasswordPage } from './auth/ResetPasswordPage';
+import { VerifyEmailPage } from './auth/VerifyEmailPage';
 import { OnboardingPage } from './onboarding/OnboardingPage';
 import { DashboardShell } from './dashboard/DashboardShell';
 import { DashboardRouter } from './dashboard/DashboardRouter';
@@ -32,6 +35,15 @@ function RoutedApp() {
   }
   if (path === '/auth/register' || path.startsWith('/auth/register/')) {
     return <RegisterPage />;
+  }
+  if (path === '/auth/forgot-password' || path.startsWith('/auth/forgot-password/')) {
+    return <ForgotPasswordPage />;
+  }
+  if (path === '/auth/reset-password' || path.startsWith('/auth/reset-password/')) {
+    return <ResetPasswordPage />;
+  }
+  if (path === '/auth/verify-email' || path.startsWith('/auth/verify-email/')) {
+    return <VerifyEmailPage />;
   }
   if (path.startsWith('/auth/')) {
     return <LoginPage />;

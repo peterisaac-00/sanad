@@ -48,7 +48,7 @@ flowchart LR
 | Backend | Express 4, Prisma 7 (@prisma/adapter-pg), PostgreSQL 16 |
 | Auth | Argon2id (m=19456, t=2, p=1), opaque HMAC'd session cookies |
 | Validation | Zod strict schemas; params, query and JSON bodies |
-| Hardening | helmet, strict CORS allowlist, CSRF origin check, rate limits, pino logs |
+| Hardening | helmet, strict CORS/CSRF, PostgreSQL-shared rate limits, validated media, 2FA, PII masking, pino logs |
 | Media | Local-disk `MediaAsset` storage with an explicit future S3 boundary |
 | Tests | Vitest + supertest against real per-worker Postgres databases |
 | Deploy | Multi-stage Dockerfile (non-root, prod deps), docker-compose (db + migrate + app) |
@@ -81,14 +81,25 @@ Seeded demo login (dev only): `merchant@saraya.sanad.app` + `DEMO_MERCHANT_PASSW
 | `DATABASE_URL` | **yes** | — | `postgresql://…`; boot fails without it |
 | `SESSION_SECRET` | prod: **yes** | insecure dev default | 32+ chars in production; rotation logs everyone out |
 | `CORS_ORIGIN` | no | `http://localhost:3000` | comma-separated, no wildcards |
-| `TRUST_PROXY` | no | `false` | `true` only behind a trusted proxy |
+| `TRUST_PROXY` | no | `false` | `false`, a trusted hop count (`1`), or proxy IP/CIDR list; `true` is rejected |
 | `JSON_BODY_LIMIT` | no | `256kb` | max JSON body (media has its own parser/limit) |
-| `LOG_LEVEL` | no | `info` | pino level |
-| `APP_URL` | no | `http://localhost:3000` | absolute base used in onboarding links/integrations |
+| `LOG_LEVEL` | no | `info` | pino level; PII/secrets are redacted |
+| `APP_URL` | no | `http://localhost:3000` | absolute base used in verification/reset/tracking links |
 | `VITE_API_URL` | no | `""` | build-time API base; empty = same origin |
 | `STORAGE_DRIVER` | no | `local` | `local` is implemented; `s3` fails honestly until an adapter is added |
-| `STORAGE_DIR` | no | `data/uploads` | local upload directory, served at `/uploads` |
+| `STORAGE_DIR` | no | `data/uploads` | local upload directory, served at `/uploads` with inert-content headers |
 | `MEDIA_MAX_BYTES` | no | `5242880` | per-image upload limit (max 20 MB) |
+| `MEDIA_MAX_DIMENSION` | no | `6000` | max width/height after decoding |
+| `SMTP_URL` / `EMAIL_FROM` | pair | — | enable verification/reset delivery; production refuses `REQUIRE_EMAIL_VERIFICATION=true` without them |
+| `REQUIRE_EMAIL_VERIFICATION` | no | `false` | blocks login until the address is verified |
+| `EMAIL_VERIFICATION_TTL_MINUTES` | no | `1440` | single-use verification link lifetime |
+| `PASSWORD_RESET_TTL_MINUTES` | no | `60` | single-use reset link lifetime |
+| `TRACKING_SECRET` | no | derived | 32+ chars in production when set; signs order-tracking links |
+| `TOTP_ENCRYPTION_KEY` | no | derived | 32+ chars in production when set; encrypts 2FA secrets at rest |
+| `TRACKING_TOKEN_TTL_DAYS` | no | `30` | signed tracking-link lifetime |
+| `CART_RETENTION_DAYS` | no | `30` | abandoned-cart sweep cutoff |
+| `AUDIT_RETENTION_DAYS` | no | `365` | audit-log sweep cutoff |
+| `EXPORT_MAX_ROWS` | no | `50000` | CSV export cap; larger exports return `413 EXPORT_TOO_LARGE` |
 | `AI_BASE_URL` | no | — | OpenAI-compatible endpoint; assistant stays disabled without it |
 | `AI_API_KEY` | no | — | required with `AI_BASE_URL` |
 | `AI_MODEL` | no | `gpt-4o-mini` | model sent to the compatible endpoint |
@@ -125,8 +136,12 @@ store. Public routes are explicitly allowlisted and rate-limited.
 | Method | Path | Notes |
 |--------|------|-------|
 | GET | `/api/health` | liveness + DB check (`503` when down) |
-| POST | `/api/auth/register` | creates merchant + store atomically; rate-limited |
-| POST | `/api/auth/login` | rotates session; rate-limited |
+| POST | `/api/auth/register` | creates merchant + store atomically; issues a verification link; rate-limited |
+| POST | `/api/auth/login` | password + optional TOTP/recovery code; rotates session; rate-limited |
+| POST | `/api/auth/verify-email` | consumes a single-use verification token |
+| POST | `/api/auth/verify-email/resend` | public, email-based resend with anti-enumeration response |
+| POST | `/api/auth/forgot-password` | public, always responds identically; rate-limited |
+| POST | `/api/auth/reset-password` | single-use token; revokes every existing session |
 | GET | `/api/stores/:sub` | public storefront summary (no phone/plan) |
 | GET | `/api/storefront/:sub` | branding, categories, featured products, pages, shipping zones, publish gate |
 | GET | `/api/storefront/:sub/products` | active catalog with search/category/price/sort/pagination |
@@ -137,8 +152,8 @@ store. Public routes are explicitly allowlisted and rate-limited.
 | GET / POST | `/api/storefront/:sub/reviews[/:productId]` | approved reviews; submissions start `pending` |
 | POST | `/api/storefront/:sub/coupon` | validates a coupon against server-side rules |
 | POST | `/api/storefront/:sub/shipping-quote` | zone/rate/free-threshold/COD quote |
-| POST | `/api/storefront/:sub/cart` | snapshots an abandoned cart from real catalog lines |
-| GET | `/api/storefront/:sub/orders/:orderNumber?phone=` | phone-scoped order tracking |
+| POST | `/api/storefront/:sub/cart` | snapshots a cart from real catalog lines; rejects anonymous empty carts |
+| GET | `/api/storefront/:sub/orders/:orderNumber?token=…` | signed tracking token (preferred) or `phone=` fallback; PII masked |
 | POST | `/api/stores/:sub/checkout` | public COD checkout; totals/stock/coupons computed server-side |
 | POST | `/api/leads` | attributed to the store when logged in; payload capped |
 
@@ -146,7 +161,8 @@ store. Public routes are explicitly allowlisted and rate-limited.
 
 | Area | Paths |
 |------|-------|
-| Session | `GET /api/auth/me`, `POST /api/auth/logout`, `POST /api/auth/password` |
+| Session | `GET /api/auth/me`, `POST /api/auth/logout`, `POST /api/auth/password`, `POST /api/auth/sessions/revoke-others` |
+| Two-factor | `POST /api/auth/2fa/setup`, `/2fa/enable`, `/2fa/disable` (TOTP + one-time recovery codes) |
 | Account | `GET/PATCH /api/account/store`, `GET /api/stores`, `GET /api/leads` |
 | Onboarding | `GET/PATCH /api/onboarding`, `POST /api/onboarding/complete` |
 | Catalog | `/api/stores/:sub/products`, `/categories`, `/reviews` |
@@ -158,7 +174,7 @@ store. Public routes are explicitly allowlisted and rate-limited.
 | Dropshipping | `/api/stores/:sub/dropshipping`, `/suppliers`, `/dropship-products` |
 | Assistant | `GET/POST /api/stores/:sub/assistant`, `/assistant/generate` |
 | Reports | `GET /api/stores/:sub/reports` |
-| Settings | `GET/PATCH /api/stores/:sub/settings`, `/notification-preferences`, `/audit-logs`, `/domains`, `/team` |
+| Settings | `GET/PATCH /api/stores/:sub/settings`, `/notification-preferences`, `/audit-logs`, `/domains` (+ one-time challenge rotation), `/team` |
 | Media | `POST/GET /api/media` (base64 image upload, local disk) |
 
 Order statuses: `pending`, `needs_confirmation`, `confirmed`, `preparing`,
@@ -172,30 +188,58 @@ Order statuses: `pending`, `needs_confirmation`, `confirmed`, `preparing`,
 - Deny by default; ownership is derived from the session, never from client input.
 - Passwords: Argon2id; legacy scrypt hashes verify once and upgrade on login.
 - Sessions: 256-bit tokens, HMAC-`SESSION_SECRET` hashes in DB, 7-day expiry,
-  rotation on login, logout invalidates server-side.
-- CSRF: SameSite=Lax cookies + Origin/Referer allowlist check on mutations.
-- Brute force: 30 req/15 min on login/register; 60 on public writes.
+  rotation on login, logout invalidates server-side. Password change keeps the
+  current session and revokes the rest; reset revokes all sessions.
+- Email verification and password reset: random 256-bit tokens, only an HMAC is
+  stored, links are single-use and expire. `REQUIRE_EMAIL_VERIFICATION` blocks
+  login until the address is confirmed.
+- 2FA: RFC 6238 TOTP with AES-256-GCM encrypted secrets; recovery codes are
+  HMAC hashes and are consumed exactly once (transaction-scoped lock).
+- CSRF: SameSite=Lax cookies + Origin/Referer allowlist on mutations; production
+  rejects mutations that carry no source header.
+- Brute force: distributed fixed-window limits in PostgreSQL (`rate_limit_buckets`)
+  are shared by every replica: auth/email, public writes, tracking, carts,
+  exports and media each have dedicated budgets.
+- `TRUST_PROXY=true` is rejected; use an explicit hop count or proxy IP/CIDR list
+  so `X-Forwarded-For` cannot spoof rate-limit identities.
+- Uploads: SVG/HTML are rejected; JPEG/PNG/WebP/GIF are magic-byte checked,
+  decoded/re-encoded to strip metadata and polyglot payloads, dimension/frame
+  capped, and served with `nosniff`, sandbox CSP and CORP/COEP headers.
 - All request bodies/params/queries are strict Zod schemas; unknown fields are rejected.
 - Public catalog responses whitelist shopper-safe fields (no `costPrice`, barcode or internal status).
 - Checkout validates SKUs/variants, prices, stock, coupons and shipping inside a
   database transaction; duplicate lines are merged so stock cannot be split to oversell.
-- Orders keep status and payment status independent.
+- Order tracking prefers an HMAC-signed, expiring token bound to one store/order;
+  phone fallback is rate-limited and both return masked phone only (no order id,
+  address or email).
+- Exports are role-gated (`admin`, `owner`, `merchant`, `manager`), audited,
+  rate-limited, `no-store`, streamed, row-capped, and CSV formula-injection safe.
+- Domain verification tokens are disclosed once at creation/rotation; list,
+  settings and verify responses never echo tokens or raw DNS records.
+- Carts require an item or contact signal, are rate-limited, and are swept by the
+  retention job along with audit logs, expired sessions/tokens and rate buckets.
+- Logs redact cookies/authorization, passwords, tokens and mask customer
+  phone/email values; order status and payment status remain independent.
 - No secrets in the client bundle; passwords/tokens are never stored in localStorage.
 
 ## Tests
 
 ```powershell
 npm test
-# Test Files  15 passed (15)
-# Tests       50 passed (50)
+# Test Files  19 passed (19)
+# Tests       100 passed (100)
 ```
 
 Coverage includes auth/session hardening, the authorization matrix, tenant
 isolation for the old and new dashboard endpoints, product CRUD, order
 transitions and numbering, wallet/summary currency behavior, checkout pricing
 and race conditions, storefront publishing gates, catalog/variants/reviews,
-coupons/shipping/COD checkout, phone-scoped order lookup and cross-store
-isolation.
+coupons/shipping/COD checkout, phone/token-scoped order lookup and cross-store
+isolation, plus the Phase 2 security matrix: SVG/polyglot/media re-encoding,
+CSRF/proxy rules, atomic distributed limits, TOTP 2FA and recovery codes,
+verification/reset single-use tokens, export RBAC/audit/formula safety, domain
+token non-disclosure, tracking/cart abuse limits, retention sweeps and log PII
+masking.
 
 ## Integrations (honest boundaries)
 
@@ -225,7 +269,9 @@ docker compose up --build   # db + migrate + app (set SESSION_SECRET first)
 - Online payment adapter, S3 adapter and carrier auto-send are not implemented.
 - WhatsApp Cloud API auto-send needs an approved template; links are manual.
 - One store per merchant account (schema supports more; API/UI assume one).
-- No email verification, password reset, 2FA, or subscription billing flows.
-- Rate limits are per-instance memory (use Redis for horizontal scaling).
+- Verification/reset emails require `SMTP_URL` + `EMAIL_FROM`; without them the
+  API reports email as unconfigured (dev-only debug tokens are returned outside production).
+- Subscription billing is not implemented.
+- Rate limits are shared through PostgreSQL; no Redis dependency is required.
 - `docker compose up` end-to-end is documented but was not re-verified in this
   environment; the production bundle itself is built and tested with plain Node.

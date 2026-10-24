@@ -284,7 +284,13 @@ describe("coupons, shipping and public checkout", () => {
       .get(`${publicBase}/orders/${checkout.body.order.orderNumber}?phone=01012345678`)
       .expect(200);
     expect(tracked.body.order.orderNumber).toBe(checkout.body.order.orderNumber);
-    expect(tracked.body.order.customerPhone).toBe("01012345678");
+    expect(tracked.body.order.customerPhone).toBe("010****5678");
+    expect(tracked.body.tracking_token).toBeTruthy();
+    expect(tracked.body.tracking_url).toContain("?token=");
+    // The internal order id and delivery PII must never be exposed publicly.
+    expect(tracked.body.order.id).toBeUndefined();
+    expect(tracked.body.order.address).toBeUndefined();
+    expect(tracked.body.order.customerEmail).toBeUndefined();
     expect(tracked.body.order.items[0]).toMatchObject({
       sku: "SHIP-1",
       imageUrl: "/uploads/bag.jpg",

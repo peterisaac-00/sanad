@@ -2,7 +2,7 @@ import { Router } from "express";
 import { Prisma } from "@prisma/client";
 import { prisma, newId } from "../db.js";
 import { ApiError, asyncHandler } from "../errors.js";
-import { requireAuth, requireStoreOwnership } from "../middleware.js";
+import { exportLimiter, requireAuth, requireExportRole, requireStoreOwnership } from "../middleware.js";
 import {
   addressBodySchema,
   childIdParamSchema,
@@ -15,31 +15,73 @@ import {
   validateQuery,
 } from "../validate.js";
 import { writeAudit } from "../services/account.js";
+import { assertExportWithinLimit, CSV_BOM, csvHeader, csvRow } from "../services/csv.js";
+import { env } from "../env.js";
+import { logger } from "../logger.js";
 
 export const customersRouter = Router();
+
+const CUSTOMER_EXPORT_COLUMNS = ["name", "phone", "email", "notes", "createdAt"] as const;
 
 customersRouter.get(
   "/api/stores/:subdomain/customers/export",
   asyncHandler(requireAuth),
+  exportLimiter,
   validateParams(subdomainParamSchema),
   asyncHandler(requireStoreOwnership),
+  requireExportRole,
   asyncHandler(async (req, res) => {
-    const rows = await prisma.customer.findMany({
-      where: { storeId: req.ownedStore!.id },
-      orderBy: { createdAt: "desc" },
-      take: 10000,
+    const storeId = req.ownedStore!.id;
+    const where = { storeId };
+    const total = await prisma.customer.count({ where });
+    assertExportWithinLimit(total, env.exportMaxRows);
+
+    await writeAudit({
+      storeId,
+      merchantId: req.auth!.merchantId,
+      action: "customer.exported",
+      entity: "customer",
+      metadata: { format: "csv", rows: total },
+      ip: req.ip,
     });
-    const columns = ["name", "phone", "email", "notes", "createdAt"];
-    const escape = (v: unknown) => {
-      const s = v == null ? "" : String(v);
-      return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
+
+    const filename = `customers-${new Date().toISOString().slice(0, 10)}.csv`;
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
-    res.setHeader("Content-Disposition", `attachment; filename="customers-${Date.now()}.csv"`);
-    res.send(
-      "\uFEFF" +
-        [columns.join(","), ...rows.map((r) => columns.map((c) => escape((r as Record<string, unknown>)[c])).join(","))].join("\n")
-    );
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Cache-Control", "no-store, max-age=0");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.write(CSV_BOM + csvHeader([...CUSTOMER_EXPORT_COLUMNS]) + "\n");
+
+    let cursor: string | undefined;
+    let written = 0;
+    try {
+      for (;;) {
+        const rows = await prisma.customer.findMany({
+          where,
+          select: { id: true, name: true, phone: true, email: true, notes: true, createdAt: true },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: 500,
+          ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        });
+        if (rows.length === 0) break;
+        for (const row of rows) {
+          res.write(
+            csvRow([row.name, row.phone, row.email, row.notes, row.createdAt]) + "\n"
+          );
+          written++;
+          if (written > env.exportMaxRows) {
+            throw new ApiError(413, "EXPORT_TOO_LARGE", "The export grew beyond the configured row limit while streaming.");
+          }
+        }
+        cursor = rows[rows.length - 1].id;
+        if (rows.length < 500) break;
+      }
+      res.end();
+    } catch (err) {
+      logger.error({ err, storeId, written }, "customer export stream failed");
+      res.destroy();
+    }
   })
 );
 

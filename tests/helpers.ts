@@ -11,7 +11,9 @@ export function uid(prefix: string): string {
 
 /** Wipe all data (FK-safe order). Call in beforeEach for isolation. */
 export async function truncateAll(): Promise<void> {
-  await prisma.$executeRawUnsafe('TRUNCATE "merchants", "stores" CASCADE');
+  // rate_limit_buckets has no foreign key to stores/merchants, so CASCADE
+  // alone would leave counters behind and leak quota between tests.
+  await prisma.$executeRawUnsafe('TRUNCATE "merchants", "stores", "rate_limit_buckets" CASCADE');
 }
 
 /** Register a fresh merchant+store; returns an authenticated agent + records. */

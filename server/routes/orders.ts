@@ -2,7 +2,7 @@ import { Router } from "express";
 import { Prisma } from "@prisma/client";
 import { prisma, newId } from "../db.js";
 import { ApiError, asyncHandler } from "../errors.js";
-import { requireAuth, requireStoreOwnership } from "../middleware.js";
+import { exportLimiter, requireAuth, requireExportRole, requireStoreOwnership } from "../middleware.js";
 import {
   bulkOrderStatusSchema,
   childIdParamSchema,
@@ -23,13 +23,17 @@ import {
 import { customerIdentity, normalizePhone } from "../identity.js";
 import {
   ORDER_DETAIL_INCLUDE,
+  ORDER_EXPORT_COLUMNS,
   addOrderEvent,
   allocateOrderNumber,
   applyOrderStatus,
   bulkOrderStatus,
-  ordersToCsv,
+  orderExportRow,
 } from "../services/orders.js";
 import { createNotification, writeAudit } from "../services/account.js";
+import { assertExportWithinLimit, CSV_BOM, csvHeader } from "../services/csv.js";
+import { env } from "../env.js";
+import { logger } from "../logger.js";
 
 export const ordersRouter = Router();
 
@@ -92,8 +96,10 @@ async function lockOrder(tx: Prisma.TransactionClient, orderId: string): Promise
 ordersRouter.get(
   "/api/stores/:subdomain/orders/export",
   asyncHandler(requireAuth),
+  exportLimiter,
   validateParams(subdomainParamSchema),
   asyncHandler(requireStoreOwnership),
+  requireExportRole,
   validateQuery(orderListQuerySchema),
   asyncHandler(async (req, res) => {
     const { status, paymentStatus, paymentMethod, governorate, from, to, search } = req.query as unknown as {
@@ -105,7 +111,8 @@ ordersRouter.get(
       to?: string;
       search?: string;
     };
-    const where = orderWhere(req.ownedStore!.id, {
+    const storeId = req.ownedStore!.id;
+    const where = orderWhere(storeId, {
       status,
       paymentStatus,
       paymentMethod,
@@ -114,11 +121,81 @@ ordersRouter.get(
       to,
       search,
     });
-    const rows = await prisma.order.findMany({ where, orderBy: { createdAt: "desc" }, take: 10000 });
+    const total = await prisma.order.count({ where });
+    // Validate before streaming: once headers are sent a JSON 413 is impossible.
+    assertExportWithinLimit(total, env.exportMaxRows);
+
+    await writeAudit({
+      storeId,
+      merchantId: req.auth!.merchantId,
+      action: "order.exported",
+      entity: "order",
+      metadata: {
+        format: "csv",
+        rows: total,
+        filters: { status, paymentStatus, paymentMethod, governorate, from, to, search },
+      },
+      ip: req.ip,
+    });
+
+    const filename = `orders-${new Date().toISOString().slice(0, 10)}.csv`;
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
-    res.setHeader("Content-Disposition", `attachment; filename="orders-${Date.now()}.csv"`);
-    // UTF-8 BOM so Excel opens Arabic text correctly.
-    res.send("\uFEFF" + ordersToCsv(rows as unknown as Array<Record<string, unknown>>));
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Cache-Control", "no-store, max-age=0");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.write(CSV_BOM + csvHeader([...ORDER_EXPORT_COLUMNS]) + "\n");
+
+    const select = {
+      id: true,
+      orderNumber: true,
+      createdAt: true,
+      status: true,
+      paymentStatus: true,
+      paymentMethod: true,
+      customerName: true,
+      customerPhone: true,
+      customerEmail: true,
+      governorate: true,
+      city: true,
+      address: true,
+      subtotal: true,
+      discount: true,
+      shippingFee: true,
+      amountEgp: true,
+      couponCode: true,
+      itemsSummary: true,
+    } satisfies Prisma.OrderSelect;
+
+    let cursor: string | undefined;
+    let written = 0;
+    try {
+      for (;;) {
+        const rows = await prisma.order.findMany({
+          where,
+          select,
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: 500,
+          ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        });
+        if (rows.length === 0) break;
+        for (const row of rows) {
+          const { id, ...values } = row;
+          res.write(orderExportRow(values as unknown as Record<string, unknown>) + "\n");
+          written++;
+          if (written > env.exportMaxRows) {
+            throw new ApiError(413, "EXPORT_TOO_LARGE", "The export grew beyond the configured row limit while streaming.");
+          }
+        }
+        cursor = rows[rows.length - 1].id;
+        if (rows.length < 500) break;
+      }
+      res.end();
+    } catch (err) {
+      // The client already owns a partial file; never append JSON to it.
+      logger.error({ err, storeId, written }, "order export stream failed");
+      res.destroy();
+    }
   })
 );
 

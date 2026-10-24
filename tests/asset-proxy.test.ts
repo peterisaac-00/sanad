@@ -13,7 +13,9 @@ const root = process.cwd();
 const read = (relative: string) => readFileSync(path.join(root, relative), "utf8");
 
 function expressStaticMounts(): string[] {
-  return [...read("server/index.ts").matchAll(/app\.use\(\s*"(\/[^"]+)"\s*,\s*express\.static/g)].map((m) => m[1]);
+  // Any root-absolute `app.use("/path", …)` mount (including mounts that add
+  // middleware before `express.static`, such as `/uploads`).
+  return [...read("server/index.ts").matchAll(/app\.use\(\s*"(\/[^"]+)"/g)].map((m) => m[1]);
 }
 
 function viteProxyPrefixes(): string[] {

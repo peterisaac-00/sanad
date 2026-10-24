@@ -1,15 +1,6 @@
-import path from "node:path";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  resolve: {
-    // Runtime equivalent of the tsconfig `@prisma/client` path alias. Vitest
-    // does not read tsconfig paths, and the default `@prisma/client` package
-    // points at a stale copy under node_modules/.prisma.
-    alias: {
-      "@prisma/client": path.resolve(process.cwd(), "generated/prisma/client"),
-    },
-  },
   test: {
     environment: "node",
     globals: false,
@@ -17,6 +8,9 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 60000,
     pool: "forks",
+    // Each worker boots its own PostgreSQL database and runs `prisma migrate
+    // deploy`. Unbounded forks exhaust memory on CI/Windows, so cap concurrency.
+    maxWorkers: 2,
     isolate: true,
     sequence: { shuffle: false },
   },

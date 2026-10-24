@@ -2,6 +2,7 @@ node_modules/
 build/
 dist/
 dist-server/
+generated/
 coverage/
 .DS_Store
 *.log

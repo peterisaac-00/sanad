@@ -5,7 +5,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output      = "../generated/prisma/client"
 }
 
 datasource db {
@@ -155,9 +154,18 @@ model Merchant {
   firstName    String   @default("") @map("first_name")
   lastName     String   @default("") @map("last_name")
   phone        String   @default("")
+  // Email ownership is proven by a single-use, hashed token. Null means the
+  // address has not been verified yet (legacy accounts included).
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  // TOTP secrets are AES-256-GCM encrypted at rest. Recovery codes are stored
+  // as HMAC hashes and removed as they are consumed.
+  twoFactorSecret String? @map("two_factor_secret")
+  twoFactorEnabled Boolean @default(false) @map("two_factor_enabled")
+  twoFactorRecoveryCodes Json @default("[]") @map("two_factor_recovery_codes")
   createdAt    DateTime @default(now()) @map("created_at")
 
   sessions Session[]
+  authTokens AuthToken[]
   notifications Notification[]
   auditLogs    AuditLog[]
 
@@ -404,6 +412,8 @@ model Order {
   @@index([storeId])
   @@index([storeId, status])
   @@index([storeId, paymentStatus])
+  // Public order tracking resolves an order by store + number + phone.
+  @@index([storeId, customerPhone])
   @@unique([storeId, orderNumber])
   @@unique([storeId, idempotencyKey])
   @@map("orders")
@@ -713,6 +723,8 @@ model AbandonedCart {
 
   @@unique([storeId, cartToken])
   @@index([storeId])
+  // Retention sweeps stale carts by last activity.
+  @@index([lastActivityAt])
   @@map("abandoned_carts")
 }
 
@@ -808,6 +820,8 @@ model AuditLog {
 
   @@index([storeId])
   @@index([merchantId])
+  // Retention sweeps old audit rows; also supports date-range admin queries.
+  @@index([createdAt])
   @@map("audit_logs")
 }
 
@@ -944,4 +958,40 @@ model Session {
   @@index([merchantId])
   @@index([expiresAt])
   @@map("sessions")
+}
+
+/**
+ * Short-lived, single-use tokens for email verification and password reset.
+ * Only the HMAC of the token is stored, so a database leak cannot be used to
+ * take over accounts. Used tokens are retained briefly for auditability.
+ */
+model AuthToken {
+  id         String    @id
+  merchantId String    @map("merchant_id")
+  merchant   Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  type       String
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
+  usedAt     DateTime? @map("used_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([merchantId, type])
+  @@index([expiresAt])
+  @@map("auth_tokens")
+}
+
+/**
+ * Shared fixed-window counters for rate limiting. PostgreSQL is the single
+ * source of truth, so a limit reached by one replica is enforced by every
+ * replica without introducing another stateful service. Expired rows are
+ * purged by the retention job.
+ */
+model RateLimitBucket {
+  key       String   @id
+  count     Int      @default(0)
+  resetAt   DateTime @map("reset_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([resetAt])
+  @@map("rate_limit_buckets")
 }
