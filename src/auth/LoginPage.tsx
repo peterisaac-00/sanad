@@ -10,7 +10,7 @@ import { AuthShell } from "./AuthShell";
 type Phase = "credentials" | "second-factor";
 
 export function LoginPage() {
-  const { session, loading, setSession } = useSession();
+  const { session, loading, refresh } = useSession();
   const query = useQuery();
   const nextParam = query.get("next");
   const [phase, setPhase] = useState<Phase>("credentials");
@@ -41,9 +41,9 @@ export function LoginPage() {
     if (phase === "second-factor") codeRef.current?.focus();
   }, [phase, recoveryMode]);
 
-  const finishLogin = (result: { merchant: any; store: any }) => {
-    setSession(result);
-    navigate(destination(result), { replace: true });
+  const finishLogin = async (result: { merchant: any; store: any }) => {
+    const canonical = await refresh();
+    navigate(destination(canonical ?? result), { replace: true });
   };
 
   const submit = async (event: React.FormEvent) => {
@@ -59,7 +59,7 @@ export function LoginPage() {
       setSubmitting(true);
       try {
         const result = await api.login(email.trim().toLowerCase(), password);
-        finishLogin(result);
+        await finishLogin(result);
       } catch (err: any) {
         if (err?.code === "TWO_FACTOR_REQUIRED") {
           setPhase("second-factor");
@@ -86,7 +86,7 @@ export function LoginPage() {
         password,
         recoveryMode ? { recovery_code: normalized } : { totp: normalized }
       );
-      finishLogin(result);
+      await finishLogin(result);
     } catch (err: any) {
       setError(safeError(err));
       if (err?.code === "INVALID_TWO_FACTOR_CODE") setCode("");

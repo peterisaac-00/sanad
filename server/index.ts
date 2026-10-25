@@ -198,7 +198,21 @@ async function issuePasswordReset(merchant: { id: string; email: string }) {
   return { sent, debug_token: debugToken(token, sent) };
 }
 
-// ---- health (public): liveness + database connectivity ----
+// ---- health: liveness is process-only; readiness includes PostgreSQL ----
+app.get("/api/live", (_req, res) => {
+  res.json({ ok: true, service: "sanad-commerce-backend", time: nowIso() });
+});
+
+app.get("/api/ready", async (_req, res) => {
+  try {
+    await checkDb();
+    res.json({ ok: true, service: "sanad-commerce-backend", time: nowIso(), db: "up" });
+  } catch {
+    res.status(503).json({ ok: false, service: "sanad-commerce-backend", time: nowIso(), db: "down" });
+  }
+});
+
+// Backwards-compatible health check used by existing probes and Docker.
 app.get("/api/health", async (_req, res) => {
   try {
     await checkDb();
@@ -849,15 +863,41 @@ app.get(
   })
 );
 
+const validateAccountStoreUpdate = asyncHandler(async (req, res, next) => {
+  const parsed = storeUpdateSchema.safeParse(req.body);
+  if (parsed.success) {
+    req.body = parsed.data;
+    next();
+    return;
+  }
+  if (req.auth?.storeId && typeof req.body?.storeCurrency === "string" && req.body.storeCurrency !== "EGP") {
+    const current = await prisma.store.findUnique({ where: { id: req.auth.storeId } });
+    res.status(400).json({
+      error: { code: "CURRENCY_NOT_SUPPORTED", message: "Only EGP is supported for Egyptian stores." },
+      store: current,
+    });
+    return;
+  }
+  throw new ApiError(400, "VALIDATION_ERROR", parsed.error.issues[0]?.message || "Invalid request.");
+});
+
 app.patch(
   "/api/account/store",
   asyncHandler(requireAuth),
   asyncHandler(requireMerchantSession),
-  validateBody(storeUpdateSchema),
+  validateAccountStoreUpdate,
   asyncHandler(async (req, res) => {
     if (!req.auth!.storeId) throw new ApiError(404, "STORE_NOT_FOUND", "No store linked to this account.");
     const b = req.body;
     assertOwnerMayEditStore(b);
+    if (b.storeCurrency !== undefined && b.storeCurrency !== "EGP") {
+      const current = await prisma.store.findUnique({ where: { id: req.auth!.storeId } });
+      res.status(400).json({
+        error: { code: "CURRENCY_NOT_SUPPORTED", message: "Only EGP is supported for Egyptian stores." },
+        store: current,
+      });
+      return;
+    }
     if (b.onlinePaymentEnabled === true && !paymentService.configured) {
       throw new ApiError(
         409,
@@ -1116,8 +1156,14 @@ async function boot() {
   const server = app.listen(env.port, "0.0.0.0", () => {
     logger.info(`[sanad-backend] listening on http://localhost:${env.port} (env=${env.nodeEnv})`);
   });
+  server.requestTimeout = 30_000;
+  server.headersTimeout = 35_000;
+  server.keepAliveTimeout = 5_000;
 
+  let stopping = false;
   const shutdown = (signal: string) => {
+    if (stopping) return;
+    stopping = true;
     logger.info(`[sanad-backend] ${signal} received, shutting down`);
     server.close(() => {
       prisma

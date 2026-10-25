@@ -179,6 +179,17 @@ export async function applyOrderStatus(input: {
           if (restored.count !== 1) {
             failures.push({ itemId: item.id, sku: item.sku, qty: item.qty, reason: "product_not_found" });
           }
+        } else if (item.sku) {
+          // Product deletion uses SET NULL so historical orders remain readable.
+          // Try the immutable SKU snapshot before giving up and record the
+          // unrecoverable reservation explicitly instead of silently losing stock.
+          const restored = await tx.product.updateMany({
+            where: { storeId: current.storeId, sku: item.sku },
+            data: { stock: { increment: item.qty } },
+          });
+          if (restored.count !== 1) {
+            failures.push({ itemId: item.id, sku: item.sku, qty: item.qty, reason: "product_not_found" });
+          }
         }
       }
       if (failures.length) {

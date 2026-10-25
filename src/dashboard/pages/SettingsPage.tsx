@@ -1435,11 +1435,14 @@ export function SettingsPage() {
 }
 
 function AuditLogs({ subdomain }: { subdomain: string }) {
-  const { data, loading } = useAsync(() => api.settings.auditLogs(subdomain, 60), [subdomain]);
+  const { data, loading, error, reload } = useAsync(() => api.settings.auditLogs(subdomain, 60), [subdomain]);
   const logs = data?.logs ?? [];
 
   if (loading && !data) {
     return <div className="space-y-2 p-4">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10" />)}</div>;
+  }
+  if (error && !data) {
+    return <div className="p-4"><Alert tone="error" title="تعذر تحميل سجل التدقيق">تعذر جلب النشاط الآن. حاول مرة أخرى.<Button size="sm" variant="outline" className="ms-3" onClick={() => void reload()}>إعادة المحاولة</Button></Alert></div>;
   }
   if (logs.length === 0) {
     return <EmptyState title="لا يوجد نشاط مسجّل" description="ستظهر هنا كل العمليات المهمة على المتجر مثل تعديل المنتجات والطلبات والإعدادات." icon={<ScrollText className="h-5 w-5" />} />;

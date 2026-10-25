@@ -40,7 +40,7 @@ function validate(form: FormState): Record<string, string> {
 }
 
 export function RegisterPage() {
-  const { session, loading, setSession } = useSession();
+  const { session, loading, refresh } = useSession();
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
@@ -87,8 +87,8 @@ export function RegisterPage() {
         navigate(`/auth/verify-email?${params.toString()}`, { replace: true });
         return;
       }
-      setSession({ merchant: result.merchant, store: result.store });
-      navigate(result.next && result.next.startsWith("/") ? result.next : "/onboarding", { replace: true });
+      const canonical = await refresh();
+      navigate(canonical?.store?.onboardingCompleted ? "/dashboard" : result.next && result.next.startsWith("/") ? result.next : "/onboarding", { replace: true });
     } catch (err: any) {
       setError(safeError(err));
     } finally {

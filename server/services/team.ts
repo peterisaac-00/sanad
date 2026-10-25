@@ -117,6 +117,41 @@ export async function invitationPreview(token: string) {
   };
 }
 
+/**
+ * Consume an invitation with the token and state in one conditional write.
+ * A preview is intentionally not treated as a lock: two browser tabs may
+ * preview the same link, but only one can transition it from invited to active.
+ */
+export async function acceptTeamInvite(input: { token: string; name?: string; passwordHash: string }) {
+  const tokenHash = hashTeamInviteToken(input.token);
+  const now = new Date();
+  const existing = await prisma.teamMember.findUnique({ where: { inviteTokenHash: tokenHash } });
+  if (!existing) throw new ApiError(404, "INVITE_NOT_FOUND", "This invitation is invalid or has already been used.");
+  const result = await prisma.teamMember.updateMany({
+    where: {
+      id: existing.id,
+      inviteTokenHash: tokenHash,
+      status: "invited",
+      inviteExpiresAt: { gt: now },
+    },
+    data: {
+      passwordHash: input.passwordHash,
+      passwordSalt: null,
+      passwordAlgo: "argon2id",
+      ...(input.name?.trim() ? { name: input.name.trim() } : {}),
+      status: "active",
+      acceptedAt: now,
+      inviteTokenHash: null,
+      inviteExpiresAt: null,
+      lastLoginAt: now,
+    },
+  });
+  if (result.count !== 1) {
+    throw new ApiError(409, "INVITE_ALREADY_ACCEPTED", "This invitation is invalid, expired, or has already been accepted.");
+  }
+  return prisma.teamMember.findUniqueOrThrow({ where: { id: existing.id } });
+}
+
 export async function findActiveTeamMemberByEmail(email: string) {
   return prisma.teamMember.findUnique({ where: { email } });
 }

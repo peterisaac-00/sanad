@@ -6,6 +6,7 @@ import { hashPasswordArgon2, hashSessionToken, sessionCookieName, sessionCookieO
 import { createAuthSession } from "../sessions.js";
 import { writeAudit } from "../services/account.js";
 import {
+  acceptTeamInvite,
   assertTeamMemberCanAuthenticate,
   findActiveTeamMemberByEmail,
   invitationPreview,
@@ -66,23 +67,8 @@ teamAuthRouter.post(
   authLimiter,
   validateBody(teamAcceptSchema),
   asyncHandler(async (req, res) => {
-    const { member } = await invitationPreview(req.body.token);
     const passwordHash = await hashPasswordArgon2(req.body.password);
-    const acceptedAt = new Date();
-    const updated = await prisma.teamMember.update({
-      where: { id: member.id },
-      data: {
-        name: req.body.name || member.name,
-        passwordHash,
-        passwordSalt: null,
-        passwordAlgo: "argon2id",
-        status: "active",
-        acceptedAt,
-        inviteTokenHash: null,
-        inviteExpiresAt: null,
-        lastLoginAt: acceptedAt,
-      },
-    });
+    const updated = await acceptTeamInvite({ token: req.body.token, name: req.body.name, passwordHash });
 
     await prisma.session.deleteMany({ where: { teamMemberId: updated.id } });
     const token = await createAuthSession({ teamMemberId: updated.id });

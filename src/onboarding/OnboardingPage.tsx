@@ -152,6 +152,7 @@ export function OnboardingPage() {
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const readyRef = useRef(false);
   const dirtyRef = useRef(false);
+  const saveInFlightRef = useRef<Promise<boolean> | null>(null);
 
   useEffect(() => {
     if (!loading && !session) navigate("/auth/login?next=/onboarding", { replace: true });
@@ -188,7 +189,7 @@ export function OnboardingPage() {
     setFormError("");
   };
 
-  const save = async (silent = true): Promise<boolean> => {
+  const performSave = async (silent = true): Promise<boolean> => {
     if (!form) return false;
     if (!form.storeName.trim() || form.storeName.trim().length < 2) {
       if (!silent) setFormError("اسم المتجر مطلوب (حرفان على الأقل).");
@@ -207,6 +208,16 @@ export function OnboardingPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const save = (silent = true): Promise<boolean> => {
+    if (saveInFlightRef.current) return saveInFlightRef.current;
+    const operation = performSave(silent);
+    saveInFlightRef.current = operation;
+    void operation.finally(() => {
+      if (saveInFlightRef.current === operation) saveInFlightRef.current = null;
+    });
+    return operation;
   };
 
   // Debounced autosave: a merchant can close the tab at any moment.

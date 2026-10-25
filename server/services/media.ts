@@ -226,20 +226,26 @@ export async function storeMedia(input: {
   const stored = await mediaStorage.save({ key, bytes: normalized.bytes, mimeType: normalized.mimeType });
   const id = newId("media_");
   const fileName = safeFileName(input.fileName, normalized.ext);
-  await prisma.mediaAsset.create({
-    data: {
-      id,
-      storeId: input.storeId,
-      fileName,
-      mimeType: normalized.mimeType,
-      size: normalized.bytes.length,
-      url: stored.url,
-      storageKey: stored.storageKey,
-      provider: stored.provider,
-      width: normalized.width,
-      height: normalized.height,
-    },
-  });
+  try {
+    await prisma.mediaAsset.create({
+      data: {
+        id,
+        storeId: input.storeId,
+        fileName,
+        mimeType: normalized.mimeType,
+        size: normalized.bytes.length,
+        url: stored.url,
+        storageKey: stored.storageKey,
+        provider: stored.provider,
+        width: normalized.width,
+        height: normalized.height,
+      },
+    });
+  } catch (error) {
+    await mediaStorage.remove(stored.storageKey);
+    logger.warn({ error, storageKey: stored.storageKey }, "removed media file after database write failure");
+    throw error;
+  }
   return {
     media: {
       id,
