@@ -21,7 +21,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { api, mediaUrl } from "../lib/api";
-import { BUSINESS_TYPES, CURRENCIES, EGYPT_GOVERNORATES, TEMPLATES, safeError } from "../lib/format";
+import { BUSINESS_TYPES, EGYPT_GOVERNORATES, TEMPLATES, safeError } from "../lib/format";
 import { navigate } from "../lib/router";
 import { useSession } from "../lib/session";
 import { ThemeToggle } from "../lib/theme";
@@ -29,7 +29,6 @@ import { Alert, Button, Field, Input, Select, Spinner, Switch, Textarea, useToas
 import { BrandLogo } from "../components/Brand";
 import { ImageUploader } from "../components/ImageUploader";
 import { StorePreview } from "../components/StorePreview";
-import { COUNTRIES_DATA } from "../data/countries";
 
 const STEPS = [
   { title: "هوية المتجر", subtitle: "الاسم والنشاط والسوق", icon: Store },
@@ -441,11 +440,7 @@ export function OnboardingPage() {
 
                   <div className="grid gap-4 sm:grid-cols-3">
                     <Field label="الدولة">
-                      <Select value={form.countryCode} onChange={(e) => update("countryCode", e.target.value)}>
-                        {COUNTRIES_DATA.map((country) => (
-                          <option key={country.code} value={country.code}>{country.flag} {country.name_ar}</option>
-                        ))}
-                      </Select>
+                      <Input value="🇪🇬 جمهورية مصر العربية" readOnly aria-label="الدولة: جمهورية مصر العربية" className="cursor-default bg-surface" />
                     </Field>
                     <Field label="المحافظة / المدينة">
                       <Select value={form.governorate} onChange={(e) => update("governorate", e.target.value)}>
@@ -456,11 +451,7 @@ export function OnboardingPage() {
                       </Select>
                     </Field>
                     <Field label="عملة المتجر">
-                      <Select value={form.currency} onChange={(e) => update("currency", e.target.value)}>
-                        {Object.entries(CURRENCIES).map(([code, info]) => (
-                          <option key={code} value={code}>{code} — {info.label}</option>
-                        ))}
-                      </Select>
+                      <Input value="EGP — الجنيه المصري (ج.م)" readOnly aria-label="عملة المتجر: الجنيه المصري" className="cursor-default bg-surface" />
                     </Field>
                   </div>
 
