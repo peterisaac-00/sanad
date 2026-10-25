@@ -131,7 +131,7 @@
 
 ## Admin and Roles
 
-- [x] **R6.1 — Build a real admin back-office.** `/api/admin` now covers overview, stores, merchants, subscriptions, wallet approvals, support tickets, reports, domain/TLS review, audit/security events, store approval/suspension/unpublishing, feature flags, administrator management, and leads. Every route names an explicit admin permission and writes an actor-attributed audit row. **Verified:** `tests/admin-platform.test.ts` and `tests/phase4-admin-controls.test.ts` exercise each role boundary, wallet/subscription review, store lifecycle, support triage, flags, and audit attribution.
+- [x] **R6.1 — Build a real admin back-office.** `/api/admin` now covers overview, stores, merchants, subscriptions, wallet approvals, support tickets, reports, domain/TLS review, audit/security events, store approval/suspension/unpublishing, feature flags, administrator management, and leads. Every route namegis an explicit admin permission and writes an actor-attributed audit row. **Verified:** `tests/admin-platform.test.ts` and `tests/phase4-admin-controls.test.ts` exercise each role boundary, wallet/subscription review, store lifecycle, support triage, flags, and audit attribution.
 - [x] **R6.2 — Separate `PlatformAdmin` from `Merchant`.** Platform administration uses a distinct `PlatformAdmin` identity, `AdminSession` table, `sanad_admin_session` cookie (8-hour TTL), and its own MFA/recovery-code state. Merchant/team sessions receive `403 ADMIN_ACCESS_DENIED`; the legacy merchant `role=admin` no longer grants admin access. **Verified:** the admin-controls suite asserts cookie separation, the MFA challenge and one-time recovery codes, disabled-admin revocation, and legacy-role denial.
 - [x] **R6.3 — Implement TeamMember authentication and RBAC.** Invites are one-time hashed tokens with acceptance/login pages; sessions bind to `teamMemberId` and role changes apply on the next request. Manager/staff/viewer permissions are enforced centrally by `requireStoreOwnership`, sensitive reads (`team`, `domains`, `wallet`, `audit-logs`) are permissioned, and suspension revokes all live team sessions. **Verified:** `tests/phase4-team-rbac.test.ts` and the export-role test in `tests/phase2-security.test.ts`.
 
@@ -154,7 +154,7 @@
 
 ## Data Model
 
-- [ ] **R3.11 — Rename misleading currency fields.** `amountEgp`/`unitPriceEgp` store whatever the store currency is, and checkout supports fewer currencies than the UI advertises. Migrate to `amount`/`unitPrice` with `currency`, or isolate legacy fields and block unsupported currencies. **Done when** SAR/AED values are never read as EGP.
+- [x] **R3.11 — Rename misleading currency fields.** `amountEgp`/`unitPriceEgp` store whatever the store currency is, and checkout supports fewer currencies than the UI advertises. Migrate to `amount`/`unitPrice` with `currency`, or isolate legacy fields and block unsupported currencies. **Done when** SAR/AED values are never read as EGP.
 
 ## Crawlability
 
