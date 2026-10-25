@@ -26,6 +26,7 @@
     "db:reset": "node scripts/db-reset.mjs",
     "db:backup": "node scripts/backup.mjs",
     "db:restore": "node scripts/restore.mjs",
+    "admin:reset-password": "node scripts/reset-admin-password.mjs",
     "load:smoke": "node scripts/load-smoke.mjs"
   },
   "dependencies": {
