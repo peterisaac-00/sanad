@@ -123,7 +123,7 @@ export function DashboardHome() {
         description="كل الأرقام أدناه محسوبة من طلبات ومنتجات هذا المتجر فقط. لا توجد بيانات تجريبية."
         actions={
           <>
-            <Link href={`/store/${subdomain}`} target="_blank" className="inline-flex h-10 items-center gap-2 rounded-brand border border-line px-4 text-xs font-semibold text-ink transition hover:border-brand-line hover:bg-surface">
+            <Link href={`/store/${subdomain}`} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center gap-2 rounded-brand border border-line px-4 text-xs font-semibold text-ink transition hover:border-brand-line hover:bg-surface">
               <Store className="h-4 w-4 text-brand" /> فتح المتجر
             </Link>
             <Link href="/dashboard/products" className="inline-flex h-10 items-center gap-2 rounded-brand bg-brand px-4 text-xs font-semibold text-on-brand shadow-brand-card transition hover:bg-brand-hover">
@@ -193,7 +193,7 @@ export function DashboardHome() {
             <Link href="/dashboard/orders" className="text-[10px] font-semibold text-brand hover:text-brand">عرض الكل ←</Link>
           </div>
           {recentOrders.length === 0 ? (
-            <EmptyState title="لم يصل أي طلب بعد" description="شارك رابط متجرك مع عملائك ليبدأ أول طلب حقيقي في الظهور هنا." icon={<ShoppingCart className="h-5 w-5" />} action={<Link href={`/store/${subdomain}`} target="_blank" className="text-[11px] font-bold text-brand">فتح رابط المتجر</Link>} />
+            <EmptyState title="لم يصل أي طلب بعد" description="شارك رابط متجرك مع عملائك ليبدأ أول طلب حقيقي في الظهور هنا." icon={<ShoppingCart className="h-5 w-5" />} action={<Link href={`/store/${subdomain}`} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-brand">فتح رابط المتجر</Link>} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[620px] text-xs">

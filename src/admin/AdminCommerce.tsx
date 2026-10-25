@@ -192,7 +192,7 @@ export function OverviewPanel({ can }: AdminPanelProps) {
                       <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[10px] font-bold text-brand">{number(index + 1)}</div>
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-xs font-semibold text-ink">{entry.storeName}</div>
-                        <a href={`/store/${entry.subdomain}`} target="_blank" rel="noreferrer" className="font-mono text-[10px] text-subtle hover:text-brand" dir="ltr">/store/{entry.subdomain}</a>
+                        <a href={`/store/${entry.subdomain}`} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-subtle hover:text-brand" dir="ltr">/store/{entry.subdomain}</a>
                       </div>
                       <div className="text-sm font-bold text-ink">{number(entry.visits)}</div>
                     </div>

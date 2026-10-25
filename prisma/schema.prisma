@@ -470,6 +470,7 @@ model CustomerAddress {
   store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   customerId  String   @map("customer_id")
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  addressKey  String   @map("address_key")
   label       String   @default("")
   address     String   @default("")
   city        String   @default("")
@@ -479,6 +480,7 @@ model CustomerAddress {
 
   @@index([storeId])
   @@index([customerId])
+  @@unique([storeId, customerId, addressKey])
   @@map("customer_addresses")
 }
 

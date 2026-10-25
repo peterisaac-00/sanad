@@ -649,7 +649,7 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
             <a
               href={whatsapp}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-xs font-semibold text-success hover:opacity-80"
             >
               <MessageCircle className="h-4 w-4" /> استفسر عن المنتج على واتساب

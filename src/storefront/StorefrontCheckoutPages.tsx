@@ -69,6 +69,7 @@ function checkoutErrorMessage(err: any): string {
 export function StorefrontCartPage() {
   const {
     base,
+    subdomain,
     store,
     cart,
     subtotal,
@@ -76,10 +77,62 @@ export function StorefrontCartPage() {
     currency,
     theme,
     setQty,
+    updateCartItem,
     removeItem,
   } = useStorefront();
   const discount = Math.min(coupon?.discount ?? 0, subtotal);
   const total = Math.max(0, subtotal - discount);
+  const [cartChecking, setCartChecking] = useState(true);
+  const [cartChanges, setCartChanges] = useState<string[]>([]);
+  const [cartCheckError, setCartCheckError] = useState("");
+  const [latestCartItems, setLatestCartItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    const check = () => {
+      if (!cart.length) { setCartChecking(false); setCartChanges([]); return; }
+      setCartChecking(true);
+      api.storefront.revalidateCart(subdomain, cart.map((item) => ({ sku: item.sku, variantId: item.variantId, qty: item.qty })))
+        .then((result) => {
+          if (!alive) return;
+          const changes: string[] = [];
+          setLatestCartItems(result.items);
+          for (const item of cart) {
+            const current = result.items.find((entry) => (item.variantId ? entry.variantId === item.variantId : entry.sku === item.sku));
+            if (!current || !current.published) changes.push(`${item.name}: المنتج لم يعد منشوراً أو متاحاً.`);
+            else {
+              if (Number(current.price) !== Number(item.price)) changes.push(`${item.name}: تغيّر السعر إلى ${money(current.price, result.currency)}.`);
+              if (Number(current.stock) < item.qty) changes.push(`${item.name}: المتاح الآن ${Math.max(0, Number(current.stock))} فقط.`);
+            }
+          }
+          setCartChanges(changes); setCartCheckError("");
+        })
+        .catch(() => { if (alive) setCartCheckError("تعذر التحقق من تحديثات السلة. سنعيد المحاولة قبل تأكيد الطلب."); })
+        .finally(() => { if (alive) setCartChecking(false); });
+    };
+    check();
+    const interval = window.setInterval(check, 60_000);
+    const onVisible = () => { if (document.visibilityState === "visible") check(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { alive = false; window.clearInterval(interval); document.removeEventListener("visibilitychange", onVisible); };
+  }, [subdomain, cart]);
+
+  const acceptCartChanges = () => {
+    for (const item of cart) {
+      const current = latestCartItems.find((entry) => (item.variantId ? entry.variantId === item.variantId : entry.sku === item.sku));
+      if (!current || !current.published) {
+        removeItem(item.key);
+      } else {
+        updateCartItem(item.key, {
+          price: Number(current.price),
+          maxStock: Math.max(0, Number(current.stock)),
+          name: current.name || item.name,
+          image: current.image || item.image,
+        });
+      }
+    }
+    setCartChanges([]);
+  };
 
   useStorefrontSeo({
     title: `سلة التسوق — ${store.store_name}`,
@@ -119,6 +172,17 @@ export function StorefrontCartPage() {
         </div>
         <ContinueShoppingLink />
       </div>
+
+      {cartChecking ? <div role="status" className={cn("mb-4 rounded-brand border p-3 text-xs", theme.panel, theme.muted)}>جارٍ التحقق من الأسعار والمخزون…</div> : null}
+      {cartCheckError ? <div role="alert" className="mb-4 rounded-brand border border-warning-line bg-warning-soft p-3 text-xs text-warning">{cartCheckError}</div> : null}
+      {cartChanges.length ? (
+        <div role="alert" className="mb-4 rounded-brand border border-warning-line bg-warning-soft p-3 text-xs leading-6 text-warning">
+          <div className="font-bold">تغيّرت بعض بيانات السلة</div>
+          <ul className="mt-1 list-disc ps-5">{cartChanges.map((change) => <li key={change}>{change}</li>)}</ul>
+          <div className="mt-1">راجع هذه التغييرات قبل إتمام الطلب؛ السعر النهائي يحدده الخادم.</div>
+          <button type="button" onClick={acceptCartChanges} className="mt-2 rounded-brand border border-warning-line px-3 py-1.5 font-bold">تحديث السلة بالتغييرات</button>
+        </div>
+      ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
         <div className={cn("divide-y overflow-hidden rounded-brand border", theme.panel, theme.border)}>
@@ -195,7 +259,9 @@ export function StorefrontCartPage() {
             <CouponBox />
             <Link
               href={`${base}/checkout`}
-              className="flex w-full items-center justify-center gap-2 rounded-brand px-4 py-3 text-sm font-bold text-on-brand shadow-lg transition hover:opacity-90"
+              aria-disabled={cartChecking || Boolean(cartChanges.length)}
+              onClick={(event) => { if (cartChecking || cartChanges.length) event.preventDefault(); }}
+              className={cn("flex w-full items-center justify-center gap-2 rounded-brand px-4 py-3 text-sm font-bold text-on-brand shadow-lg transition hover:opacity-90", Boolean(cartChecking || cartChanges.length) && "pointer-events-none opacity-50")}
               style={{ background: theme.primary }}
             >
               <ArrowLeft className="h-4 w-4" /> إتمام الطلب
@@ -968,7 +1034,7 @@ export function StorefrontOrderPage({ orderNumber }: { orderNumber: string }) {
               <a
                 href={whatsapp}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-brand px-4 py-2.5 text-xs font-bold text-on-brand"
                 style={{ background: theme.primary }}
               >

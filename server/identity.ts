@@ -13,3 +13,18 @@ export function normalizePhone(input: string | null | undefined): string {
 export function customerIdentity(input: { phone?: string | null; email?: string | null }): string {
   return normalizePhone(input.phone) || String(input.email ?? "").trim().toLowerCase();
 }
+
+/** Stable, non-display key used to deduplicate a customer's saved address. */
+export function canonicalAddressKey(input: {
+  address: string | null | undefined;
+  city: string | null | undefined;
+  governorate: string | null | undefined;
+  phone: string | null | undefined;
+}): string {
+  const canonical = [input.address, input.city, input.governorate]
+    .map((value) => String(value ?? "").normalize("NFKC").trim().toLowerCase().replace(/\s+/g, " "))
+    .concat(normalizePhone(input.phone))
+    .join("|");
+  return createHash("md5").update(canonical, "utf8").digest("hex");
+}
+import { createHash } from "node:crypto";

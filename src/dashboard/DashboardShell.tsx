@@ -115,7 +115,6 @@ const BOTTOM_NAV = [
   { label: "الرئيسية", path: "/dashboard", icon: LayoutDashboard },
   { label: "الطلبات", path: "/dashboard/orders", icon: ShoppingCart },
   { label: "المنتجات", path: "/dashboard/products", icon: Package },
-  { label: "التقارير", path: "/dashboard/reports", icon: BarChart3 },
 ];
 
 /**
@@ -367,7 +366,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="border-b border-line p-3">
-            <Link href={storefrontUrl} target="_blank" className="group flex items-center gap-2.5 rounded-brand border border-line bg-surface p-2.5 transition hover:border-brand-line">
+            <Link href={storefrontUrl} target="_blank" rel="noopener noreferrer" className="group flex items-center gap-2.5 rounded-brand border border-line bg-surface p-2.5 transition hover:border-brand-line">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-brand-sm bg-brand text-sm font-bold text-on-brand">
                 {store.logoUrl ? <img src={mediaUrl(store.logoUrl)} alt="" className="h-full w-full object-cover" /> : storeInitial}
               </div>
@@ -446,7 +445,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
               <Link
                 href={storefrontUrl}
-                target="_blank"
+                target="_blank" rel="noopener noreferrer"
                 className="hidden items-center gap-1.5 rounded-brand border border-line bg-card px-3 py-2 text-[11px] font-semibold text-ink-soft transition hover:border-brand-line hover:text-brand sm:flex"
               >
                 <Store className="h-3.5 w-3.5 text-brand" />
@@ -587,18 +586,18 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
           {/* Mobile bottom navigation */}
           <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
-            <div className="grid grid-cols-5">
+            <div className="grid grid-cols-4">
               {BOTTOM_NAV.filter((item) => can(navPermission(item.path))).map((item) => {
                 const active = matches(path, item.path);
                 const Icon = item.icon;
                 return (
-                  <Link key={item.path} href={item.path} className={cn("flex flex-col items-center gap-1 py-2.5 text-[9px] font-semibold", active ? "text-brand" : "text-subtle")}>
+                  <Link key={item.path} href={item.path} className={cn("flex min-h-14 flex-col items-center justify-center gap-1 py-2.5 text-xs font-semibold", active ? "text-brand" : "text-subtle")}>
                     <Icon className="h-4.5 w-4.5" />
                     {item.label}
                   </Link>
                 );
               })}
-              <button onClick={() => setDrawerOpen(true)} className="flex flex-col items-center gap-1 py-2.5 text-[9px] font-semibold text-subtle">
+              <button type="button" aria-label="فتح المزيد من أقسام لوحة التحكم" onClick={() => setDrawerOpen(true)} className="flex min-h-14 flex-col items-center justify-center gap-1 py-2.5 text-xs font-semibold text-subtle">
                 <Menu className="h-4.5 w-4.5" />
                 المزيد
               </button>

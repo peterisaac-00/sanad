@@ -181,7 +181,7 @@ export function LearnPage() {
         </div>
         <Link
           href={`/store/${subdomain}`}
-          target="_blank"
+          target="_blank" rel="noopener noreferrer"
           className="rounded-brand border border-line px-4 py-2 text-xs font-semibold text-ink transition hover:border-brand-line"
         >
           افتح متجرك للمراجعة

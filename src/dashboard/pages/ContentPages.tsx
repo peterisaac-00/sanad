@@ -193,7 +193,7 @@ export function PagesPage() {
                   <Td>
                     <div className="flex items-center justify-end gap-1">
                       {page.status === "published" ? (
-                        <Link href={`/store/${subdomain}/page/${page.slug}`} target="_blank" className="rounded-brand-sm p-2 text-subtle hover:bg-surface hover:text-brand" title="عرض">
+                        <Link href={`/store/${subdomain}/page/${page.slug}`} target="_blank" rel="noopener noreferrer" className="rounded-brand-sm p-2 text-subtle hover:bg-surface hover:text-brand" title="عرض">
                           <ExternalLink className="h-3.5 w-3.5" />
                         </Link>
                       ) : null}
@@ -452,7 +452,7 @@ export function BlogPage() {
                     <Td>
                       <div className="flex items-center justify-end gap-1">
                         {post.status === "published" ? (
-                          <Link href={`/store/${subdomain}/blog/${post.slug}`} target="_blank" className="rounded-brand-sm p-2 text-subtle hover:bg-surface hover:text-brand" title="عرض">
+                          <Link href={`/store/${subdomain}/blog/${post.slug}`} target="_blank" rel="noopener noreferrer" className="rounded-brand-sm p-2 text-subtle hover:bg-surface hover:text-brand" title="عرض">
                             <ExternalLink className="h-3.5 w-3.5" />
                           </Link>
                         ) : null}

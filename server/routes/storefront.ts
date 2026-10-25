@@ -5,6 +5,7 @@ import { prisma, newId } from "../db.js";
 import { ApiError, asyncHandler } from "../errors.js";
 import {
   cartTrackSchema,
+  cartRevalidateSchema,
   checkoutBodySchema,
   couponCodeSchema,
   publicReviewSchema,
@@ -556,6 +557,50 @@ storefrontRouter.post(
       paymentMethod: b.payment_method,
     });
     res.json({ quote, currency: store.currency });
+  })
+);
+
+storefrontRouter.post(
+  "/api/storefront/:subdomain/cart/validate",
+  cartLimiter,
+  validateParams(subdomainParamSchema),
+  validateBody(cartRevalidateSchema),
+  asyncHandler(async (req, res) => {
+    const store = await publishedStore(req.params.subdomain);
+    const items = req.body.items as Array<{ sku: string; variantId: string; qty: number }>;
+    const skus = items.filter((item) => !item.variantId && item.sku).map((item) => item.sku);
+    const variantIds = items.filter((item) => item.variantId).map((item) => item.variantId);
+    const [products, variants] = await Promise.all([
+      prisma.product.findMany({
+        where: { storeId: store.id, sku: { in: skus.length ? skus : ["__none__"] } },
+        include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+      }),
+      prisma.productVariant.findMany({
+        where: { storeId: store.id, id: { in: variantIds.length ? variantIds : ["__none__"] } },
+        include: { product: { include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } } } },
+      }),
+    ]);
+    const bySku = new Map(products.map((product) => [product.sku, product]));
+    const byVariant = new Map(variants.map((variant) => [variant.id, variant]));
+    const current = items.map((item) => {
+      const variant = item.variantId ? byVariant.get(item.variantId) : null;
+      const product = variant?.product ?? (item.sku ? bySku.get(item.sku) : undefined);
+      const available = Boolean(product && product.status === "active" && (!item.variantId || variant?.isActive));
+      const price = variant && variant.price > 0 ? variant.price : product ? productPrice(product, store.currency) : 0;
+      return {
+        sku: variant?.sku ?? product?.sku ?? item.sku,
+        variantId: item.variantId || null,
+        productId: product?.id ?? null,
+        slug: product?.slug ?? "",
+        name: product?.nameAr || product?.nameEn || item.sku,
+        image: variant?.imageUrl || product?.images?.[0]?.url || "",
+        price,
+        stock: variant?.stock ?? product?.stock ?? 0,
+        published: available,
+        requestedQty: item.qty,
+      };
+    });
+    res.json({ currency: store.currency, items: current });
   })
 );
 

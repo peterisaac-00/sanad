@@ -93,7 +93,7 @@ function StorefrontHeader() {
             <div className="flex items-center gap-3">
               <Link href={`${base}/track`} className="hidden hover:opacity-80 sm:inline">تتبع طلبك</Link>
               {whatsapp ? (
-                <a href={whatsapp} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:opacity-80">
+                <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:opacity-80">
                   <MessageCircle className="h-3 w-3" /> واتساب
                 </a>
               ) : null}
@@ -191,7 +191,7 @@ function StorefrontHeader() {
                   <a
                     href={store.whatsapp_url}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="mt-2 flex items-center justify-center gap-2 rounded-brand border border-success-line bg-success-soft px-3 py-2.5 text-xs font-bold text-success"
                   >
                     <MessageCircle className="h-4 w-4" /> تواصل على واتساب
@@ -263,7 +263,7 @@ function StorefrontFooter() {
           <ul className={cn("space-y-2 text-[11px]", theme.muted)}>
             {whatsapp ? (
               <li>
-                <a href={whatsapp} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-success hover:text-brand-hover">
+                <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-success hover:text-brand-hover">
                   <MessageCircle className="h-3.5 w-3.5" /> واتساب المتجر
                 </a>
               </li>
@@ -298,7 +298,7 @@ function FloatingWhatsApp() {
     <a
       href={store.whatsapp_url}
       target="_blank"
-      rel="noreferrer"
+      rel="noopener noreferrer"
       className="fixed bottom-5 start-5 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full bg-success text-on-success shadow-brand-popover transition hover:brightness-95"
       aria-label="تواصل عبر واتساب"
     >
@@ -341,7 +341,7 @@ function ComingSoon() {
               <a
                 href={whatsapp}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-brand px-4 py-2.5 text-xs font-bold text-on-brand"
                 style={{ background: theme.primary }}
               >

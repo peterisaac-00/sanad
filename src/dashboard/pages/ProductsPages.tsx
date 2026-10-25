@@ -761,7 +761,7 @@ function ProductEditor({
           </Field>
           {product ? (
             <div className="sm:col-span-2">
-              <Link href={`/store/${subdomain}/products/${product.slug}`} target="_blank" className="text-[11px] font-bold text-brand">
+              <Link href={`/store/${subdomain}/products/${product.slug}`} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-brand">
                 عرض المنتج في المتجر ←
               </Link>
             </div>

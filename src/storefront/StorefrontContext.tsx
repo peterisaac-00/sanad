@@ -68,6 +68,7 @@ interface StorefrontContextValue {
   subtotal: number;
   addToCart: (item: NewCartItem, qty?: number) => boolean;
   setQty: (key: string, qty: number) => void;
+  updateCartItem: (key: string, patch: Partial<CartItem>) => void;
   removeItem: (key: string) => void;
   clearCart: () => void;
   cartToken: string;
@@ -280,6 +281,10 @@ export function StorefrontProvider({
     );
   }, []);
 
+  const updateCartItem = useCallback((key: string, patch: Partial<CartItem>) => {
+    setCart((current) => current.map((item) => item.key === key ? { ...item, ...patch } : item));
+  }, []);
+
   const removeItem = useCallback((key: string) => {
     setCart((current) => current.filter((item) => item.key !== key));
   }, []);
@@ -376,6 +381,7 @@ export function StorefrontProvider({
       subtotal,
       addToCart,
       setQty,
+      updateCartItem,
       removeItem,
       clearCart,
       cartToken: cartToken.current,
@@ -399,6 +405,7 @@ export function StorefrontProvider({
       subtotal,
       addToCart,
       setQty,
+      updateCartItem,
       removeItem,
       clearCart,
       coupon,

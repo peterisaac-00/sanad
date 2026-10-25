@@ -56,6 +56,30 @@ describe("atomic status transitions with stock restore", () => {
     expect(results.sort()).toEqual([200, 409]);
   });
 
+  it("concurrent cancel/return restores stock once", async () => {
+    const s = await setupStore("cancel-return");
+    await patch(s.agent, s.subdomain, s.orderId, "confirmed").expect(200);
+    await patch(s.agent, s.subdomain, s.orderId, "shipped").expect(200);
+    const results = await Promise.all([
+      patch(s.agent, s.subdomain, s.orderId, "cancelled").then((r) => r.status),
+      patch(s.agent, s.subdomain, s.orderId, "returned").then((r) => r.status),
+    ]);
+    expect(results.filter((status) => status === 200)).toHaveLength(1);
+    expect(results.filter((status) => status === 409)).toHaveLength(1);
+    expect(await stockOf(s.agent, s.subdomain, s.productId)).toBe(10);
+    const events = await prisma.orderEvent.findMany({ where: { orderId: s.orderId, type: "stock_restore_failed" } });
+    expect(events).toHaveLength(0);
+  });
+
+  it("records one structured restore failure when the product was deleted", async () => {
+    const s = await setupStore("deleted-product");
+    await prisma.product.delete({ where: { id: s.productId } });
+    await patch(s.agent, s.subdomain, s.orderId, "cancelled").expect(200);
+    const events = await prisma.orderEvent.findMany({ where: { orderId: s.orderId, type: "stock_restore_failed" } });
+    expect(events).toHaveLength(1);
+    expect((events[0].metadata as any).failures[0]).toMatchObject({ sku: "ST-1", qty: 3, reason: "product_not_found" });
+  });
+
   it("illegal jumps are 409, not applied", async () => {
     const s = await setupStore("ill");
     await patch(s.agent, s.subdomain, s.orderId, "delivered").expect(409);

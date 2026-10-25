@@ -191,7 +191,7 @@ export function ReportsPanel({ can }: AdminPanelProps) {
                         <Td><span className="text-[11px] font-semibold text-subtle">{number(index + 1)}</span></Td>
                         <Td>
                           <div className="max-w-[220px] truncate text-xs font-semibold text-ink">{row.storeName || "—"}</div>
-                          <a href={`/store/${row.subdomain}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-[10px] text-subtle hover:text-brand" dir="ltr">
+                          <a href={`/store/${row.subdomain}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[10px] text-subtle hover:text-brand" dir="ltr">
                             /store/{row.subdomain} <ExternalLink className="h-2.5 w-2.5" />
                           </a>
                         </Td>
@@ -335,7 +335,7 @@ export function DomainsPanel({ can }: AdminPanelProps) {
                     </Td>
                     <Td>
                       <div className="max-w-[190px] truncate text-[11px] font-semibold text-ink">{row.store?.storeName || "—"}</div>
-                      <a href={`/store/${row.store?.subdomain ?? ""}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-[10px] text-subtle hover:text-brand" dir="ltr">
+                      <a href={`/store/${row.store?.subdomain ?? ""}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[10px] text-subtle hover:text-brand" dir="ltr">
                         /store/{row.store?.subdomain} <ExternalLink className="h-2.5 w-2.5" />
                       </a>
                       <div className="mt-1 text-[10px] text-subtle">اعتماد: {row.store?.status ?? "—"} · نشر: {row.store?.publishStatus ?? "—"}</div>
@@ -523,7 +523,7 @@ export function AuditPanel({ can }: AdminPanelProps) {
                     <Td><span className="font-mono text-[10px] text-subtle" dir="ltr">{log.entity || "—"}</span></Td>
                     <Td>
                       {log.store ? (
-                        <a href={`/store/${log.store.subdomain}`} target="_blank" rel="noreferrer" className="text-[10px] text-brand hover:underline">
+                        <a href={`/store/${log.store.subdomain}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-brand hover:underline">
                           {log.store.storeName}
                         </a>
                       ) : (

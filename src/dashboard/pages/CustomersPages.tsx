@@ -106,7 +106,7 @@ export function CustomersPage() {
             title="لا يوجد عملاء بعد"
             description="أول طلب من متجرك يُنشئ ملف العميل تلقائياً مع بياناته وعناوينه."
             icon={<Users className="h-5 w-5" />}
-            action={<Link href={`/store/${subdomain}`} target="_blank" className="text-[11px] font-bold text-brand">فتح المتجر ←</Link>}
+            action={<Link href={`/store/${subdomain}`} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-brand">فتح المتجر ←</Link>}
           />
         ) : (
           <>

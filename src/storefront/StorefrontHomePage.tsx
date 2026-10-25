@@ -120,7 +120,7 @@ export function StorefrontHomePage() {
               <a
                 href={whatsapp}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-brand border border-brand-on-dark/40 bg-brand-on-dark/15 px-5 py-3 text-sm font-bold text-brand-on-dark transition hover:bg-brand-on-dark/25"
               >
                 <MessageCircle className="h-4 w-4" />
@@ -237,7 +237,7 @@ export function StorefrontHomePage() {
                 <a
                   href={whatsapp}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-brand px-4 py-2.5 text-xs font-bold text-on-brand"
                   style={{ background: theme.primary }}
                 >
@@ -266,7 +266,7 @@ export function StorefrontHomePage() {
               <a
                 href={whatsapp}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="inline-flex shrink-0 items-center gap-2 rounded-brand px-5 py-3 text-sm font-bold text-on-brand"
                 style={{ background: theme.primary }}
               >

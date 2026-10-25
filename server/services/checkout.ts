@@ -3,7 +3,7 @@ import { prisma, newId } from "../db.js";
 import { ApiError } from "../errors.js";
 import { allocateOrderNumber } from "./orders.js";
 import { paymentService, whatsappLink } from "./integrations.js";
-import { customerIdentity, normalizePhone } from "../identity.js";
+import { canonicalAddressKey, customerIdentity, normalizePhone } from "../identity.js";
 import { createTrackingToken, trackingUrl } from "./tracking.js";
 
 export interface CheckoutItemInput {
@@ -499,20 +499,28 @@ export async function createCheckout(input: {
             });
         customerId = customer.id;
         if (body.address) {
-          const addressCount = await tx.customerAddress.count({ where: { storeId: input.storeId, customerId: customer.id } });
-          await tx.customerAddress.create({
-            data: {
-              id: newId("addr_"),
-              storeId: input.storeId,
-              customerId: customer.id,
-              label: addressCount === 0 ? "العنوان الأساسي" : "",
-              address: body.address,
-              city: body.city,
-              governorate: body.governorate,
-              phone,
-              isDefault: addressCount === 0,
-            },
-          });
+          const addresses = await tx.customerAddress.findMany({ where: { storeId: input.storeId, customerId: customer.id } });
+          const key = canonicalAddressKey({ address: body.address, city: body.city, governorate: body.governorate, phone });
+          const duplicate = addresses.find((saved) => saved.addressKey === key);
+          if (!duplicate) {
+            const hasDefault = addresses.some((saved) => saved.isDefault);
+            await tx.customerAddress.create({
+              data: {
+                id: newId("addr_"),
+                storeId: input.storeId,
+                customerId: customer.id,
+                addressKey: key,
+                label: hasDefault ? "" : "العنوان الأساسي",
+                address: body.address,
+                city: body.city,
+                governorate: body.governorate,
+                phone,
+                isDefault: !hasDefault,
+              },
+            });
+          } else if (!addresses.some((saved) => saved.isDefault)) {
+            await tx.customerAddress.update({ where: { id: duplicate.id }, data: { isDefault: true, label: "العنوان الأساسي" } });
+          }
         }
       }
 
@@ -639,7 +647,7 @@ export async function createCheckout(input: {
           storeId: input.storeId,
           orderId: created.id,
           type: "created",
-          message: "تم استلام الطلب من المتجر",
+          message: "",
           actor: "customer",
           metadata: { source: "storefront" } as Prisma.InputJsonValue,
         },

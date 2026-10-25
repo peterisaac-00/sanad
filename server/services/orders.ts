@@ -188,7 +188,7 @@ export async function applyOrderStatus(input: {
           storeId: current.storeId,
           orderId: current.id,
           type: "stock_restore_failed",
-          message: `تعذر إرجاع المخزون لـ ${failures.length} عنصر (منتج محذوف أو غير موجود).`,
+          message: "",
           actor: input.actor ?? "system",
           metadata: { failures },
         });
@@ -207,7 +207,7 @@ export async function applyOrderStatus(input: {
       storeId: current.storeId,
       orderId: current.id,
       type: "status_changed",
-      message: `تم تغيير الحالة من ${current.status} إلى ${input.target}`,
+      message: "",
       actor: input.actor ?? "merchant",
       metadata: { from: current.status, to: input.target, note: input.note ?? "" },
     });

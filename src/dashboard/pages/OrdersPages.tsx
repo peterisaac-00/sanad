@@ -35,6 +35,31 @@ import { getBusinessExamples } from "../businessExamples";
 
 const enc = encodeURIComponent;
 
+const statusNames: Record<string, string> = {
+  pending: "قيد الانتظار",
+  confirmed: "تم التأكيد",
+  processing: "قيد التجهيز",
+  shipped: "تم الشحن",
+  delivered: "تم التسليم",
+  cancelled: "ملغي",
+  returned: "مرتجع",
+};
+
+function orderEventLabel(event: any): string {
+  if (event.type === "status_changed") {
+    const from = statusNames[String(event.metadata?.from)] ?? String(event.metadata?.from ?? "—");
+    const to = statusNames[String(event.metadata?.to)] ?? String(event.metadata?.to ?? "—");
+    return `تم تغيير الحالة من ${from} إلى ${to}`;
+  }
+  if (event.type === "stock_restore_failed") {
+    const count = Array.isArray(event.metadata?.failures) ? event.metadata.failures.length : 0;
+    return `تعذر إرجاع المخزون لـ ${count || "بعض"} من المنتجات؛ راجع المخزون وسجل الطلب.`;
+  }
+  if (event.type === "created") return "تم استلام الطلب من المتجر";
+  if (event.type === "payment_status_changed") return "تم تحديث حالة الدفع";
+  return event.message || "تم تسجيل حدث في الطلب";
+}
+
 /* ------------------------------- list ------------------------------- */
 
 export function OrdersPage() {
@@ -191,7 +216,7 @@ export function OrdersPage() {
             title="لا توجد طلبات مطابقة"
             description="جرّب تغيير الفلاتر، أو شارك رابط متجرك ليبدأ أول طلب حقيقي في الوصول."
             icon={<Package className="h-5 w-5" />}
-            action={<Link href={`/store/${subdomain}`} target="_blank" className="text-[11px] font-bold text-brand">فتح المتجر ←</Link>}
+            action={<Link href={`/store/${subdomain}`} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-brand">فتح المتجر ←</Link>}
           />
         ) : (
           <>
@@ -512,7 +537,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
               <ArrowRight className="h-4 w-4" /> كل الطلبات
             </Link>
             {whatsappUrl ? (
-              <a href={whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-brand bg-success px-4 text-xs font-semibold text-on-success hover:bg-success/90">
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center gap-2 rounded-brand bg-success px-4 text-xs font-semibold text-on-success hover:bg-success/90">
                 <MessageCircle className="h-4 w-4" /> مراسلة العميل
               </a>
             ) : null}
@@ -735,7 +760,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
                   <li key={event.id} className="flex gap-3">
                     <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand" />
                     <div className="min-w-0">
-                      <div className="text-[11px] font-semibold text-ink">{event.message}</div>
+                      <div className="text-[11px] font-semibold text-ink">{orderEventLabel(event)}</div>
                       <div className="mt-0.5 text-[10px] text-subtle">
                         {timeAgo(event.createdAt)} · {event.actor || "النظام"} · {event.type}
                       </div>

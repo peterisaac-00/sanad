@@ -761,6 +761,11 @@ export const api = {
         items: { sku?: string; variantId?: string; qty: number }[];
       }
     ) => req<{ cart: any }>(`/api/storefront/${enc(subdomain)}/cart`, { method: "POST", body: JSON.stringify(body) }),
+    revalidateCart: (subdomain: string, items: { sku?: string; variantId?: string; qty: number }[]) =>
+      req<{ currency: string; items: any[] }>(`/api/storefront/${enc(subdomain)}/cart/validate`, {
+        method: "POST",
+        body: JSON.stringify({ items }),
+      }),
     order: (subdomain: string, orderNumber: string, opts: { phone?: string; token?: string }) =>
       req<{
         order: any;

@@ -179,19 +179,19 @@
 
 ## UX and Accessibility
 
-- [ ] **R7.3 — Simplify mobile navigation.** Reduce five bottom items (with 9px labels) to 3–4 primary items plus a grouped drawer; use at least 11–12px text. **Done when** navigation is usable at 320px.
-- [ ] **R7.4 — Add a modal focus trap.** Move focus into the dialog, contain Tab, restore focus on close, and use `aria-labelledby` when a heading exists. **Done when** keyboard users cannot tab behind the modal.
+- [x] **R7.3 — Simplify mobile navigation.** Reduce five bottom items (with 9px labels) to 3–4 primary items plus a grouped drawer; use at least 11–12px text. **Done when** navigation is usable at 320px.
+- [x] **R7.4 — Add a modal focus trap.** Move focus into the dialog, contain Tab, restore focus on close, and use `aria-labelledby` when a heading exists. **Done when** keyboard users cannot tab behind the modal.
 - [ ] **R7.5 — Standardize loading and disabled states.** Cover checkout, product save, settings, order status, coupons, and refunds. **Done when** double-clicks cannot create duplicate mutations.
-- [ ] **R7.6 — Standardize `rel="noopener noreferrer"`.** Apply it to every `target="_blank"` external link. **Done when** no external link lacks both protections.
-- [ ] **R7.7 — Revalidate stale carts.** Local storage snapshots can be outdated. Revalidate on cart open or after an interval; show price, stock, and unpublished-product changes before checkout. **Done when** users see changes before submitting.
+- [x] **R7.6 — Standardize `rel="noopener noreferrer"`.** Apply it to every `target="_blank"` external link. **Done when** no external link lacks both protections.
+- [x] **R7.7 — Revalidate stale carts.** Local storage snapshots can be outdated. Revalidate on cart open or after an interval; show price, stock, and unpublished-product changes before checkout. **Done when** users see changes before submitting.
 - [ ] **R7.9 — Test RTL and mixed text visually.** Cover long Arabic names, English SKUs, dashboard tables at 320px, mobile modals, and mixed currencies. **Done when** no clipping or overlap remains.
 - [ ] **R7.10 — Unify error taxonomy.** Map 401, 403, 404, 409, 429, and 5xx to specific user actions. **Done when** no surface shows only a generic failure.
 
 ## Data Quality
 
-- [ ] **R5.2b — Deduplicate customer addresses.** Checkout creates a new `CustomerAddress` each time. Normalize and deduplicate by a deterministic key while keeping one default. **Done when** repeated checkout with the same address adds no row.
-- [ ] **R5.5 — Structure order events for translation.** Stop embedding English status names in Arabic messages. Store `event type + metadata` and translate in the UI. **Done when** the timeline renders localized statuses.
-- [ ] **R3.7 (remaining test) — Prove double-restore safety.** Concurrent cancel/return must not double stock, and a deleted product must emit `stock_restore_failed` once. **Done when** the regression test passes.
+- [x] **R5.2b — Deduplicate customer addresses.** Checkout creates a new `CustomerAddress` each time. Normalize and deduplicate by a deterministic key while keeping one default. **Done when** repeated checkout with the same address adds no row.
+- [x] **R5.5 — Structure order events for translation.** Stop embedding English status names in Arabic messages. Store `event type + metadata` and translate in the UI. **Done when** the timeline renders localized statuses.
+- [ ] **R3.7 (remaining test) — Prove double-restore safety.** Concurrent cancel/return must not double stock, and a deleted product must emit `stock_restore_failed` once. Regression coverage was added; run it against PostgreSQL before launch.
 
 ## R11 — Launch Scope
 
@@ -278,14 +278,14 @@ Phase 1’s regression suite already covers the accounting, coupon, refund, paym
 - [x] Team authentication and RBAC (Phase 4)
 - [x] Admin back-office (Phase 4)
 - [x] Custom domains end to end (Phase 4)
-- [ ] Dynamic sitemap and SSR/prerender (Phase 5)
-- [ ] Image processing and thumbnails (Phase 5)
+- [x] Dynamic sitemap and SSR/prerender (Phase 5)
+- [x] Image processing and thumbnails (Phase 5)
 - [x] Cart/audit retention (Phase 2/6)
 
 **P2 — UX and performance**
-- [ ] Code splitting and lazy routes (Phase 5)
-- [ ] Modal focus trap (Phase 6)
-- [ ] Stale-cart revalidation (Phase 6)
-- [ ] Mobile navigation and font sizes (Phase 6)
+- [x] Code splitting and lazy routes (Phase 5)
+- [x] Modal focus trap (Phase 6)
+- [x] Stale-cart revalidation (Phase 6)
+- [x] Mobile navigation and font sizes (Phase 6)
 - [ ] Unified error/loading states (Phase 6)
 - [ ] Visual regression and E2E tests (Phase 6)

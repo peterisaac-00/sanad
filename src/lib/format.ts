@@ -169,9 +169,36 @@ export function paymentLabel(status: string): string {
   return PAYMENT_STATUS[status]?.label ?? status;
 }
 
+export interface PresentedError {
+  title: string;
+  message: string;
+  action: "login" | "retry" | "back" | "contact" | "check";
+  retryable: boolean;
+}
+
+export function presentApiError(err: any): PresentedError {
+  const status = Number(err?.status || 0);
+  if (status === 401) return { title: "انتهت الجلسة", message: "سجّل الدخول مرة أخرى للمتابعة.", action: "login", retryable: false };
+  if (status === 403) return { title: "لا تملك الصلاحية", message: "اطلب من مالك المتجر منحك الصلاحية المطلوبة.", action: "back", retryable: false };
+  if (status === 404) return { title: "العنصر غير موجود", message: "ربما تم حذفه أو لم يعد متاحاً. ارجع للقائمة وحاول من جديد.", action: "back", retryable: false };
+  if (status === 409) return { title: "تعارض في البيانات", message: "تغيّرت البيانات منذ فتح الصفحة. حدّث الصفحة وراجع التغييرات.", action: "check", retryable: true };
+  if (status === 429 || err?.code === "RATE_LIMITED") return { title: "محاولات كثيرة", message: "انتظر قليلاً ثم حاول مجدداً.", action: "retry", retryable: true };
+  if (status >= 500 || !status) return { title: "الخدمة غير متاحة", message: "تعذر الاتصال بالخادم. تحقّق من الاتصال ثم أعد المحاولة.", action: "retry", retryable: true };
+  return { title: "تعذر تنفيذ الطلب", message: safeErrorLegacy(err), action: "check", retryable: false };
+}
+
+function safeErrorLegacy(err: any): string {
+  const message = typeof err?.message === "string" ? err.message : "";
+  if (err?.code === "INVALID_CREDENTIALS") return "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
+  if (err?.code === "VALIDATION_ERROR") return "تحقق من البيانات المدخلة ثم حاول مجدداً.";
+  return message || "تحقق من البيانات ثم حاول مجدداً.";
+}
+
 export function safeError(err: any): string {
   const message = typeof err?.message === "string" ? err.message : "";
-  if (err?.status === 429 || err?.code === "RATE_LIMITED") return "محاولات كثيرة. انتظر قليلاً ثم حاول مجدداً.";
+  if ([401, 403, 404, 409, 429].includes(Number(err?.status)) || Number(err?.status) >= 500 || !Number(err?.status) && err?.code === "NETWORK_ERROR") {
+    return presentApiError(err).message;
+  }
   if (err?.code === "INVALID_CREDENTIALS") return "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
   if (err?.code === "EMAIL_TAKEN") return "هذا البريد الإلكتروني مسجل بالفعل. جرّب تسجيل الدخول.";
   if (err?.code === "SUBDOMAIN_TAKEN") return "رابط المتجر محجوز. اختر رابطاً آخر.";

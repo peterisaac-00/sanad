@@ -393,6 +393,14 @@ export const cartTrackSchema = z.strictObject({
   })).max(50),
 });
 
+export const cartRevalidateSchema = z.strictObject({
+  items: z.array(z.strictObject({
+    sku: z.string().trim().max(64).default(""),
+    variantId: z.string().trim().max(64).default(""),
+    qty: z.number().int().min(1).max(99),
+  })).min(1).max(50),
+});
+
 export const publicReviewSchema = z.strictObject({
   productId: z.string().trim().min(1).max(64),
   customerName: z.string().trim().min(1).max(120),

@@ -18,6 +18,7 @@ import { auditActor, writeAudit } from "../services/account.js";
 import { assertExportWithinLimit, CSV_BOM, csvHeader, csvRow } from "../services/csv.js";
 import { env } from "../env.js";
 import { logger } from "../logger.js";
+import { canonicalAddressKey } from "../identity.js";
 
 export const customersRouter = Router();
 
@@ -229,6 +230,11 @@ customersRouter.post(
     if (!customer) throw new ApiError(404, "CUSTOMER_NOT_FOUND", "Customer not found.");
     const b = req.body;
     const address = await prisma.$transaction(async (tx) => {
+      const addressKey = canonicalAddressKey(b);
+      const duplicate = await tx.customerAddress.findUnique({
+        where: { storeId_customerId_addressKey: { storeId, customerId: customer.id, addressKey } },
+      });
+      if (duplicate) throw new ApiError(409, "ADDRESS_DUPLICATE", "هذا العنوان محفوظ بالفعل.");
       if (b.isDefault) {
         await tx.customerAddress.updateMany({ where: { storeId, customerId: customer.id }, data: { isDefault: false } });
       }
@@ -237,6 +243,7 @@ customersRouter.post(
           id: newId("addr_"),
           storeId,
           customerId: customer.id,
+          addressKey,
           label: b.label,
           address: b.address,
           city: b.city,
@@ -264,6 +271,11 @@ customersRouter.patch(
     if (!existing) throw new ApiError(404, "ADDRESS_NOT_FOUND", "Address not found.");
     const b = req.body;
     const address = await prisma.$transaction(async (tx) => {
+      const addressKey = canonicalAddressKey(b);
+      const duplicate = await tx.customerAddress.findUnique({
+        where: { storeId_customerId_addressKey: { storeId, customerId: req.params.id, addressKey } },
+      });
+      if (duplicate && duplicate.id !== existing.id) throw new ApiError(409, "ADDRESS_DUPLICATE", "هذا العنوان محفوظ بالفعل.");
       if (b.isDefault) {
         await tx.customerAddress.updateMany({
           where: { storeId, customerId: req.params.id },
@@ -278,6 +290,7 @@ customersRouter.patch(
           city: b.city,
           governorate: b.governorate,
           phone: b.phone,
+          addressKey,
           isDefault: b.isDefault,
         },
       });

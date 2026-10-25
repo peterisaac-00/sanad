@@ -228,7 +228,7 @@ export function StoreTable({
                     <a
                       href={publicUrl}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="mt-0.5 inline-flex items-center gap-1 font-mono text-[10px] text-subtle hover:text-brand"
                       dir="ltr"
                     >
