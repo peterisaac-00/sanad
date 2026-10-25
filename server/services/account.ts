@@ -50,9 +50,41 @@ export async function ensureStoreDefaults(storeId: string, currency: string) {
   });
 }
 
+/**
+ * Map an authenticated principal onto audit columns. Kept structural (rather
+ * than importing Express types) so services can accept it without cycles.
+ */
+export function auditActor(auth:
+  | { principalType?: string; merchantId?: string | null; teamMemberId?: string | null; actorId?: string }
+  | null
+  | undefined
+) {
+  if (!auth) return {};
+  if (auth.principalType === "team" || (!auth.merchantId && auth.teamMemberId)) {
+    return {
+      teamMemberId: auth.teamMemberId ?? auth.actorId ?? null,
+      actorType: "team_member" as const,
+    };
+  }
+  return {
+    merchantId: auth.merchantId ?? null,
+    actorType: "merchant" as const,
+  };
+}
+
+export function adminAuditActor(adminId: string) {
+  return {
+    platformAdminId: adminId,
+    actorType: "platform_admin" as const,
+  };
+}
+
 export async function writeAudit(args: {
   storeId?: string | null;
   merchantId?: string | null;
+  teamMemberId?: string | null;
+  platformAdminId?: string | null;
+  actorType?: string;
   action: string;
   entity?: string;
   entityId?: string;
@@ -60,11 +92,17 @@ export async function writeAudit(args: {
   ip?: string;
 }) {
   try {
+    const actorType =
+      args.actorType ??
+      (args.platformAdminId ? "platform_admin" : args.teamMemberId ? "team_member" : "merchant");
     await prisma.auditLog.create({
       data: {
         id: newId("aud_"),
         storeId: args.storeId ?? null,
         merchantId: args.merchantId ?? null,
+        teamMemberId: args.teamMemberId ?? null,
+        platformAdminId: args.platformAdminId ?? null,
+        actorType,
         action: args.action,
         entity: args.entity ?? "",
         entityId: args.entityId ?? "",

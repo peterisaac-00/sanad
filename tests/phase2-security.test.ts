@@ -4,7 +4,16 @@ import sharp from "sharp";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { resolveTxt } from "node:dns/promises";
-import { app, prisma, registerMerchant, publishStore, truncateAll, closeDb, uid } from "./helpers.js";
+import {
+  app,
+  prisma,
+  registerMerchant,
+  registerTeamMember,
+  publishStore,
+  truncateAll,
+  closeDb,
+  uid,
+} from "./helpers.js";
 import { env, parseTrustProxy } from "../server/env.js";
 import { evaluateCsrfRequest } from "../server/middleware.js";
 import { consumeRateLimit } from "../server/rateLimit.js";
@@ -586,25 +595,33 @@ describe("PII exports", () => {
     }
   }
 
-  it("gates exports by role and audits successful PII reads", async () => {
+  it("gates exports by team role and audits successful PII reads", async () => {
     const merchant = await registerMerchant("rbac");
     await seedCustomers(merchant, 2);
+    const url = `/api/stores/${merchant.subdomain}/customers/export`;
 
+    // The owner always retains full access, regardless of any legacy role.
     await prisma.merchant.update({ where: { id: merchant.merchant.id }, data: { role: "viewer" } });
-    await merchant.agent.get(`/api/stores/${merchant.subdomain}/customers/export`).expect(403);
-    await prisma.merchant.update({ where: { id: merchant.merchant.id }, data: { role: "staff" } });
-    await merchant.agent.get(`/api/stores/${merchant.subdomain}/customers/export`).expect(403);
+    await merchant.agent.get(url).expect(200);
 
-    for (const role of ["owner", "manager", "admin", "merchant"]) {
-      await prisma.merchant.update({ where: { id: merchant.merchant.id }, data: { role } });
-      await merchant.agent.get(`/api/stores/${merchant.subdomain}/customers/export`).expect(200);
-    }
+    const viewer = await registerTeamMember(merchant, "viewer", "rbac-v");
+    const staff = await registerTeamMember(merchant, "staff", "rbac-s");
+    const manager = await registerTeamMember(merchant, "manager", "rbac-m");
+    const admin = await registerTeamMember(merchant, "admin", "rbac-a");
+
+    await viewer.agent.get(url).expect(403);
+    await staff.agent.get(url).expect(403);
+    await manager.agent.get(url).expect(200);
+    await admin.agent.get(url).expect(200);
 
     const audits = await prisma.auditLog.findMany({
       where: { storeId: merchant.store.id, action: "customer.exported" },
+      orderBy: { createdAt: "asc" },
     });
-    expect(audits.length).toBe(4);
-    expect(audits[0].merchantId).toBe(merchant.merchant.id);
+    expect(audits.length).toBe(3);
+    expect(audits.some((audit) => audit.merchantId === merchant.merchant.id)).toBe(true);
+    expect(audits.some((audit) => audit.teamMemberId === manager.member.id)).toBe(true);
+    expect(audits.some((audit) => audit.teamMemberId === admin.member.id)).toBe(true);
   });
 
   it("streams formula-safe CSV with no-store headers", async () => {

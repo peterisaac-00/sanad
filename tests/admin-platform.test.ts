@@ -14,18 +14,24 @@ beforeEach(truncateAll);
 afterAll(closeDb);
 
 describe("platform admin access control", () => {
-  it("keeps the admin surface closed to anonymous visitors and merchants", async () => {
+  it("separates the admin session from merchant sessions", async () => {
     const merchant = await registerMerchant("adm-rbac");
 
-    await request(app).get("/api/admin/overview").expect(401);
-    await merchant.agent.get("/api/admin/overview").expect(403);
+    const anonymous = await request(app).get("/api/admin/overview").expect(401);
+    expect(anonymous.body.error.code).toBe("ADMIN_UNAUTHENTICATED");
+
+    const merchantAttempt = await merchant.agent.get("/api/admin/overview").expect(403);
+    expect(merchantAttempt.body.error.code).toBe("ADMIN_ACCESS_DENIED");
     await merchant.agent.get("/api/admin/subscription-payments").expect(403);
     await merchant.agent.get("/api/admin/leads").expect(403);
 
     const admin = await registerAdmin("adm-ok");
+    await admin.agent.get("/api/auth/me").expect(401);
+
     const overview = await admin.agent.get("/api/admin/overview").expect(200);
-    expect(overview.body.summary.totalStores).toBe(2);
-    expect(overview.body.stores).toHaveLength(2);
+    expect(overview.body.summary.totalStores).toBe(1);
+    expect(overview.body.stores).toHaveLength(1);
+    expect(overview.body.stores[0].id).toBe(merchant.store.id);
     expect(overview.body.monthlyVisits).toHaveLength(6);
     expect(overview.body.subscriptionPrices).toEqual({ monthly: 100, annual: 1000 });
 
@@ -33,10 +39,31 @@ describe("platform admin access control", () => {
     expect(payments.body.payments).toEqual([]);
     expect(payments.body.summary.prices).toEqual({ monthly: 100, annual: 1000 });
   });
+
+  it("enforces administrator roles in the API, not the UI", async () => {
+    const merchant = await registerMerchant("admin-role");
+    const readonly = await registerAdmin("readonly", "readonly");
+
+    await readonly.agent.get("/api/admin/overview").expect(200);
+    await readonly.agent.get("/api/admin/merchants").expect(200);
+    const denied = await readonly.agent
+      .post(`/api/admin/stores/${merchant.store.id}/approve`)
+      .send({ note: "should fail" })
+      .expect(403);
+    expect(denied.body.error.code).toBe("ADMIN_FORBIDDEN");
+    await readonly.agent.patch("/api/admin/feature-flags/wallet_deposits").send({ enabled: false }).expect(403);
+
+    const operations = await registerAdmin("ops", "operations");
+    await operations.agent
+      .patch("/api/admin/feature-flags/wallet_deposits")
+      .send({ enabled: false })
+      .expect(200);
+    await operations.agent.get("/api/admin/admins").expect(403);
+  });
 });
 
 describe("store approval lifecycle", () => {
-  it("gates a pending store, records the activation date on approval, and opens it after onboarding", async () => {
+  it("gates a pending store, records the activation date on approval, and opens it after publishing", async () => {
     const merchant = await registerMerchant("pending", { approve: false });
     const admin = await registerAdmin("approver");
     const publicBase = `/api/storefront/${merchant.subdomain}`;
@@ -49,6 +76,7 @@ describe("store approval lifecycle", () => {
     expect(before.body.summary.pendingStores).toBe(1);
     const pendingRow = before.body.stores.find((row: any) => row.id === merchant.store.id);
     expect(pendingRow.status).toBe("pending");
+    expect(pendingRow.publishStatus).toBe("draft");
     expect(pendingRow.activatedAt).toBeNull();
 
     const approval = await admin.agent
@@ -57,6 +85,8 @@ describe("store approval lifecycle", () => {
       .expect(200);
     expect(approval.body.store.status).toBe("active");
     expect(approval.body.store.activatedAt).toBeTruthy();
+    // Approval does not skip onboarding: the store is active but still draft.
+    expect(approval.body.publishing.published).toBe(false);
 
     const firstActivation = new Date(approval.body.store.activatedAt).getTime();
     const repeat = await admin.agent
@@ -67,17 +97,26 @@ describe("store approval lifecycle", () => {
 
     const comingSoon = await request(app).get(publicBase).expect(200);
     expect(comingSoon.body.published).toBe(false);
+    expect(comingSoon.body.publish_status).toBe("draft");
 
     const published = await publishStore(merchant, { storeName: "متجر معتمد" });
     expect(published.status).toBe("active");
+    expect(published.publishStatus).toBe("published");
     const storefront = await request(app).get(publicBase).expect(200);
     expect(storefront.body.published).toBe(true);
     expect(storefront.body.store.store_name).toBe("متجر معتمد");
 
     const after = await admin.agent.get("/api/admin/overview").expect(200);
-    expect(after.body.summary.activeStores).toBe(2);
+    expect(after.body.summary.activeStores).toBe(1);
+    expect(after.body.summary.publishedStores).toBe(1);
     const activeRow = after.body.stores.find((row: any) => row.id === merchant.store.id);
     expect(activeRow.activatedAt).toBeTruthy();
+
+    const audit = await prisma.auditLog.findFirst({
+      where: { storeId: merchant.store.id, action: "store.approved" },
+    });
+    expect(audit?.actorType).toBe("platform_admin");
+    expect(audit?.platformAdminId).toBe(admin.admin.id);
   });
 
   it("rejects or suspends a store and closes its public gateway", async () => {
@@ -94,6 +133,8 @@ describe("store approval lifecycle", () => {
       .expect(200);
     let row = await prisma.store.findUniqueOrThrow({ where: { id: merchant.store.id } });
     expect(row.status).toBe("rejected");
+    expect(row.publishStatus).toBe("draft");
+    expect(row.publishReason).toContain("رفض");
     await request(app).get(publicBase).expect(404);
 
     await admin.agent
@@ -108,6 +149,8 @@ describe("store approval lifecycle", () => {
       .expect(200);
     row = await prisma.store.findUniqueOrThrow({ where: { id: merchant.store.id } });
     expect(row.status).toBe("suspended");
+    expect(row.publishStatus).toBe("suspended");
+    expect(row.publishReason).toContain("تعليق");
     await request(app).get(publicBase).expect(404);
   });
 });
@@ -177,7 +220,6 @@ describe("subscription payments", () => {
 
     const initialWallet = await merchant.agent.get(`/api/stores/${merchant.subdomain}/wallet`).expect(200);
     expect(Number(initialWallet.body.account.balance)).toBe(0);
-    expect(initialWallet.body.deposits_enabled).toBe(false);
 
     const submitted = await merchant.agent
       .post(`/api/stores/${merchant.subdomain}/subscription-payments`)
@@ -235,14 +277,6 @@ describe("subscription payments", () => {
     expect(wallet.body.subscription.plan).toBe("monthly");
     expect(wallet.body.subscription.paid_until).toBeTruthy();
     expect(wallet.body.subscription_payments[0].status).toBe("approved");
-    expect(wallet.body.deposits_enabled).toBe(false);
-    expect(wallet.body.note).toContain("غير متاح");
-
-    const deposit = await merchant.agent
-      .post(`/api/stores/${merchant.subdomain}/wallet/deposits`)
-      .send({ amount: 500, reference: "DEP-1" });
-    expect(deposit.status).toBe(503);
-    expect(deposit.body.error.code).toBe("WALLET_DEPOSITS_DISABLED");
 
     const second = await merchant.agent
       .post(`/api/stores/${merchant.subdomain}/subscription-payments`)
@@ -260,6 +294,61 @@ describe("subscription payments", () => {
     const afterReject = await prisma.store.findUniqueOrThrow({ where: { id: merchant.store.id } });
     expect(afterReject.plan).toBe("monthly");
     expect(new Date(afterReject.subscriptionPaidUntil!).getTime()).toBe(paidUntil);
+  });
+});
+
+describe("wallet deposit approvals", () => {
+  it("credits the balance only after an admin approves and rejects duplicate reviews", async () => {
+    const merchant = await registerMerchant("wallet-admin");
+    const admin = await registerAdmin("wallet-reviewer", "finance");
+    const base = `/api/stores/${merchant.subdomain}`;
+
+    const submitted = await merchant.agent
+      .post(`${base}/wallet/deposits`)
+      .send({ amount: 500, reference: "DEP-1", note: "تحويل بنكي" })
+      .expect(201);
+    expect(submitted.body.transaction.status).toBe("pending");
+
+    const pending = await admin.agent.get("/api/admin/wallet/transactions").expect(200);
+    expect(pending.body.summary.pending).toBe(1);
+    expect(pending.body.transactions[0].id).toBe(submitted.body.transaction.id);
+
+    await merchant.agent
+      .post(`/api/admin/wallet/transactions/${submitted.body.transaction.id}/review`)
+      .send({ decision: "approve" })
+      .expect(403);
+
+    const approved = await admin.agent
+      .post(`/api/admin/wallet/transactions/${submitted.body.transaction.id}/review`)
+      .send({ decision: "approve", note: "تم التحقق" })
+      .expect(200);
+    expect(approved.body.transaction.status).toBe("completed");
+    expect(Number(approved.body.transaction.balanceAfter)).toBe(500);
+
+    const wallet = await merchant.agent.get(`${base}/wallet`).expect(200);
+    expect(Number(wallet.body.account.balance)).toBe(500);
+
+    await admin.agent
+      .post(`/api/admin/wallet/transactions/${submitted.body.transaction.id}/review`)
+      .send({ decision: "approve" })
+      .expect(409);
+
+    const second = await merchant.agent
+      .post(`${base}/wallet/deposits`)
+      .send({ amount: 200, reference: "DEP-2" })
+      .expect(201);
+    await admin.agent
+      .post(`/api/admin/wallet/transactions/${second.body.transaction.id}/review`)
+      .send({ decision: "reject", note: "مرجع غير صحيح" })
+      .expect(200);
+    const afterReject = await merchant.agent.get(`${base}/wallet`).expect(200);
+    expect(Number(afterReject.body.account.balance)).toBe(500);
+
+    const audit = await prisma.auditLog.findFirst({
+      where: { action: "wallet.deposit_approved", entityId: submitted.body.transaction.id },
+    });
+    expect(audit?.actorType).toBe("platform_admin");
+    expect(audit?.platformAdminId).toBe(admin.admin.id);
   });
 });
 
@@ -292,6 +381,7 @@ describe("monthly platform visits", () => {
     expect(await prisma.storeVisit.count({ where: { storeId: pending.store.id } })).toBe(0);
 
     const draft = await registerMerchant("visits-draft");
+    await prisma.store.update({ where: { id: draft.store.id }, data: { publishStatus: "draft" } });
     await request(app).post(`/api/storefront/${draft.subdomain}/visit`).send({ path: "/" }).expect(204);
     expect(await prisma.storeVisit.count({ where: { storeId: draft.store.id } })).toBe(0);
   });

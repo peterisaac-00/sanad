@@ -79,8 +79,8 @@ export const PRICING_MODEL = {
       cost_en: 'Included in the subscription',
       commission_ar: '0 ج.م — بدون رسوم إضافية',
       commission_en: '0 EGP — no extra fees',
-      notes_ar: 'يأتي متجرك بنطاق فرعي مجاني. ربط نطاقك المستقل (.com / .eg) غير متاح بعد وهو قيد التطوير.',
-      notes_en: 'Your store gets a free Sanad subdomain. Connecting a custom .com/.eg domain is planned and not available yet.'
+      notes_ar: 'يأتي متجرك بنطاق فرعي مجاني. يمكنك ربط نطاقك المستقل (.com / .eg / .sa) من إعدادات المتجر بعد توثيق ملكيته بسجل DNS؛ تظل تكلفة تسجيل النطاق لدى مزوّدك، وتُفعّل شهادة HTTPS بعد تهيئة الوكيل الخارجي.',
+      notes_en: 'Your store gets a free Sanad subdomain. You can connect a custom .com/.eg/.sa domain from store settings after DNS ownership verification; domain registration remains billed by your registrar, and HTTPS activates after external-proxy provisioning.'
     }
   ]
 };

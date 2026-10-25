@@ -18,6 +18,12 @@ const raw = {
   DEMO_MERCHANT_PASSWORD: process.env.DEMO_MERCHANT_PASSWORD || "",
   DATABASE_URL: process.env.DATABASE_URL || "",
   SESSION_SECRET: process.env.SESSION_SECRET || "",
+  // Optional first-run platform administrator. Both values must be set
+  // together; the boot hook only creates a missing account and never resets
+  // an existing password or role.
+  ADMIN_BOOTSTRAP_EMAIL: process.env.ADMIN_BOOTSTRAP_EMAIL || "",
+  ADMIN_BOOTSTRAP_PASSWORD: process.env.ADMIN_BOOTSTRAP_PASSWORD || "",
+  ADMIN_BOOTSTRAP_NAME: process.env.ADMIN_BOOTSTRAP_NAME || "",
   // Optional integration credentials. Empty values leave the integration
   // explicitly "not configured" instead of silently faking success.
   APP_URL: process.env.APP_URL || "http://localhost:3000",
@@ -57,6 +63,9 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]),
   DEMO_MERCHANT_PASSWORD: z.string(),
   SESSION_SECRET: z.string(),
+  ADMIN_BOOTSTRAP_EMAIL: z.union([z.literal(""), z.string().trim().toLowerCase().email().max(254)]),
+  ADMIN_BOOTSTRAP_PASSWORD: z.string().max(128),
+  ADMIN_BOOTSTRAP_NAME: z.string().trim().max(160),
   DATABASE_URL: z
     .string()
     .min(1, { message: "DATABASE_URL is required (e.g. postgresql://sanad:sanad@localhost:5432/sanad)" })
@@ -112,6 +121,24 @@ export function storageDriverError(driver: string): string | null {
 const storageError = storageDriverError(parsed.data.STORAGE_DRIVER);
 if (storageError) {
   console.error(storageError);
+  process.exit(1);
+}
+
+/**
+ * A half-configured bootstrap is almost always a deployment mistake (the
+ * password was removed but the email remained, or vice versa). Fail loudly
+ * instead of booting an admin area nobody can sign into.
+ */
+const adminBootstrapEmail = parsed.data.ADMIN_BOOTSTRAP_EMAIL;
+const adminBootstrapPassword = parsed.data.ADMIN_BOOTSTRAP_PASSWORD;
+if (Boolean(adminBootstrapEmail) !== Boolean(adminBootstrapPassword)) {
+  console.error(
+    "[env] ADMIN_BOOTSTRAP_EMAIL and ADMIN_BOOTSTRAP_PASSWORD must be set together (or both left empty). Refusing to boot."
+  );
+  process.exit(1);
+}
+if (adminBootstrapPassword && adminBootstrapPassword.trim().length < 12) {
+  console.error("[env] ADMIN_BOOTSTRAP_PASSWORD must be at least 12 characters. Refusing to boot.");
   process.exit(1);
 }
 
@@ -238,6 +265,13 @@ export const env = {
   demoMerchantPassword,
   databaseUrl: parsed.data.DATABASE_URL,
   sessionSecret,
+  adminBootstrap: adminBootstrapEmail
+    ? {
+        email: adminBootstrapEmail,
+        password: adminBootstrapPassword,
+        name: parsed.data.ADMIN_BOOTSTRAP_NAME || "Platform Admin",
+      }
+    : null,
   appUrl: parsed.data.APP_URL.replace(/\/$/, ""),
   storageDriver: parsed.data.STORAGE_DRIVER,
   storageDir: parsed.data.STORAGE_DIR,

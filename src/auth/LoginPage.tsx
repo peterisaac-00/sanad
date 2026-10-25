@@ -26,11 +26,9 @@ export function LoginPage() {
 
   // A draft store has no console yet, regardless of the ?next= hint: finish
   // onboarding (design + publish) before any dashboard destination is allowed.
-  // Platform admins, however, can go straight to /admin even without a store.
+  // Platform administrators use their own identity and session at /admin; a
+  // merchant login can never be redirected into that trust boundary.
   const destination = (payload: { merchant?: any; store?: any } | null) => {
-    if (nextParam && /^\/admin(\/|$)/.test(nextParam) && payload?.merchant?.role === "admin") {
-      return safeNextPath(nextParam, "/admin");
-    }
     return payload?.store?.onboardingCompleted ? safeNextPath(nextParam, "/dashboard") : "/onboarding";
   };
 
@@ -119,6 +117,13 @@ export function LoginPage() {
           <Link href="/auth/register" className="font-bold text-brand hover:text-brand">
             أنشئ حساباً جديداً
           </Link>
+          <div className="mt-3 border-t border-line pt-3 text-[10px] text-subtle">
+            عضو فريق مدعو؟{" "}
+            <Link href="/team/login" className="font-semibold text-brand hover:underline">دخول الفريق</Link>
+            <span className="mx-1.5">·</span>
+            مدير منصة؟{" "}
+            <Link href="/admin" className="font-semibold text-brand hover:underline">دخول الإدارة</Link>
+          </div>
         </>
       }
     >

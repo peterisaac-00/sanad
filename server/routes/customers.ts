@@ -14,7 +14,7 @@ import {
   validateParams,
   validateQuery,
 } from "../validate.js";
-import { writeAudit } from "../services/account.js";
+import { auditActor, writeAudit } from "../services/account.js";
 import { assertExportWithinLimit, CSV_BOM, csvHeader, csvRow } from "../services/csv.js";
 import { env } from "../env.js";
 import { logger } from "../logger.js";
@@ -38,7 +38,7 @@ customersRouter.get(
 
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "customer.exported",
       entity: "customer",
       metadata: { format: "csv", rows: total },
@@ -185,7 +185,7 @@ customersRouter.patch(
     });
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "customer.updated",
       entity: "customer",
       entityId: customer.id,
@@ -207,7 +207,7 @@ customersRouter.delete(
     await prisma.customer.delete({ where: { id: existing.id } });
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "customer.deleted",
       entity: "customer",
       entityId: existing.id,

@@ -176,15 +176,17 @@ export function StorefrontProvider({
   subdomain,
   data,
   reload,
+  base: baseProp,
   children,
 }: {
   subdomain: string;
   data: any;
   reload: () => void;
+  base?: string;
   children: React.ReactNode;
 }) {
   const toast = useToast();
-  const base = `/store/${subdomain}`;
+  const base = baseProp ?? `/store/${subdomain}`;
   const store = data.store ?? {};
   const branding = data.branding ?? {};
   const currency = store.currency || "EGP";

@@ -72,13 +72,13 @@ export const SolutionsView: React.FC<SolutionsViewProps> = ({
       desc_ar: 'لا تحصر علامتك في منصات البيع الجماعية (Marketplaces) التي تقتطع 15-25% من مبيعاتك وتخفي عنك بيانات عملائك. مع سند، تمتلك متجرك بهويتك، نطاقك الفرعي، وقاعدة عملائك للتسويق المتكرر.',
       desc_en: 'Break free from marketplace aggregators taking 15-25% cuts and hiding buyer data. Own your storefront domain, logo, and repeat customer retention engine.',
       points_ar: [
-        'نطاق فرعي مجاني (yourstore.sanad.app)؛ ربط النطاق المستقل قيد التطوير',
+        'نطاق فرعي مجاني (yourstore.sanad.app)، وربط نطاقك المستقل بعد توثيق ملكيته عبر DNS',
         'تصدير الطلبات والعملاء CSV؛ تكاملات Meta/Google قيد التطوير',
         'قسائم التخفيض، العروض المجمعة (Bundles)، ورفع متوسط السلة AOV',
         'ملكية كاملة لقاعدة بيانات العملاء وسجل المشتريات'
       ],
       points_en: [
-        'Free Sanad subdomain (yourstore.sanad.app); custom domains are planned',
+        'Free Sanad subdomain (yourstore.sanad.app), with custom-domain connection after DNS ownership verification',
         'CSV order/customer export; Meta and Google integrations are planned',
         'Smart bundling engines and promo coupons lifting Average Order Value',
         '100% proprietary customer dataset ownership and exportability'

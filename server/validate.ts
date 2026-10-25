@@ -656,12 +656,6 @@ export const paginationQuerySchema = z.strictObject({
   search: z.string().trim().max(100).optional(),
 });
 
-export const walletDepositSchema = z.strictObject({
-  amount: z.number().min(1).max(1e9),
-  reference: z.string().trim().max(200).default(""),
-  note: z.string().trim().max(500).default(""),
-});
-
 export const abandonedCartUpdateSchema = z.strictObject({
   recoveryStatus: z.enum(["open", "reminded", "recovered", "ignored"]),
 });
@@ -737,6 +731,89 @@ export const teamUpdateSchema = z.strictObject({
   role: z.enum(["admin", "manager", "staff", "viewer"]).optional(),
   status: z.enum(["invited", "active", "suspended"]).optional(),
 }).refine((v) => Object.keys(v).length > 0, { message: "at least one field must be provided" });
+
+// ---- team authentication ----
+export const teamAcceptSchema = z.strictObject({
+  token: z.string().trim().min(20).max(200),
+  password: passwordField,
+  name: z.string().trim().max(160).optional(),
+});
+
+export const teamLoginSchema = z.strictObject({
+  email: emailField,
+  password: z.string().min(1).max(128),
+});
+
+export const teamInviteTokenParamSchema = z.strictObject({
+  token: z.string().trim().min(20).max(200),
+});
+
+// ---- platform-admin authentication ----
+export const adminLoginSchema = z.strictObject({
+  email: emailField,
+  password: z.string().min(1).max(128),
+  totp: z.string().trim().max(16).optional(),
+  recovery_code: z.string().trim().max(64).optional(),
+});
+
+export const adminPasswordSchema = changePasswordSchema;
+
+export const adminTwoFactorSetupSchema = twoFactorSetupSchema;
+export const adminTwoFactorCodeSchema = twoFactorCodeSchema;
+export const adminTwoFactorDisableSchema = twoFactorDisableSchema;
+
+// ---- wallet deposits ----
+export const walletDepositSchema = z.strictObject({
+  amount: z.number().finite().min(1).max(1_000_000),
+  reference: z.string().trim().max(200).default(""),
+  note: z.string().trim().max(1000).default(""),
+  method: z.enum(["bank_transfer", "instapay", "vodafone_cash", "wallet", "other"]).default("bank_transfer"),
+});
+
+export const adminWalletReviewSchema = z.strictObject({
+  decision: z.enum(["approve", "reject"]),
+  note: z.string().trim().max(1000).default(""),
+});
+
+// ---- support desk ----
+export const supportTicketSchema = z.strictObject({
+  subject: z.string().trim().min(3).max(200),
+  message: z.string().trim().min(3).max(5000),
+  category: z.enum(["billing", "technical", "domains", "account", "other"]).default("other"),
+  priority: z.enum(["low", "normal", "high"]).default("normal"),
+});
+
+export const adminSupportUpdateSchema = z.strictObject({
+  status: z.enum(["open", "in_progress", "resolved", "closed"]).optional(),
+  priority: z.enum(["low", "normal", "high"]).optional(),
+  resolution: z.string().trim().max(3000).optional(),
+  assignToMe: z.boolean().optional(),
+}).refine((v) => Object.keys(v).length > 0, { message: "at least one field must be provided" });
+
+// ---- admin-managed records ----
+export const featureFlagUpdateSchema = z.strictObject({
+  enabled: z.boolean(),
+});
+
+export const adminDomainReviewSchema = z.strictObject({
+  verified: z.boolean(),
+  note: z.string().trim().max(1000).default(""),
+});
+
+export const adminDomainTlsSchema = z.strictObject({
+  status: z.enum(["pending", "active", "failed"]),
+  error: z.string().trim().max(1000).default(""),
+});
+
+export const publishingActionSchema = z.strictObject({
+  action: z.enum(["publish", "unpublish"]),
+  reason: z.string().trim().max(1000).default(""),
+});
+
+export const reportsRangeQuerySchema = z.strictObject({
+  from: z.string().trim().max(40).optional(),
+  to: z.string().trim().max(40).optional(),
+});
 
 export const deleteAccountSchema = z.strictObject({
   password: z.string().min(1).max(128),

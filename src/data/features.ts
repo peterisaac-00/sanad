@@ -23,14 +23,14 @@ export const PLATFORM_CORE_SYSTEMS: FeatureSystem[] = [
     detailed_points_ar: [
       'تصميم RTL حقيقي من الأساس وليس مجرد قالب معرّب شكلياً',
       'سرعة فائقة في التصفح وسلة الشراء تعمل بسلاسة على شبكات 4G',
-      'نطاق فرعي مجاني (yourstore.sanad.app) مع HTTPS؛ ربط النطاق المستقل قيد التطوير',
+      'نطاق فرعي مجاني (yourstore.sanad.app) مع HTTPS، وربط نطاقك المستقل بعد توثيق ملكيته عبر DNS',
       'تخصيص الهوية البصرية، الشعار، الألوان، وأقسام الصفحة الرئيسية بدون كتابة أكواد',
       'صفحة إتمام طلب فائقة البساطة مخصصة لتقليل التخلي عن السلة'
     ],
     detailed_points_en: [
       'Native RTL typography and flow, not a superficial translation',
       'Fast loading speed optimized for 4G mobile networks across the Arab world',
-      'Free Sanad subdomain (yourstore.sanad.app) with HTTPS; custom domains are planned',
+      'Free Sanad subdomain (yourstore.sanad.app) with HTTPS, plus custom-domain connection after DNS ownership verification',
       'Brand customization: logos, palettes, banner sections without touching code',
       'Streamlined checkout flow engineered to minimize cart abandonment'
     ],

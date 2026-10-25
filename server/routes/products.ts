@@ -14,7 +14,7 @@ import {
   validateParams,
   validateQuery,
 } from "../validate.js";
-import { slugify, writeAudit } from "../services/account.js";
+import { auditActor, slugify, writeAudit } from "../services/account.js";
 
 export const productsRouter = Router();
 
@@ -230,7 +230,7 @@ productsRouter.post(
         }
         return tx.product.findUnique({ where: { id: created.id }, include });
       });
-      await writeAudit({ storeId, merchantId: req.auth!.merchantId, action: "product.created", entity: "product", entityId: product!.id, ip: req.ip });
+      await writeAudit({ storeId, ...auditActor(req.auth!), action: "product.created", entity: "product", entityId: product!.id, ip: req.ip });
       res.status(201).json({ product });
     } catch (e: unknown) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
@@ -352,7 +352,7 @@ productsRouter.put(
         }
         return tx.product.findUnique({ where: { id: updated.id }, include });
       });
-      await writeAudit({ storeId, merchantId: req.auth!.merchantId, action: "product.updated", entity: "product", entityId: existing.id, ip: req.ip });
+      await writeAudit({ storeId, ...auditActor(req.auth!), action: "product.updated", entity: "product", entityId: existing.id, ip: req.ip });
       res.json({ product });
     } catch (e: unknown) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
@@ -373,7 +373,7 @@ productsRouter.delete(
     const existing = await prisma.product.findFirst({ where: { id: req.params.id, storeId }, select: { id: true } });
     if (!existing) throw new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found.");
     await prisma.product.delete({ where: { id: existing.id } });
-    await writeAudit({ storeId, merchantId: req.auth!.merchantId, action: "product.deleted", entity: "product", entityId: existing.id, ip: req.ip });
+    await writeAudit({ storeId, ...auditActor(req.auth!), action: "product.deleted", entity: "product", entityId: existing.id, ip: req.ip });
     res.json({ ok: true });
   })
 );

@@ -12,7 +12,7 @@ import {
   validateQuery,
 } from "../validate.js";
 import { z } from "zod";
-import { writeAudit } from "../services/account.js";
+import { auditActor, writeAudit } from "../services/account.js";
 
 export const reviewsRouter = Router();
 
@@ -93,7 +93,7 @@ reviewsRouter.patch(
     });
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "review.updated",
       entity: "review",
       entityId: review.id,

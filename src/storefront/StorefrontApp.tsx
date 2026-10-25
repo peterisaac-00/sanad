@@ -451,7 +451,7 @@ function StorefrontUnavailable({ message, onRetry }: { message: string; onRetry?
 
 /* ---------------------------------- root ---------------------------------- */
 
-export function StorefrontApp({ subdomain }: { subdomain: string }) {
+export function StorefrontApp({ subdomain, base }: { subdomain: string; base?: string }) {
   const result = useAsync(() => api.storefront.get(subdomain), [subdomain]);
 
   useEffect(() => {
@@ -487,7 +487,7 @@ export function StorefrontApp({ subdomain }: { subdomain: string }) {
   }
 
   return (
-    <StorefrontProvider subdomain={subdomain} data={result.data} reload={result.reload}>
+    <StorefrontProvider subdomain={subdomain} data={result.data} reload={result.reload} base={base}>
       <StorefrontShell />
     </StorefrontProvider>
   );

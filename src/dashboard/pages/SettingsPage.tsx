@@ -4,18 +4,21 @@ import {
   Building2,
   CheckCircle2,
   Globe,
+  Globe2,
   KeyRound,
   MailCheck,
   RefreshCw,
+  Rocket,
   ScrollText,
   Shield,
   ShieldCheck,
+  ShieldOff,
   Smartphone,
   Trash2,
   UserPlus,
   Users,
 } from "lucide-react";
-import { api, mediaUrl } from "../../lib/api";
+import { api, mediaUrl, type StorePermission } from "../../lib/api";
 import { COUNTRIES_DATA } from "../../data/countries";
 import { CURRENCIES, dateTime, number, safeError } from "../../lib/format";
 import { Link } from "../../lib/router";
@@ -46,13 +49,39 @@ import { TableShell, Td, Th } from "../common";
 const TABS = [
   { key: "general", label: "بيانات المتجر", icon: Building2 },
   { key: "notifications", label: "الإشعارات", icon: Bell },
-  { key: "domains", label: "النطاقات (تحقق فقط)", icon: Globe },
+  { key: "domains", label: "النطاقات المخصصة", icon: Globe },
   { key: "team", label: "الفريق", icon: Users },
   { key: "security", label: "الأمان والحساب", icon: Shield },
   { key: "audit", label: "سجل النشاط", icon: ScrollText },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
+
+const TAB_ACCESS: Record<TabKey, StorePermission | "owner" | "read"> = {
+  general: "read",
+  notifications: "settings.write",
+  domains: "domain.manage",
+  team: "team.manage",
+  security: "owner",
+  audit: "audit.read",
+};
+
+const PUBLISH_STATUS: Record<string, { label: string; tone: string }> = {
+  draft: { label: "غير منشور", tone: "bg-surface text-ink-soft border-line" },
+  ready: { label: "جاهز للمراجعة", tone: "bg-info-soft text-info border-info-line" },
+  published: { label: "منشور", tone: "bg-success-soft text-success border-success-line" },
+  suspended: { label: "نشر موقوف", tone: "bg-danger-soft text-danger border-danger-line" },
+};
+
+const TLS_STATUS: Record<string, { label: string; tone: string }> = {
+  active: { label: "HTTPS مفعّل", tone: "bg-success-soft text-success border-success-line" },
+  pending: { label: "HTTPS بانتظار الوكيل", tone: "bg-warning-soft text-warning border-warning-line" },
+  failed: { label: "فشل تهيئة TLS", tone: "bg-danger-soft text-danger border-danger-line" },
+};
+
+function tlsMeta(status: string | null | undefined) {
+  return TLS_STATUS[status ?? "pending"] ?? { label: status ?? "—", tone: "bg-surface text-ink-soft border-line" };
+}
 
 const TIME_ZONES = [
   "Africa/Cairo", "Asia/Riyadh", "Asia/Dubai", "Asia/Kuwait", "Asia/Qatar",
@@ -93,12 +122,64 @@ function integrationBadge(key: string, value: any): { text: string; tone: string
 }
 
 export function SettingsPage() {
-  const { subdomain, store } = useDashboard();
-  const { refresh } = useSession();
+  const { subdomain } = useDashboard();
+  const { refresh, can, isOwner } = useSession();
   const toast = useToast();
   const [tab, setTab] = useState<TabKey>("general");
 
   const { data, loading, error, reload } = useAsync(() => api.settings.get(subdomain), [subdomain]);
+  const canWriteSettings = can("settings.write");
+  const canManagePublishing = canWriteSettings;
+  const allowedTabs = TABS.filter((entry) => {
+    const access = TAB_ACCESS[entry.key];
+    if (access === "read") return true;
+    if (access === "owner") return isOwner;
+    return can(access);
+  });
+  const publishing = data?.publishing ?? null;
+  const publishStatus = publishing?.publish_status ?? data?.store?.publishStatus ?? "draft";
+  const publishMeta = PUBLISH_STATUS[publishStatus] ?? { label: publishStatus, tone: "bg-surface text-ink-soft border-line" };
+  const publishReason = publishing?.publish_reason || data?.store?.publishReason || "";
+  const publicVisible = Boolean(publishing?.public_visible);
+  const canPublish = Boolean(publishing?.can_publish);
+  const tabAllowed = allowedTabs.some((entry) => entry.key === tab);
+
+  /* ---- publishing ---- */
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [unpublishOpen, setUnpublishOpen] = useState(false);
+  const [unpublishReason, setUnpublishReason] = useState("");
+  const [publishBusy, setPublishBusy] = useState(false);
+
+  const publishNow = async () => {
+    setPublishBusy(true);
+    try {
+      await api.settings.publish(subdomain);
+      toast.success("تم نشر المتجر وأصبح ظاهراً للعملاء.");
+      setPublishOpen(false);
+      await refresh();
+      reload();
+    } catch (err: any) {
+      toast.error(safeError(err));
+    } finally {
+      setPublishBusy(false);
+    }
+  };
+
+  const unpublishNow = async () => {
+    setPublishBusy(true);
+    try {
+      await api.settings.unpublish(subdomain, unpublishReason.trim());
+      toast.success("تم إيقاف نشر المتجر. المنتجات والطلبات محفوظة.");
+      setUnpublishOpen(false);
+      setUnpublishReason("");
+      await refresh();
+      reload();
+    } catch (err: any) {
+      toast.error(safeError(err));
+    } finally {
+      setPublishBusy(false);
+    }
+  };
 
   /* ---- general form ---- */
   const [form, setForm] = useState<any>(null);
@@ -126,6 +207,10 @@ export function SettingsPage() {
 
   const saveGeneral = async () => {
     if (!form) return;
+    if (!canWriteSettings) {
+      toast.error("دورك الحالي لا يسمح بتعديل إعدادات المتجر.");
+      return;
+    }
     if (form.storeName.trim().length < 2) {
       toast.error("اسم المتجر قصير جداً.");
       return;
@@ -246,6 +331,13 @@ export function SettingsPage() {
   const [teamBusy, setTeamBusy] = useState(false);
   const [deletingMember, setDeletingMember] = useState<any | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [teamInvite, setTeamInvite] = useState<{
+    url: string;
+    email: string;
+    expiresAt: string | null;
+    note: string;
+    emailSent: boolean;
+  } | null>(null);
 
   const inviteMember = async () => {
     if (!teamDraft.email.trim()) {
@@ -260,6 +352,13 @@ export function SettingsPage() {
         role: teamDraft.role,
       });
       toast.success(result.note ?? "تم إنشاء الدعوة.");
+      setTeamInvite({
+        url: result.invite_url,
+        email: result.member?.email ?? teamDraft.email.trim(),
+        expiresAt: result.expires_at ?? null,
+        note: result.note ?? "",
+        emailSent: Boolean(result.email_sent),
+      });
       setTeamOpen(false);
       setTeamDraft({ name: "", email: "", role: "staff" });
       reload();
@@ -272,7 +371,16 @@ export function SettingsPage() {
 
   const updateMember = async (member: any, body: Record<string, unknown>) => {
     try {
-      await api.settings.updateMember(subdomain, member.id, body);
+      const result = await api.settings.updateMember(subdomain, member.id, body);
+      if (result.invite_url) {
+        setTeamInvite({
+          url: result.invite_url,
+          email: result.member?.email ?? member.email,
+          expiresAt: result.expires_at ?? null,
+          note: "أُصدرت دعوة جديدة لهذا العضو. شارك الرابط قبل انتهاء صلاحيته.",
+          emailSent: false,
+        });
+      }
       toast.success("تم تحديث عضو الفريق.");
       reload();
     } catch (err: any) {
@@ -454,12 +562,18 @@ export function SettingsPage() {
       <PageHeader
         eyebrow="التشغيل"
         title="الإعدادات"
-        description="بيانات المتجر، الإشعارات، التحقق من النطاقات، الفريق، والأمان في مكان واحد."
+        description="بيانات المتجر، النشر، الإشعارات، النطاقات المخصصة، الفريق، والأمان في مكان واحد — مع إخفاء الأقسام التي لا يسمح بها دورك."
         actions={<Button variant="ghost" size="sm" onClick={reload} aria-label="تحديث"><RefreshCw className="h-3.5 w-3.5" /></Button>}
       />
 
+      {!canWriteSettings ? (
+        <Alert tone="info" title="وضع القراءة فقط">
+          دورك الحالي يسمح بعرض إعدادات المتجر دون تعديلها. أزرار الحفظ والنشر وتغيير الفريق معطّلة، والخادم يرفض أي محاولة تعديل.
+        </Alert>
+      ) : null}
+
       <div className="flex flex-wrap gap-1 rounded-brand border border-line bg-card p-1 text-xs font-semibold">
-        {TABS.map((entry) => {
+        {allowedTabs.map((entry) => {
           const Icon = entry.icon;
           return (
             <button
@@ -480,9 +594,80 @@ export function SettingsPage() {
 
       {loading && !data ? (
         <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40" />)}</div>
+      ) : !tabAllowed ? (
+        <Card className="p-6">
+          <EmptyState
+            title="هذا القسم غير متاح لدورك"
+            description="القائمة تعرض الأقسام المسموح بها فقط. إذا احتجت صلاحية إضافية فاطلب من مالك المتجر تعديل دورك."
+            icon={<Shield className="h-5 w-5" />}
+          />
+        </Card>
       ) : tab === "general" && form ? (
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-4">
+            <Card className="p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs font-bold text-ink">حالة النشر والظهور</div>
+                  <div className="mt-0.5 text-[10px] text-subtle">النشر يتحكم في ظهور الواجهة للعملاء، منفصلاً عن اعتماد المتجر من الإدارة.</div>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge tone={publishMeta.tone}>{publishMeta.label}</Badge>
+                  <Badge tone={publicVisible ? "bg-success-soft text-success border-success-line" : "bg-warning-soft text-warning border-warning-line"}>
+                    {publicVisible ? "ظاهر للعملاء" : "غير ظاهر للعملاء"}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="rounded-brand border border-line bg-surface p-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-semibold text-ink">
+                      {publicVisible
+                        ? "واجهة متجرك منشورة وتستقبل الزيارات."
+                        : canPublish
+                          ? "المتجر جاهز للنشر. لن يظهر للعملاء حتى تضغط «نشر المتجر»."
+                          : "لا يمكن النشر الآن."}
+                    </div>
+                    <p className="mt-1 text-[10px] leading-5 text-subtle">
+                      {publishReason || (publicVisible ? "كل التغييرات محفوظة وتظهر للعملاء." : "راجع حالة الاعتماد وأكمل بيانات المتجر قبل النشر.")}
+                    </p>
+                    {publishing?.published_at ? (
+                      <div className="mt-1 text-[10px] text-subtle">أول نشر: {dateTime(publishing.published_at)}</div>
+                    ) : null}
+                  </div>
+                  {canManagePublishing ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {publicVisible ? (
+                        <Button variant="outline" size="sm" onClick={() => setUnpublishOpen(true)}>
+                          <ShieldOff className="h-3.5 w-3.5" /> إيقاف النشر
+                        </Button>
+                      ) : (
+                        <Button size="sm" disabled={!canPublish} onClick={() => setPublishOpen(true)}>
+                          <Rocket className="h-3.5 w-3.5" /> نشر المتجر
+                        </Button>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              {data?.store?.status === "pending" ? (
+                <div className="mt-3">
+                  <Alert tone="warning" title="الاعتماد مطلوب أولاً">
+                    يبقى المتجر غير منشور حتى تعتمده إدارة سند. بعد الاعتماد يمكنك النشر من هنا فوراً.
+                  </Alert>
+                </div>
+              ) : null}
+              {data?.store?.status === "rejected" || data?.store?.status === "suspended" ? (
+                <div className="mt-3">
+                  <Alert tone="error" title="الاعتماد يمنع النشر">
+                    لا يمكن نشر متجر مرفوض أو موقوف. تواصل مع إدارة سند لحل الحالة أولاً.
+                  </Alert>
+                </div>
+              ) : null}
+            </Card>
+
             <Card className="p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div className="text-xs font-bold text-ink">الهوية</div>
@@ -525,39 +710,39 @@ export function SettingsPage() {
               <div className="mb-3 text-xs font-bold text-ink">البيع والتواصل</div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="واتساب الدعم" hint="يظهر في متجرك وفي روابط تأكيد الطلب">
-                  <Input value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} dir="ltr" placeholder="+2010…" />
+                  <Input value={form.whatsapp} disabled={!canWriteSettings} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} dir="ltr" placeholder="+2010…" />
                 </Field>
                 <Field label="هاتف المتجر">
-                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} dir="ltr" />
+                  <Input value={form.phone} disabled={!canWriteSettings} onChange={(e) => setForm({ ...form, phone: e.target.value })} dir="ltr" />
                 </Field>
                 <Field label="بريد الدعم">
-                  <Input type="email" value={form.supportEmail} onChange={(e) => setForm({ ...form, supportEmail: e.target.value })} dir="ltr" />
+                  <Input type="email" value={form.supportEmail} disabled={!canWriteSettings} onChange={(e) => setForm({ ...form, supportEmail: e.target.value })} dir="ltr" />
                 </Field>
                 <Field label="عملة المتجر" hint="تغيير العملة يؤثر على عرض الأسعار الجديدة.">
-                  <Select value={form.storeCurrency} onChange={(e) => setForm({ ...form, storeCurrency: e.target.value })}>
+                  <Select value={form.storeCurrency} disabled={!canWriteSettings} onChange={(e) => setForm({ ...form, storeCurrency: e.target.value })}>
                     {Object.entries(CURRENCIES).map(([code, meta]) => (
                       <option key={code} value={code}>{meta.label} ({code})</option>
                     ))}
                   </Select>
                 </Field>
                 <Field label="الدولة">
-                  <Select value={form.countryCode} onChange={(e) => setForm({ ...form, countryCode: e.target.value })}>
+                  <Select value={form.countryCode} disabled={!canWriteSettings} onChange={(e) => setForm({ ...form, countryCode: e.target.value })}>
                     {COUNTRIES_DATA.map((country) => (
                       <option key={country.code} value={country.code}>{country.flag} {country.name_ar}</option>
                     ))}
                   </Select>
                 </Field>
                 <Field label="المنطقة الزمنية">
-                  <Select value={form.timeZone} onChange={(e) => setForm({ ...form, timeZone: e.target.value })}>
+                  <Select value={form.timeZone} disabled={!canWriteSettings} onChange={(e) => setForm({ ...form, timeZone: e.target.value })}>
                     {TIME_ZONES.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
                   </Select>
                 </Field>
                 <div className="sm:col-span-2 grid gap-3 sm:grid-cols-2">
-                  <Switch checked={form.codEnabled} onChange={(v) => setForm({ ...form, codEnabled: v })} label="الدفع عند الاستلام" description="الطريقة الأساسية للتجارة الإلكترونية في المنطقة." />
+                  <Switch checked={form.codEnabled} disabled={!canWriteSettings} onChange={(v) => setForm({ ...form, codEnabled: v })} label="الدفع عند الاستلام" description="الطريقة الأساسية للتجارة الإلكترونية في المنطقة." />
                   <Switch
                     checked={onlinePaymentsAvailable && form.onlinePaymentEnabled}
                     onChange={(v) => setForm({ ...form, onlinePaymentEnabled: v })}
-                    disabled={!onlinePaymentsAvailable}
+                    disabled={!canWriteSettings || !onlinePaymentsAvailable}
                     label={onlinePaymentsAvailable ? "الدفع الإلكتروني" : "الدفع الإلكتروني — قريباً"}
                     description={
                       onlinePaymentsAvailable
@@ -587,7 +772,7 @@ export function SettingsPage() {
                   <Textarea rows={2} value={form.seoDescription} disabled />
                 </Field>
                 <Field label="اللغة الأساسية">
-                  <Select value={form.primaryLanguage} onChange={(e) => setForm({ ...form, primaryLanguage: e.target.value })}>
+                  <Select value={form.primaryLanguage} disabled={!canWriteSettings} onChange={(e) => setForm({ ...form, primaryLanguage: e.target.value })}>
                     <option value="ar">العربية</option>
                     <option value="en">English</option>
                   </Select>
@@ -597,7 +782,7 @@ export function SettingsPage() {
 
             <div className="flex items-center justify-end gap-2">
               <Button variant="ghost" onClick={() => { setForm(null); reload(); }}>استعادة القيم</Button>
-              <Button loading={saving} onClick={saveGeneral}>حفظ الإعدادات</Button>
+              <Button loading={saving} disabled={!canWriteSettings} onClick={saveGeneral}>حفظ الإعدادات</Button>
             </div>
           </div>
 
@@ -660,8 +845,8 @@ export function SettingsPage() {
         </Card>
       ) : tab === "domains" ? (
         <div className="space-y-3">
-          <Alert tone="warning" title="ربط النطاق بالمتجر غير مكتمل">
-            التحقق هنا يثبت ملكيتك للنطاق فقط. لا يتم توجيه النطاق إلى واجهة متجرك ولا إصدار شهادة HTTPS تلقائية بعد، لذلك لا تعتمد عليه في استقبال العملاء.
+          <Alert tone="info" title="النطاقات المخصصة تعمل بعد توثيق DNS">
+            بعد إضافة النطاق وتوثيق ملكيته بسجل TXT، وجّه سجلات DNS (A أو AAAA أو CNAME) إلى خادم سند. عندها يفتح النطاق واجهة متجرك مباشرة بنفس المحتوى. شهادة HTTPS تُنهى عند الوكيل الخارجي، وتظهر حالة TLS لكل نطاق أدناه بدلاً من افتراض أنها تعمل تلقائياً.
           </Alert>
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_380px]">
           <Card className="overflow-hidden">
@@ -669,7 +854,7 @@ export function SettingsPage() {
             {(data?.domains ?? []).length === 0 ? (
               <EmptyState
                 title="لا توجد نطاقات مسجلة"
-                description="يمكنك تسجيل نطاق والتحقق من ملكيته، لكن توجيه النطاق إلى متجرك غير متاح بعد."
+                description="أضف نطاقاً ووثّق ملكيته عبر DNS، ثم وجّه سجلاته إلى خادم سند ليفتح متجرك مباشرة."
                 icon={<Globe className="h-5 w-5" />}
               />
             ) : (
@@ -705,7 +890,21 @@ export function SettingsPage() {
                           )}
                         </div>
                       ) : (
-                        <div className="mt-1 text-[10px] text-subtle">تم التوثيق {dateTime(domain.verifiedAt)}</div>
+                        <div className="mt-1.5 space-y-1">
+                          <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-subtle">
+                            <span>تم التوثيق {dateTime(domain.verifiedAt)}</span>
+                            <Badge tone={tlsMeta(domain.tls_status).tone}>{tlsMeta(domain.tls_status).label}</Badge>
+                          </div>
+                          {domain.tls_status === "active" && domain.tls_provisioned_at ? (
+                            <div className="text-[10px] text-subtle">آخر تهيئة HTTPS: {dateTime(domain.tls_provisioned_at)}</div>
+                          ) : (
+                            <div className="text-[10px] leading-5 text-subtle">
+                              {domain.tls_status === "failed"
+                                ? domain.tls_error || "تعذرت تهيئة HTTPS. راجع سجلات الوكيل أو تواصل مع إدارة سند."
+                                : "النطاق موثّق، لكن HTTPS لم يُسجَّل كمفعّل بعد. لا تعتمد عليه في استقبال العملاء حتى تصبح الحالة «HTTPS مفعّل»."}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -747,7 +946,7 @@ export function SettingsPage() {
               </Field>
               <Button className="w-full" loading={domainBusy} onClick={addDomain}>إضافة النطاق</Button>
               <div className="text-[10px] leading-5 text-subtle">
-                بعد الإضافة سنعرض لك قيمة TXT مرة واحدة فقط. نتحقق منها فعلياً عبر DNS، ولن يظهر النطاق كموثّق قبل ذلك. إن فقدت القيمة يمكنك إصدار قيمة جديدة من القائمة. بعد التحقق يبقى النطاق غير موجه إلى المتجر حتى يكتمل الربط.
+                بعد الإضافة سنعرض لك قيمة TXT مرة واحدة فقط. نتحقق منها فعلياً عبر DNS، ولن يظهر النطاق كموثّق قبل ذلك. إن فقدت القيمة يمكنك إصدار قيمة جديدة من القائمة. بعد التوثيق وجّه سجلات DNS إلى خادم سند ليفتح النطاق متجرك مباشرة، وتُسجَّل حالة HTTPS من إدارة سند بعد تهيئة الوكيل الخارجي.
               </div>
             </div>
           </Card>
@@ -764,6 +963,32 @@ export function SettingsPage() {
             </div>
             <Button onClick={() => setTeamOpen(true)}><UserPlus className="h-4 w-4" /> دعوة عضو</Button>
           </Card>
+          {teamInvite ? (
+            <Card className="border-info-line p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-ink">رابط دعوة {teamInvite.email}</div>
+                  <div className="mt-0.5 text-[10px] leading-5 text-subtle">
+                    {teamInvite.note || "شارك هذا الرابط مع العضو. لن يظهر مرة أخرى بعد إغلاق الصفحة."}
+                    {teamInvite.expiresAt ? ` تنتهي الصلاحية في ${dateTime(teamInvite.expiresAt)}.` : ""}
+                  </div>
+                </div>
+                <Badge tone={teamInvite.emailSent ? "bg-success-soft text-success border-success-line" : "bg-warning-soft text-warning border-warning-line"}>
+                  {teamInvite.emailSent ? "أُرسلت بالبريد" : "تسليم يدوي"}
+                </Badge>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-brand border border-line bg-surface p-2.5">
+                <a href={teamInvite.url} className="min-w-0 flex-1 break-all font-mono text-[10px] text-brand underline" dir="ltr">
+                  {teamInvite.url}
+                </a>
+                <CopyButton value={teamInvite.url} label="نسخ الرابط" />
+                <Button variant="ghost" size="sm" onClick={() => setTeamInvite(null)}>إخفاء</Button>
+              </div>
+              <p className="mt-2 text-[10px] leading-5 text-subtle">
+                هذا الرابط يعمل مرة واحدة وينشئ جلسة فريق منفصلة عن جلسة المالك. لا تشاركه في مكان عام.
+              </p>
+            </Card>
+          ) : null}
           <Card className="overflow-hidden">
             {(data?.team ?? []).length === 0 ? (
               <EmptyState
@@ -1008,6 +1233,53 @@ export function SettingsPage() {
         </Card>
       )}
 
+      {/* publish / unpublish */}
+      <Modal
+        open={publishOpen}
+        onClose={() => setPublishOpen(false)}
+        title="نشر المتجر"
+        description="سيصبح المتجر ظاهراً للعملاء على رابطه الحالي."
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setPublishOpen(false)}>إلغاء</Button>
+            <Button loading={publishBusy} onClick={publishNow}><Rocket className="h-4 w-4" /> نشر الآن</Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-[11px] leading-6 text-subtle">
+            تأكد من أن المنتجات والأسعار وطرق الدفع والشحن جاهزة. يمكنك إيقاف النشر في أي وقت دون حذف أي بيانات.
+          </p>
+          <Alert tone="info" title="ما الذي يتغير؟">
+            تصبح واجهة المتجر متاحة للزوار، ويظل اعتماد المتجر من إدارة سند منفصلاً عن قرار النشر.
+          </Alert>
+        </div>
+      </Modal>
+
+      <Modal
+        open={unpublishOpen}
+        onClose={() => setUnpublishOpen(false)}
+        title="إيقاف نشر المتجر"
+        description="سيتوقف ظهور واجهة المتجر للعملاء مؤقتاً."
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setUnpublishOpen(false)}>إلغاء</Button>
+            <Button variant="outline" loading={publishBusy} onClick={unpublishNow}>إيقاف النشر</Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <Field label="سبب إيقاف النشر" hint="يظهر في حالة المتجر، ويمكن أن يكون فارغاً.">
+            <Textarea rows={3} value={unpublishReason} onChange={(e) => setUnpublishReason(e.target.value)} maxLength={300} placeholder="مثال: تحديث الأسعار قبل إعادة النشر." />
+          </Field>
+          <Alert tone="warning">
+            المنتجات والطلبات والعملاء يبقون محفوظين. لن يتمكن الزوار من فتح واجهة المتجر حتى تعيد النشر.
+          </Alert>
+        </div>
+      </Modal>
+
       {/* invite modal */}
       <Modal
         open={teamOpen}
@@ -1188,7 +1460,17 @@ function AuditLogs({ subdomain }: { subdomain: string }) {
             <Td><span className="text-[11px] text-subtle">{dateTime(log.createdAt)}</span></Td>
             <Td><Badge tone="bg-surface text-ink-soft border-line">{log.action}</Badge></Td>
             <Td><span className="font-mono text-[10px] text-subtle" dir="ltr">{log.entity || "—"}</span></Td>
-            <Td><span className="text-[11px] text-subtle">{log.merchant?.email || "—"}</span></Td>
+            <Td>
+              <div className="text-[11px] text-ink">
+                {log.actor?.name || log.merchant?.name || log.merchant?.email || "—"}
+              </div>
+              <div className="font-mono text-[10px] text-subtle" dir="ltr">
+                {log.actor?.email || log.merchant?.email || ""}
+              </div>
+              <div className="mt-0.5 text-[10px] text-subtle">
+                {log.actorType === "team_member" ? "عضو فريق" : log.actorType === "platform_admin" ? "إدارة سند" : "مالك المتجر"}
+              </div>
+            </Td>
           </tr>
         ))}
       </tbody>

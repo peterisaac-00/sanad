@@ -10,7 +10,7 @@ import {
   validateBody,
   validateParams,
 } from "../validate.js";
-import { writeAudit } from "../services/account.js";
+import { auditActor, writeAudit } from "../services/account.js";
 
 export const loyaltyRouter = Router();
 
@@ -147,7 +147,7 @@ loyaltyRouter.post(
     });
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "loyalty.adjusted",
       entity: "loyalty_account",
       entityId: result.id,

@@ -77,6 +77,13 @@ export function WalletPage() {
   const [subPayer, setSubPayer] = useState("");
   const [subNote, setSubNote] = useState("");
 
+  const [depositOpen, setDepositOpen] = useState(false);
+  const [depositBusy, setDepositBusy] = useState(false);
+  const [depositAmount, setDepositAmount] = useState("");
+  const [depositMethod, setDepositMethod] = useState<SubscriptionMethod>("bank_transfer");
+  const [depositReference, setDepositReference] = useState("");
+  const [depositNote, setDepositNote] = useState("");
+
   const { data, loading, error, reload } = useAsync(() => api.wallet.get(subdomain), [subdomain]);
   const walletCurrency = data?.summary?.currency ?? "EGP";
   const transactions = data?.transactions ?? [];
@@ -91,6 +98,8 @@ export function WalletPage() {
   const expired = Boolean(paidUntil && paidUntil.getTime() < Date.now());
   const selectedAmount = Number(prices[subPlan] ?? 0);
   const annualSaving = Math.max(0, Number(prices.monthly ?? 0) * 12 - Number(prices.annual ?? 0));
+  const depositsEnabled = Boolean(data) && data?.deposits_enabled !== false;
+  const pendingDeposits = Number(data?.summary?.pendingDeposits ?? 0);
 
   const openSubscription = () => {
     setSubPlan(currentPlan);
@@ -125,6 +134,38 @@ export function WalletPage() {
     }
   };
 
+  const openDeposit = () => {
+    setDepositAmount("");
+    setDepositMethod("bank_transfer");
+    setDepositReference("");
+    setDepositNote("");
+    setDepositOpen(true);
+  };
+
+  const submitDeposit = async () => {
+    const amount = Number(depositAmount);
+    if (!Number.isFinite(amount) || amount < 1 || amount > 1_000_000) {
+      toast.error("أدخل مبلغاً صحيحاً بين 1 و1,000,000.");
+      return;
+    }
+    setDepositBusy(true);
+    try {
+      const result = await api.wallet.deposit(subdomain, {
+        amount,
+        method: depositMethod,
+        reference: depositReference.trim(),
+        note: depositNote.trim(),
+      });
+      toast.success(result.note ?? "تم تسجيل طلب الإيداع بانتظار اعتماد الإدارة.");
+      setDepositOpen(false);
+      reload();
+    } catch (err: any) {
+      toast.error(safeError(err));
+    } finally {
+      setDepositBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -132,11 +173,22 @@ export function WalletPage() {
         title="الاشتراك والمحفظة"
         description="سجّل دفعة اشتراك سند الشهرية أو السنوية، وتابع اعتمادها من إدارة المنصة. رصيد المحفظة منفصل تماماً عن اشتراكك."
         actions={
-          <Button onClick={openSubscription} disabled={Boolean(pendingPayment)}>
-            <CreditCard className="h-4 w-4" /> تسجيل دفعة اشتراك
-          </Button>
+          <>
+            <Button variant="outline" onClick={openDeposit} disabled={!depositsEnabled}>
+              <ArrowDownToLine className="h-4 w-4" /> طلب إيداع
+            </Button>
+            <Button onClick={openSubscription} disabled={Boolean(pendingPayment)}>
+              <CreditCard className="h-4 w-4" /> تسجيل دفعة اشتراك
+            </Button>
+          </>
         }
       />
+
+      {data && !depositsEnabled ? (
+        <Alert tone="info" title="إيداع المحفظة متوقف مؤقتاً">
+          أوقفت إدارة المنصة استقبال طلبات الإيداع. يبقى رصيدك وسجل الحركات ظاهراً، ويمكنك متابعة الاشتراك والطلبات.
+        </Alert>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
@@ -144,7 +196,11 @@ export function WalletPage() {
           value={money(data?.summary?.balance ?? 0, walletCurrency)}
           icon={<WalletIcon className="h-5 w-5" />}
           accent="brand"
-          hint="رصيد تشغيلي داخل المتجر، ولا يُستخدم لدفع الاشتراك."
+          hint={
+            pendingDeposits > 0
+              ? `${money(pendingDeposits, walletCurrency)} بانتظار اعتماد الإدارة`
+              : "رصيد تشغيلي داخل المتجر، ولا يُستخدم لدفع الاشتراك."
+          }
         />
         <StatCard
           label="خطة الاشتراك"
@@ -258,8 +314,9 @@ export function WalletPage() {
         ) : transactions.length === 0 ? (
           <EmptyState
             title="لا توجد حركات مالية"
-            description="ستظهر هنا حركات رصيد المتجر إن وجدت. الإيداع في المحفظة غير متاح حالياً، أما اشتراك سند فيُسجَّل في القسم أعلاه."
+            description="ستظهر هنا طلبات الإيداع وحركات الرصيد. أي إيداع يبقى معلّقاً حتى تعتمده إدارة المنصة، أما اشتراك سند فيُسجَّل في القسم أعلاه."
             icon={<WalletIcon className="h-5 w-5" />}
+            action={depositsEnabled ? <Button onClick={openDeposit}><ArrowDownToLine className="h-4 w-4" /> طلب إيداع</Button> : undefined}
           />
         ) : (
           <TableShell minWidth={940}>
@@ -377,6 +434,53 @@ export function WalletPage() {
 
           <Alert tone="info" title="بعد إرسال الدفعة">
             ستظهر الدفعة بحالة «قيد المراجعة» في السجل، وتبقى خطة الاشتراك كما هي حتى تعتمدها الإدارة. لا تُضاف أي مبالغ إلى محفظة المتجر.
+          </Alert>
+        </div>
+      </Modal>
+
+      <Modal
+        open={depositOpen}
+        onClose={() => (depositBusy ? undefined : setDepositOpen(false))}
+        title="طلب إيداع في المحفظة"
+        description="يُسجَّل الطلب بحالة معلّقة، ولا يتغير رصيدك حتى تعتمده إدارة سند."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDepositOpen(false)} disabled={depositBusy}>إلغاء</Button>
+            <Button loading={depositBusy} onClick={submitDeposit}>إرسال طلب الإيداع</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="المبلغ" required hint={`بالعملة ${walletCurrency}`}>
+              <Input
+                type="number"
+                min={1}
+                max={1000000}
+                step="0.01"
+                value={depositAmount}
+                onChange={(event) => setDepositAmount(event.target.value)}
+                dir="ltr"
+                inputMode="decimal"
+                placeholder="500"
+              />
+            </Field>
+            <Field label="طريقة التحويل" required>
+              <Select value={depositMethod} onChange={(event) => setDepositMethod(event.target.value as SubscriptionMethod)}>
+                {Object.entries(SUB_METHODS).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="مرجع العملية" className="sm:col-span-2" hint="رقم التحويل أو آخر 4 أرقام من الحساب.">
+              <Input value={depositReference} onChange={(event) => setDepositReference(event.target.value)} dir="ltr" placeholder="TX-123456" />
+            </Field>
+            <Field label="ملاحظات" className="sm:col-span-2">
+              <Textarea rows={3} value={depositNote} onChange={(event) => setDepositNote(event.target.value)} placeholder="تفاصيل تساعد الإدارة في مطابقة التحويل." />
+            </Field>
+          </div>
+          <Alert tone="warning" title="لن يُضاف الرصيد تلقائياً">
+            بعد الإرسال يظهر الطلب في سجل الحركات بحالة «معلّقة». تعتمد الإدارة الطلب أو ترفضه، وعند الاعتماد فقط يُضاف المبلغ إلى الرصيد.
           </Alert>
         </div>
       </Modal>

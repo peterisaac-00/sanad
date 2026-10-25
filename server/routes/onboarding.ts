@@ -3,13 +3,18 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma, newId } from "../db.js";
 import { ApiError, asyncHandler } from "../errors.js";
-import { requireAuth } from "../middleware.js";
+import { requireAuth, requireMerchantSession } from "../middleware.js";
 import { validateBody } from "../validate.js";
 import { onboardingPatchSchema } from "../validate.js";
-import { ensureStoreDefaults, writeAudit } from "../services/account.js";
+import { auditActor, ensureStoreDefaults, writeAudit } from "../services/account.js";
 import { env } from "../env.js";
 import { paymentService } from "../services/integrations.js";
 import { onboardingIdentityTouched, OWNER_IDENTITY_LOCKED_MESSAGE } from "../services/storePolicy.js";
+import {
+  isPublished,
+  publishStateAfterOnboarding,
+  publishingSnapshot,
+} from "../services/publishing.js";
 
 export const onboardingRouter = Router();
 
@@ -23,13 +28,18 @@ function progressOf(store: {
   whatsapp: string;
   codEnabled: boolean;
   onboardingCompleted: boolean;
+  status: string;
+  publishStatus: string;
+  publishReason: string;
+  statusReason: string;
+  publishedAt: Date | null;
 }) {
   return {
     brand: Boolean(store.storeName && store.businessType && (store.description || store.governorate)),
     identity: Boolean(store.logoUrl),
     template: Boolean(store.templateKey),
     selling: Boolean(store.whatsapp || store.codEnabled),
-    published: store.onboardingCompleted,
+    published: isPublished(store),
   };
 }
 
@@ -43,6 +53,7 @@ async function ownStore(req: Parameters<typeof requireAuth>[0]) {
 onboardingRouter.get(
   "/",
   asyncHandler(requireAuth),
+  asyncHandler(requireMerchantSession),
   asyncHandler(async (req, res) => {
     const store = await ownStore(req);
     await ensureStoreDefaults(store.id, store.currency);
@@ -51,6 +62,7 @@ onboardingRouter.get(
       store,
       branding,
       progress: progressOf(store),
+      publishing: publishingSnapshot(store),
       payments: {
         codEnabled: store.codEnabled,
         onlinePaymentEnabled: store.onlinePaymentEnabled && paymentService.configured,
@@ -68,6 +80,7 @@ onboardingRouter.get(
 onboardingRouter.patch(
   "/",
   asyncHandler(requireAuth),
+  asyncHandler(requireMerchantSession),
   validateBody(onboardingPatchSchema),
   asyncHandler(async (req, res) => {
     const store = await ownStore(req);
@@ -172,7 +185,7 @@ onboardingRouter.patch(
     await ensureStoreDefaults(updated.id, updated.currency);
     await writeAudit({
       storeId: updated.id,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "onboarding.draft_saved",
       entity: "store",
       entityId: updated.id,
@@ -187,6 +200,7 @@ onboardingRouter.patch(
 onboardingRouter.post(
   "/complete",
   asyncHandler(requireAuth),
+  asyncHandler(requireMerchantSession),
   asyncHandler(async (req, res) => {
     const store = await ownStore(req);
     if (!store.storeName || !store.businessType) {
@@ -203,12 +217,13 @@ onboardingRouter.post(
       throw new ApiError(409, "PAYMENT_PROVIDER_NOT_CONFIGURED", "Disable online payment until a gateway is configured.");
     }
 
+    const publish = publishStateAfterOnboarding(store);
     const updated = await prisma.store.update({
       where: { id: store.id },
       data: {
         onboardingCompleted: true,
         onboardingStep: 5,
-        publishedAt: store.publishedAt ?? new Date(),
+        ...publish,
       },
     });
     await ensureStoreDefaults(updated.id, updated.currency);
@@ -219,7 +234,7 @@ onboardingRouter.post(
     });
     await writeAudit({
       storeId: updated.id,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "store.submitted_for_review",
       entity: "store",
       entityId: updated.id,

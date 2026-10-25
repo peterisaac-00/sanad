@@ -13,7 +13,7 @@ import {
   validateBody,
   validateParams,
 } from "../validate.js";
-import { writeAudit } from "../services/account.js";
+import { auditActor, writeAudit } from "../services/account.js";
 
 export const growthRouter = Router();
 
@@ -78,7 +78,7 @@ growthRouter.post(
     });
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "upsell.created",
       entity: "upsell",
       entityId: upsell.id,
@@ -185,7 +185,7 @@ growthRouter.post(
     );
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "related.created",
       entity: "related_product",
       metadata: { productId: b.productId, ids },

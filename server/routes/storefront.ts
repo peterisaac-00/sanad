@@ -21,6 +21,8 @@ import { paymentService, whatsappLink } from "../services/integrations.js";
 import { createTrackingToken, trackingUrl, verifyTrackingToken } from "../services/tracking.js";
 import { normalizePhone } from "../identity.js";
 import { maskPhone } from "../privacy.js";
+import { env } from "../env.js";
+import { isPublished } from "../services/publishing.js";
 
 export const storefrontRouter = Router();
 
@@ -139,10 +141,22 @@ async function activeStore(subdomain: string) {
   return store;
 }
 
+/**
+ * Catalog/checkout surfaces only exist for a storefront that is both approved
+ * and published. The coming-soon payload is served exclusively by the main
+ * storefront endpoint so draft products and checkout are not publicly exposed.
+ */
+async function publishedStore(subdomain: string) {
+  const store = await activeStore(subdomain);
+  if (!isPublished(store)) throw new ApiError(404, "STORE_NOT_FOUND", "Store not found.");
+  return store;
+}
+
 function storefrontSettings(store: {
   id: string;
   storeName: string;
   subdomain: string;
+  customDomain: string | null;
   description: string;
   logoUrl: string;
   coverUrl: string;
@@ -158,10 +172,15 @@ function storefrontSettings(store: {
   supportEmail: string;
   returnPolicy: string;
 }) {
+  const canonicalUrl = store.customDomain
+    ? `https://${store.customDomain}`
+    : `${env.appUrl}/store/${encodeURIComponent(store.subdomain)}`;
   return {
     id: store.id,
     store_name: store.storeName,
     subdomain: store.subdomain,
+    custom_domain: store.customDomain ?? "",
+    canonical_url: canonicalUrl,
     description: store.description,
     logo_url: store.logoUrl,
     cover_url: store.coverUrl,
@@ -183,6 +202,24 @@ storefrontRouter.get(
   validateParams(subdomainParamSchema),
   asyncHandler(async (req, res) => {
     const store = await activeStore(req.params.subdomain);
+    const published = isPublished(store);
+    if (!published) {
+      // Coming-soon payload: no catalog, pages, reviews or shipping data before
+      // the store is approved and published.
+      res.json({
+        store: storefrontSettings(store),
+        branding: store.branding,
+        categories: [],
+        featured_products: [],
+        pages: [],
+        shipping_zones: [],
+        payments: { cod_enabled: false, online_enabled: false },
+        published: false,
+        publish_status: store.publishStatus,
+        publish_reason: store.publishReason,
+      });
+      return;
+    }
     const [categories, featured, pages, zones] = await prisma.$transaction([
       prisma.category.findMany({
         where: { storeId: store.id, isActive: true },
@@ -226,7 +263,9 @@ storefrontRouter.get(
         cod_enabled: store.codEnabled,
         online_enabled: store.onlinePaymentEnabled && paymentService.configured,
       },
-      published: store.onboardingCompleted,
+      published: true,
+      publish_status: store.publishStatus,
+      publish_reason: "",
     });
   })
 );
@@ -240,7 +279,7 @@ storefrontRouter.post(
     const store = await activeStore(req.params.subdomain);
     // Only a published storefront counts as a visit; the coming-soon page is
     // not a customer visit. No IP address or user agent is persisted.
-    if (store.onboardingCompleted) {
+    if (isPublished(store)) {
       const path = String(req.body.path || "/").split("?")[0].slice(0, 300) || "/";
       await prisma.storeVisit.create({
         data: { id: newId("visit_"), storeId: store.id, path },
@@ -255,7 +294,7 @@ storefrontRouter.get(
   validateParams(subdomainParamSchema),
   validateQuery(productListQuery),
   asyncHandler(async (req, res) => {
-    const store = await activeStore(req.params.subdomain);
+    const store = await publishedStore(req.params.subdomain);
     const { page, pageSize, search, category, sort, featured, minPrice, maxPrice } = req.query as unknown as {
       page: number;
       pageSize: number;
@@ -314,7 +353,7 @@ storefrontRouter.get(
   "/api/storefront/:subdomain/products/:slug",
   validateParams(subdomainParamSchema.extend({ slug: z.string().trim().min(1).max(200) })),
   asyncHandler(async (req, res) => {
-    const store = await activeStore(req.params.subdomain);
+    const store = await publishedStore(req.params.subdomain);
     const product = await prisma.product.findFirst({
       where: {
         storeId: store.id,
@@ -362,7 +401,7 @@ storefrontRouter.get(
   "/api/storefront/:subdomain/categories",
   validateParams(subdomainParamSchema),
   asyncHandler(async (req, res) => {
-    const store = await activeStore(req.params.subdomain);
+    const store = await publishedStore(req.params.subdomain);
     const categories = await prisma.category.findMany({
       where: { storeId: store.id, isActive: true },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
@@ -376,7 +415,7 @@ storefrontRouter.get(
   "/api/storefront/:subdomain/pages/:slug",
   validateParams(subdomainParamSchema.extend({ slug: z.string().trim().min(1).max(200) })),
   asyncHandler(async (req, res) => {
-    const store = await activeStore(req.params.subdomain);
+    const store = await publishedStore(req.params.subdomain);
     const page = await prisma.page.findFirst({
       where: { storeId: store.id, slug: req.params.slug, status: "published" },
     });
@@ -389,7 +428,7 @@ storefrontRouter.get(
   "/api/storefront/:subdomain/blog",
   validateParams(subdomainParamSchema),
   asyncHandler(async (req, res) => {
-    const store = await activeStore(req.params.subdomain);
+    const store = await publishedStore(req.params.subdomain);
     const now = new Date();
     const posts = await prisma.blogPost.findMany({
       where: {
@@ -418,7 +457,7 @@ storefrontRouter.get(
   "/api/storefront/:subdomain/blog/:slug",
   validateParams(subdomainParamSchema.extend({ slug: z.string().trim().min(1).max(200) })),
   asyncHandler(async (req, res) => {
-    const store = await activeStore(req.params.subdomain);
+    const store = await publishedStore(req.params.subdomain);
     const now = new Date();
     const post = await prisma.blogPost.findFirst({
       where: {
@@ -436,7 +475,7 @@ storefrontRouter.get(
   "/api/storefront/:subdomain/reviews/:productId",
   validateParams(subdomainParamSchema.extend({ productId: z.string().trim().min(1).max(64) })),
   asyncHandler(async (req, res) => {
-    const store = await activeStore(req.params.subdomain);
+    const store = await publishedStore(req.params.subdomain);
     const reviews = await prisma.review.findMany({
       where: { storeId: store.id, productId: req.params.productId, status: "approved" },
       orderBy: { createdAt: "desc" },
@@ -453,7 +492,7 @@ storefrontRouter.post(
   validateParams(subdomainParamSchema),
   validateBody(publicReviewSchema),
   asyncHandler(async (req, res) => {
-    const store = await activeStore(req.params.subdomain);
+    const store = await publishedStore(req.params.subdomain);
     const b = req.body as { productId: string; customerName: string; rating: number; content: string };
     const product = await prisma.product.findFirst({ where: { id: b.productId, storeId: store.id }, select: { id: true } });
     if (!product) throw new ApiError(404, "PRODUCT_NOT_FOUND", "Product not found.");
@@ -481,7 +520,7 @@ storefrontRouter.post(
   validateParams(subdomainParamSchema),
   validateBody(couponCodeSchema),
   asyncHandler(async (req, res) => {
-    const store = await activeStore(req.params.subdomain);
+    const store = await publishedStore(req.params.subdomain);
     const { code, subtotal, customer_phone } = req.body as { code: string; subtotal: number; customer_phone: string };
     const result = await validateCoupon({ storeId: store.id, code, subtotal, customerPhone: customer_phone });
     res.json({ valid: true, coupon: result });
@@ -494,7 +533,7 @@ storefrontRouter.post(
   validateParams(subdomainParamSchema),
   validateBody(shippingQuoteSchema),
   asyncHandler(async (req, res) => {
-    const store = await activeStore(req.params.subdomain);
+    const store = await publishedStore(req.params.subdomain);
     const b = req.body as {
       governorate: string;
       city: string;
@@ -520,7 +559,7 @@ storefrontRouter.post(
   validateParams(subdomainParamSchema),
   validateBody(cartTrackSchema),
   asyncHandler(async (req, res) => {
-    const store = await activeStore(req.params.subdomain);
+    const store = await publishedStore(req.params.subdomain);
     const b = req.body as {
       cartToken: string;
       customerName: string;
@@ -587,7 +626,7 @@ storefrontRouter.get(
   trackingLookupLimiter,
   validateParams(subdomainParamSchema.extend({ orderNumber: z.string().regex(/^\d+$/) })),
   asyncHandler(async (req, res) => {
-    const store = await activeStore(req.params.subdomain);
+    const store = await publishedStore(req.params.subdomain);
     const orderNumber = Number(req.params.orderNumber);
     const token = typeof req.query.token === "string" ? req.query.token.trim() : "";
     const phone = normalizePhone(typeof req.query.phone === "string" ? req.query.phone : "");
@@ -659,7 +698,7 @@ storefrontRouter.post(
   validateParams(subdomainParamSchema),
   validateBody(checkoutBodySchema),
   asyncHandler(async (req, res) => {
-    const store = await activeStore(req.params.subdomain);
+    const store = await publishedStore(req.params.subdomain);
     const rawKey = req.get("Idempotency-Key")?.trim() || "";
     if (rawKey && !/^[A-Za-z0-9._:-]{8,128}$/.test(rawKey)) {
       throw new ApiError(400, "INVALID_IDEMPOTENCY_KEY", "Idempotency-Key must be 8-128 URL-safe characters.");

@@ -14,8 +14,8 @@
 |---|---|---|
 | 1 | Financial correctness and transactional integrity | ✅ Complete |
 | 2 | Security, media, and data protection | ✅ Complete  |
-| 3 | Feature truthfulness and integrations | ⏳ Pending |
-| 4 | Admin, RBAC, team, and custom domains | ⏳ Pending |
+| 3 | Feature truthfulness and integrations | ✅ Complete |
+| 4 | Admin, RBAC, team, and custom domains | ✅ Complete |
 | 5 | Storefront, SEO, performance, and currency model | ⏳ Pending |
 | 6 | UX, accessibility, retention, and launch readiness | ⏳ Pending |
 
@@ -113,7 +113,7 @@
 - [x] **R10.2 — Shipping carriers.** Shipping is explicitly manual: merchants manage zones, rates, and carrier names, while `trackingAvailable` stays `false` and marketing/settings copy states there is no carrier integration or live tracking. **Verified:** Phase 3 tests assert the manual integration status and static copy checks reject automated-tracking promises.
 - [x] **R10.3 — WhatsApp automation.** Only `wa.me` links and prepared messages exist. `sendState` is `manual_links_only` or `template_required`; automated send always returns `sent: false`, and an abandoned-cart reminder is never marked sent automatically. **Verified:** Phase 3 tests assert `autoSendAvailable` is false, the reminder returns a manual-link state, and the cart remains `open`.
 - [x] **R10.4 — S3 storage.** `STORAGE_DRIVER=s3` now fails startup with an explicit message because no S3 adapter exists; local disk is the only supported driver. **Verified:** Phase 3 tests accept `local` and assert `storageDriverError("s3")` names both the unsupported driver and the local fallback.
-- [x] **R10.5 — Wallet deposit approval.** Deposits are hidden and rejected with `503 WALLET_DEPOSITS_DISABLED` until the Phase 4 admin approval workflow exists; the wallet page is gated and read-only. **Verified:** Phase 3 tests assert the wallet reports deposits disabled, rejects a deposit request, and writes no transaction.
+- [x] **R10.5 — Wallet deposit approval.** Superseded by Phase 4: wallet deposits are now real pending requests that change the balance only after an admin approves them. The `wallet_deposits` feature flag can pause intake with `503 WALLET_DEPOSITS_DISABLED`; the wallet page shows the pending state instead of a read-only gate. **Verified:** Phase 4 admin tests assert pending intake, flag gating, admin-only approval/rejection, and no balance change before approval.
 - [x] **R10.6 — Affiliate settlement.** Settlement is manual and external: only delivered `pending` attributions settle, `settledAt` is recorded, a `manual_external` note is returned, and no withdrawable wallet balance is implied. **Verified:** Phase 3 tests settle one delivered and one shipped attribution; only the delivered one becomes `paid`, an audit entry is written, and a repeat settle returns `409`.
 - [x] **R8.3 — Learn center scope.** The Learn surface is now labelled “الدليل السريع” (short guide) and links only to real dashboard workflows; `learnContent.ts` is the single route map. **Verified:** Phase 3 tests assert every guide path exists in the feature registry, every link is visible, and no unpublished checklist workflow is advertised.
 
@@ -131,17 +131,19 @@
 
 ## Admin and Roles
 
-- [ ] **R6.1 — Build a real admin back-office.** Only `GET /api/admin/leads` exists. Add overview, stores, merchants, subscriptions, wallet approvals, support, reports, domain verification, audit/security events, store suspension, and feature flags. **Done when** each operation has permission checks and audit.
-- [ ] **R6.2 — Separate `PlatformAdmin` from `Merchant`.** The current `admin` role shares the merchant account model. Introduce a distinct admin identity, session scope, MFA, and audit policy. **Done when** admin and merchant sessions are not interchangeable.
-- [ ] **R6.3 — Implement TeamMember authentication and RBAC.** `TeamMember.role` is nominal: no invite acceptance, login, session link, or permission middleware. Add invitation/password/session flow, bind sessions to members, and enforce granular permissions on every mutation. **Done when** staff/viewer roles are denied privileged actions by the API, not just the UI.
+- [x] **R6.1 — Build a real admin back-office.** `/api/admin` now covers overview, stores, merchants, subscriptions, wallet approvals, support tickets, reports, domain/TLS review, audit/security events, store approval/suspension/unpublishing, feature flags, administrator management, and leads. Every route names an explicit admin permission and writes an actor-attributed audit row. **Verified:** `tests/admin-platform.test.ts` and `tests/phase4-admin-controls.test.ts` exercise each role boundary, wallet/subscription review, store lifecycle, support triage, flags, and audit attribution.
+- [x] **R6.2 — Separate `PlatformAdmin` from `Merchant`.** Platform administration uses a distinct `PlatformAdmin` identity, `AdminSession` table, `sanad_admin_session` cookie (8-hour TTL), and its own MFA/recovery-code state. Merchant/team sessions receive `403 ADMIN_ACCESS_DENIED`; the legacy merchant `role=admin` no longer grants admin access. **Verified:** the admin-controls suite asserts cookie separation, the MFA challenge and one-time recovery codes, disabled-admin revocation, and legacy-role denial.
+- [x] **R6.3 — Implement TeamMember authentication and RBAC.** Invites are one-time hashed tokens with acceptance/login pages; sessions bind to `teamMemberId` and role changes apply on the next request. Manager/staff/viewer permissions are enforced centrally by `requireStoreOwnership`, sensitive reads (`team`, `domains`, `wallet`, `audit-logs`) are permissioned, and suspension revokes all live team sessions. **Verified:** `tests/phase4-team-rbac.test.ts` and the export-role test in `tests/phase2-security.test.ts`.
 
 ## Domains and Publishing
 
-- [ ] **R8.1 — Make custom domains work end to end.** `StoreDomain` and TXT verification exist, but no host resolver maps `req.hostname` to a store; TLS and canonical handling are missing. Add pre-SPA host resolution, canonical URLs, TLS provisioning, host-header poisoning protection, and an end-to-end test. **Done when** a verified domain opens the correct storefront.
-- [ ] **R8.2 — Clarify `/admin`.** Robots disallows it, but no route exists. Build it with R6.1 or document it as planned. **Done when** routing, robots, and copy agree.
-- [ ] **R7.1 — Unify onboarding and publishing states.** Dashboard access requires `onboardingCompleted`, registration creates an active store, and storefront uses a separate `published` flag. Use `draft → ready → published → suspended`, with a visible reason when unpublished. **Done when** owner and visitor see consistent state.
+- [x] **R8.1 — Make custom domains work end to end.** Pre-SPA host resolution trusts only the raw `Host` header, resolves verified `StoreDomain` rows, injects CSP-safe store metadata, and returns canonical custom-domain URLs. TLS/proxy status is recorded explicitly per domain, unknown hosts/assets never receive the SPA, and DNS/TXT plus verification instructions are shown in settings. **Verified:** `tests/phase4-domains-publishing.test.ts` covers normalization, verification, TLS success/failure, `X-Forwarded-Host` rejection, canonical URLs, unpublished-domain closure, and domain uniqueness.
+- [x] **R8.2 — Clarify `/admin`.** `/admin` is a real platform-admin console with independent login, MFA, permission-filtered navigation, direct-tab forbidden states, and aliases for legacy `/admin/payments` and `/admin/visits`. Robots rules and copy now point to the real route. **Verified:** the admin UI and API suites cover authentication, permissions, aliases/unknown panels, and logout isolation.
+- [x] **R7.1 — Unify onboarding and publishing states.** Publishing uses `draft → ready → published → suspended`, while `Store.status` remains the platform approval gate. Onboarding completion on a pending store marks it ready; approval publishes an onboarded store; unpublishing records a visible reason for both owner and visitor. **Verified:** publishing lifecycle tests in `tests/phase4-domains-publishing.test.ts` and `tests/admin-platform.test.ts`.
 
-**Dependencies:** R10.5 needs the admin wallet workflow; R4.6 export authorization depends on the RBAC model.
+**Dependencies:** R10.5 is now fulfilled by the Phase 4 admin wallet workflow; R4.6 export authorization uses the Phase 4 RBAC model.
+
+**Phase 4 verification:** `npm test` (24 files, 135 tests), `npm run lint`, `npm run build`, and `npm run build:server` all pass.
 
 ---
 
@@ -254,10 +256,7 @@ Phase 1’s regression suite already covers the accounting, coupon, refund, paym
 4. Loyalty — earn/revoke is fixed; confirm redemption policy before launch.
 5. Upsells/related products — no measurement.
 6. Blog — only if acquisition/SEO is a current priority.
-7. Wallet — requires admin approval flow (R10.5).
-8. Team management — requires authentication/RBAC (R6.3).
-9. Custom domains — requires host routing/TLS (R8.1).
-10. Learn center — keep as a short guide until R8.3 is complete.
+7. Learn center — keep as a short guide until R8.3 is complete.
 
 ## Appendix B — R12 Priority Map
 
@@ -274,9 +273,9 @@ Phase 1’s regression suite already covers the accounting, coupon, refund, paym
 **P1 — before expansion**
 - [x] Distributed rate limiting via PostgreSQL shared buckets (Phase 2)
 - [x] Email verification, reset, and 2FA (Phase 2)
-- [ ] Team authentication and RBAC (Phase 4)
-- [ ] Admin back-office (Phase 4)
-- [ ] Custom domains end to end (Phase 4)
+- [x] Team authentication and RBAC (Phase 4)
+- [x] Admin back-office (Phase 4)
+- [x] Custom domains end to end (Phase 4)
 - [ ] Dynamic sitemap and SSR/prerender (Phase 5)
 - [ ] Image processing and thumbnails (Phase 5)
 - [x] Cart/audit retention (Phase 2/6)

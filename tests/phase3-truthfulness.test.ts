@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { closeDb, prisma, registerMerchant, truncateAll, uid } from "./helpers.js";
 import { storageDriverError } from "../server/env.js";
 import { integrationStatus } from "../server/services/integrations.js";
-import { FEATURE_REGISTRY, isFeatureGated, isFeatureVisible } from "../src/dashboard/features.js";
+import { FEATURE_REGISTRY, isFeatureGated, isFeatureVisible, resolveFeature } from "../src/dashboard/features.js";
 import { LEARN_CHECKLIST, LEARN_GUIDE_LINKS, LEARN_ROUTE_PATHS } from "../src/dashboard/learnContent.js";
 import { COMMON_FEATURES_LIST_AR, PRICING_MODEL } from "../src/data/pricing.js";
 import { PLATFORM_CORE_SYSTEMS } from "../src/data/features.js";
@@ -122,23 +122,29 @@ describe("R10.4 unsupported S3 storage fails fast", () => {
   });
 });
 
-describe("R10.5 wallet deposits are hidden and disabled", () => {
-  it("returns read-only wallet data and rejects every deposit", async () => {
+describe("R10.5 wallet deposits require admin approval", () => {
+  it("records a pending deposit without changing the balance", async () => {
     const merchant = await registerMerchant("wal");
     const base = `/api/stores/${merchant.subdomain}`;
 
     const wallet = await merchant.agent.get(`${base}/wallet`).expect(200);
-    expect(wallet.body.deposits_enabled).toBe(false);
-    expect(wallet.body.note).toContain("غير متاح");
+    expect(wallet.body.deposits_enabled).toBe(true);
+    expect(wallet.body.note).toContain("مراجعة");
+    expect(Number(wallet.body.account.balance)).toBe(0);
 
-    const rejected = await merchant.agent
+    const submitted = await merchant.agent
       .post(`${base}/wallet/deposits`)
       .send({ amount: 500, reference: "TX-1", note: "" })
-      .expect(503);
-    expect(rejected.body.error.code).toBe("WALLET_DEPOSITS_DISABLED");
+      .expect(201);
+    expect(submitted.body.transaction.status).toBe("pending");
+    expect(Number(submitted.body.transaction.amount)).toBe(500);
 
+    const after = await merchant.agent.get(`${base}/wallet`).expect(200);
+    expect(Number(after.body.account.balance)).toBe(0);
+    expect(Number(after.body.summary.pendingDeposits)).toBe(500);
     const count = await prisma.walletTransaction.count({ where: { storeId: merchant.store.id } });
-    expect(count).toBe(0);
+    expect(count).toBe(1);
+    expect((await prisma.walletAccount.findUniqueOrThrow({ where: { storeId: merchant.store.id } })).balance).toBe(0);
   });
 });
 
@@ -269,7 +275,6 @@ describe("R7.2 feature registry hides incomplete workflows", () => {
     for (const path of [
       "/dashboard/upsells",
       "/dashboard/loyalty",
-      "/dashboard/wallet",
       "/dashboard/dropshipping",
     ]) {
       expect(isFeatureGated(path), `${path} is gated`).toBe(true);
@@ -281,9 +286,30 @@ describe("R7.2 feature registry hides incomplete workflows", () => {
       "/dashboard/affiliates",
       "/dashboard/shipping",
       "/dashboard/abandoned-carts",
+      "/dashboard/wallet",
     ]) {
       expect(isFeatureVisible(path), `${path} remains available`).toBe(true);
     }
+    expect(isFeatureGated("/dashboard/wallet")).toBe(false);
+  });
+
+  it("reflects the live AI provider instead of a permanent setup badge", () => {
+    const unknown = resolveFeature("/dashboard/assistant");
+    expect(unknown?.state).toBe("needs_setup");
+    expect(unknown?.badge).toBeTruthy();
+
+    const unconfigured = resolveFeature("/dashboard/assistant", { assistantConfigured: false });
+    expect(unconfigured?.state).toBe("needs_setup");
+    expect(unconfigured?.badge).toBeTruthy();
+
+    const configured = resolveFeature("/dashboard/assistant", { assistantConfigured: true });
+    expect(configured?.state).toBe("available");
+    expect(configured?.badge).toBeUndefined();
+    expect(configured?.reason).toBeUndefined();
+
+    // Runtime state never gates the page; only its label changes.
+    expect(isFeatureVisible("/dashboard/assistant")).toBe(true);
+    expect(isFeatureGated("/dashboard/assistant")).toBe(false);
   });
 });
 
@@ -315,7 +341,9 @@ describe("paid-feature claims match what the product actually ships", () => {
     expect(shippingRow?.notes_ar).toContain("لا يوجد ربط آلي");
 
     const domainRow = PRICING_MODEL.third_party_transparency.find((row) => row.category_ar.includes("النطاق الفرعي"));
-    expect(domainRow?.notes_ar).toContain("غير متاح");
+    expect(domainRow?.notes_ar).toContain("نطاقك المستقل");
+    expect(domainRow?.notes_ar).toContain("DNS");
+    expect(domainRow?.notes_ar).toContain("مزوّدك");
 
     const payments = PLATFORM_CORE_SYSTEMS.find((system) => system.id === "payments-engine");
     expect(payments?.status).toBe("limited");
@@ -385,13 +413,14 @@ describe("paid-feature claims match what the product actually ships", () => {
 
     const storeModal = read("components/StoreCreationModal.tsx");
     expect(storeModal).not.toContain("لاحقاً مجاناً");
-    expect(storeModal).toContain("ربط النطاقات قيد التطوير");
+    expect(storeModal).not.toContain("ربط النطاقات قيد التطوير");
+    expect(storeModal).toContain("بعد توثيق ملكيته بسجل DNS");
 
     const templates = read("views/TemplatesView.tsx");
-    expect(templates).not.toContain("بنطاقك المخصص");
     expect(templates).not.toContain("تأكيد فوري للطلب عبر واتساب");
     expect(templates).not.toContain("instant WhatsApp order tracking");
     expect(templates).toContain("نطاق فرعي مجاني");
+    expect(templates).toContain("بعد توثيق ملكيته عبر DNS");
 
     const countries = read("views/CountriesView.tsx");
     expect(countries).not.toContain("التتبع الكامل لدورة حياة الطرد");
@@ -410,7 +439,9 @@ describe("paid-feature claims match what the product actually ships", () => {
     expect(about).not.toContain("Excel في أي وقت");
 
     const settings = read("dashboard/pages/SettingsPage.tsx");
-    expect(settings).toContain("ربط النطاق بالمتجر غير مكتمل");
+    expect(settings).not.toContain("ربط النطاق بالمتجر غير مكتمل");
+    expect(settings).toContain("النطاقات المخصصة تعمل بعد توثيق DNS");
+    expect(settings).toContain("tls_status");
     expect(settings).not.toContain("أضف نطاقاً خاصاً بك لتعزيز الثقة");
 
     const knowledge = read("data/knowledge.ts");

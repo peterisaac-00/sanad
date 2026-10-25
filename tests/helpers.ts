@@ -2,6 +2,7 @@ import request from "supertest";
 import { randomUUID } from "node:crypto";
 import { app } from "../server/index.js";
 import { prisma } from "../server/db.js";
+import { hashPasswordArgon2 } from "../server/auth.js";
 
 export { app, prisma };
 
@@ -13,7 +14,13 @@ export function uid(prefix: string): string {
 export async function truncateAll(): Promise<void> {
   // rate_limit_buckets has no foreign key to stores/merchants, so CASCADE
   // alone would leave counters behind and leak quota between tests.
-  await prisma.$executeRawUnsafe('TRUNCATE "merchants", "stores", "rate_limit_buckets" CASCADE');
+  // Audit logs are kept independent of the store FK (SET NULL) and platform
+  // admins are a separate identity, so both are truncated explicitly.
+  // Feature flags are global (no store FK), so a test that pauses wallet
+  // deposits must not leak that state into the next suite.
+  await prisma.$executeRawUnsafe(
+    'TRUNCATE "merchants", "stores", "platform_admins", "audit_logs", "feature_flags", "rate_limit_buckets" CASCADE'
+  );
 }
 
 /**
@@ -22,32 +29,79 @@ export async function truncateAll(): Promise<void> {
  * the store to active by default. Pass `{ approve: false }` for lifecycle tests
  * that need to observe the pending gate.
  */
-export async function registerMerchant(tag = "", options: { approve?: boolean } = {}) {
+export async function registerMerchant(
+  tag = "",
+  options: { approve?: boolean; publish?: boolean } = {}
+) {
   const agent = request.agent(app);
   const email = `t${tag}${Date.now().toString(36)}${randomUUID().slice(0, 4)}@test.com`;
-  const subdomain = `s${tag}${Date.now().toString(36)}${randomUUID().slice(0, 4)}`.toLowerCase().replace(/[^a-z0-9-]/g, "");
+  const subdomain = `s${tag}${Date.now().toString(36)}${randomUUID().slice(0, 4)}`
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "");
   const res = await agent
     .post("/api/auth/register")
     .send({ email, password: "Password123", storeName: `Shop ${tag}`, subdomain })
     .expect(201);
+  // Pending stores stay exactly as registered. Approved stores are public by
+  // default; pass `publish: false` for approved-but-draft lifecycle tests.
   const store =
     options.approve === false
       ? res.body.store
       : await prisma.store.update({
           where: { id: res.body.store.id },
-          data: { status: "active", activatedAt: new Date() },
+          data: {
+            status: "active",
+            activatedAt: new Date(),
+            publishStatus: options.publish === false ? "draft" : "published",
+            publishReason: "",
+            publishedAt: options.publish === false ? null : new Date(),
+          },
         });
   return { agent, email, subdomain, merchant: res.body.merchant, store };
 }
 
-/** Register a merchant and promote it to platform admin. */
-export async function registerAdmin(tag = "") {
-  const account = await registerMerchant(tag);
-  const merchant = await prisma.merchant.update({
-    where: { id: account.merchant.id },
-    data: { role: "admin" },
+/** Create a real PlatformAdmin identity and sign it in through the admin API. */
+export async function registerAdmin(tag = "", role = "super_admin") {
+  const agent = request.agent(app);
+  const email = `admin${tag}${Date.now().toString(36)}${randomUUID().slice(0, 4)}@test.com`;
+  const admin = await prisma.platformAdmin.create({
+    data: {
+      id: `padm_${randomUUID().slice(0, 12)}`,
+      email,
+      name: `Admin ${tag}`,
+      passwordHash: await hashPasswordArgon2("AdminPassword123"),
+      passwordAlgo: "argon2id",
+      role,
+      status: "active",
+    },
   });
-  return { ...account, merchant };
+  await agent.post("/api/admin/auth/login").send({ email, password: "AdminPassword123" }).expect(200);
+  return { agent, email, admin };
+}
+
+/** Create an active team member with a real password and sign it in. */
+export async function registerTeamMember(
+  session: Pick<Awaited<ReturnType<typeof registerMerchant>>, "store">,
+  role: "admin" | "manager" | "staff" | "viewer",
+  tag = ""
+) {
+  const agent = request.agent(app);
+  const email = `team${tag}${Date.now().toString(36)}${randomUUID().slice(0, 4)}@test.com`;
+  const member = await prisma.teamMember.create({
+    data: {
+      id: `team_${randomUUID().slice(0, 12)}`,
+      storeId: session.store.id,
+      name: `Team ${role}`,
+      email,
+      role,
+      status: "active",
+      passwordHash: await hashPasswordArgon2("TeamPassword123"),
+      passwordAlgo: "argon2id",
+      acceptedAt: new Date(),
+    },
+  });
+  await agent.post("/api/team/login").send({ email, password: "TeamPassword123" }).expect(200);
+  return { agent, email, member };
 }
 
 export async function closeDb(): Promise<void> {

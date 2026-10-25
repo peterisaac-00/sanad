@@ -47,6 +47,11 @@ services:
       SESSION_SECRET: ${SESSION_SECRET:-local-only-insecure-compose-secret-0123456789}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
       TRUST_PROXY: "false"
+      # Optional first platform administrator. Set both email and password,
+      # sign in at /admin, enable MFA, then remove the password and restart.
+      ADMIN_BOOTSTRAP_EMAIL: ${ADMIN_BOOTSTRAP_EMAIL:-}
+      ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:-}
+      ADMIN_BOOTSTRAP_NAME: ${ADMIN_BOOTSTRAP_NAME:-}
 
 volumes:
   sanad-pgdata:

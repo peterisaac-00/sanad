@@ -27,8 +27,8 @@ export const FAQS_DATA: FAQItem[] = [
     category_name_en: 'Pricing & Commission',
     question_ar: 'ما هي التكاليف الخارجية التي قد أدفعها لجهات أخرى؟',
     question_en: 'What external third-party costs might I incur with outside providers?',
-    answer_ar: 'نحن شفافون تماماً: الاشتراك الثابت للمنصة يغطي تشغيل المتجر واستضافته ولوحة التحكم ومناطق الشحن اليدوية. التكاليف الخارجية التي لا تعود للمنصة هي: (1) لا توجد رسوم دفع إلكتروني لأن الخدمة غير متاحة حالياً، (2) تكلفة بوالص الشحن التي تسددها لشركات النقل مباشرة — الربط والتتبع داخل سند غير متاحين، (3) النطاق الفرعي مجاني؛ ربط نطاق مستقل غير متاح بعد.',
-    answer_en: 'We maintain complete transparency: The fixed subscription covers store operations, hosting, the dashboard, and manual shipping zones. External costs include: (1) no payment-gateway fees because online payments are not available yet, (2) courier freight paid directly to logistics providers — Sanad has no carrier integration or tracking, (3) the subdomain is free; connecting a custom domain is not available yet.'
+    answer_ar: 'نحن شفافون تماماً: الاشتراك الثابت للمنصة يغطي تشغيل المتجر واستضافته ولوحة التحكم ومناطق الشحن اليدوية. التكاليف الخارجية التي لا تعود للمنصة هي: (1) لا توجد رسوم دفع إلكتروني لأن الخدمة غير متاحة حالياً، (2) تكلفة بوالص الشحن التي تسددها لشركات النقل مباشرة — الربط والتتبع داخل سند غير متاحين، (3) النطاق الفرعي مجاني؛ وربط نطاق مستقل متاح بعد توثيق ملكيته عبر DNS، مع تحمّلك تكلفة تسجيل النطاق لدى مزوّدك.',
+    answer_en: 'We maintain complete transparency: The fixed subscription covers store operations, hosting, the dashboard, and manual shipping zones. External costs include: (1) no payment-gateway fees because online payments are not available yet, (2) courier freight paid directly to logistics providers — Sanad has no carrier integration or tracking, (3) the subdomain is free; a custom domain can be connected after DNS ownership verification, while domain registration remains billed by your registrar.'
   },
   {
     id: 'c3',

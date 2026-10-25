@@ -1,10 +1,15 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { api, ApiRequestError, type SessionPayload } from "./api";
+import { api, ApiRequestError, type SessionPayload, type StorePermission, type TeamMemberPayload } from "./api";
 
 interface SessionContextValue {
   session: SessionPayload | null;
   merchant: any | null;
   store: any | null;
+  teamMember: TeamMemberPayload | null;
+  principalType: "merchant" | "team" | null;
+  permissions: StorePermission[];
+  isOwner: boolean;
+  can: (permission: StorePermission) => boolean;
   loading: boolean;
   refresh: () => Promise<SessionPayload | null>;
   setSession: (session: SessionPayload | null) => void;
@@ -45,26 +50,35 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      await api.logout();
+      const current = session;
+      if (current?.principal_type === "team") await api.team.logout();
+      else await api.logout();
     } catch {
       // The cookie may already be expired; clearing local state is still correct.
     } finally {
       setSessionState(null);
     }
-  }, []);
+  }, [session]);
 
-  const value = useMemo<SessionContextValue>(
-    () => ({
+  const value = useMemo<SessionContextValue>(() => {
+    const principalType = session?.principal_type ?? null;
+    const permissions = session?.permissions ?? [];
+    const isOwner = principalType === "merchant" && Boolean(session?.merchant);
+    return {
       session,
       merchant: session?.merchant ?? null,
       store: session?.store ?? null,
+      teamMember: session?.team_member ?? null,
+      principalType,
+      permissions,
+      isOwner,
+      can: (permission: StorePermission) => isOwner || permissions.includes(permission),
       loading,
       refresh,
       setSession,
       logout,
-    }),
-    [session, loading, refresh, setSession, logout]
-  );
+    };
+  }, [session, loading, refresh, setSession, logout]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

@@ -12,7 +12,7 @@ import {
   validateBody,
   validateParams,
 } from "../validate.js";
-import { writeAudit } from "../services/account.js";
+import { auditActor, writeAudit } from "../services/account.js";
 import { integrationStatus } from "../services/integrations.js";
 
 export const dropshippingRouter = Router();
@@ -141,7 +141,7 @@ dropshippingRouter.post(
     });
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "dropship.created",
       entity: "dropship_product",
       entityId: dropship.id,

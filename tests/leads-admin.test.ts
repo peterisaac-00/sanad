@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
-import { app, prisma, registerMerchant, truncateAll, closeDb } from "./helpers.js";
+import { hashPasswordArgon2 } from "../server/auth.js";
+import { app, prisma, registerAdmin, registerMerchant, truncateAll, closeDb } from "./helpers.js";
 
 beforeEach(truncateAll);
 afterAll(closeDb);
@@ -21,15 +22,35 @@ describe("leads scoping and admin route", () => {
     expect(others.body.leads.map((l: { type: string }) => l.type)).toEqual(["b-probe"]);
   });
 
-  it("non-admin gets 403 on /api/admin/leads; admin sees all", async () => {
+  it("merchant and team sessions get 403 on /api/admin/leads; a platform admin sees all", async () => {
     const m = await registerMerchant("adm");
     await m.agent.post("/api/leads").send({ type: "m-probe", payload: {} }).expect(201);
 
     await m.agent.get("/api/admin/leads").expect(403);
 
-    await prisma.merchant.update({ where: { id: m.merchant.id }, data: { role: "admin" } });
-    const all = await m.agent.get("/api/admin/leads").expect(200);
+    // A legacy merchant role never escalates to platform administration.
+    await request(app).get("/api/admin/leads").expect(401);
+    const admin = await registerAdmin("leads");
+    const all = await admin.agent.get("/api/admin/leads").expect(200);
     expect(all.body.leads.length).toBeGreaterThanOrEqual(1);
+
+    const team = await prisma.teamMember.create({
+      data: {
+        id: "team_lead_viewer",
+        storeId: m.store.id,
+        name: "Viewer",
+        email: `viewer-${Date.now()}@test.com`,
+        role: "viewer",
+        status: "active",
+      },
+    });
+    const teamAgent = request.agent(app);
+    await prisma.teamMember.update({
+      where: { id: team.id },
+      data: { passwordHash: await hashPasswordArgon2("Password123"), passwordAlgo: "argon2id" },
+    });
+    await teamAgent.post("/api/team/login").send({ email: team.email, password: "Password123" }).expect(200);
+    await teamAgent.get("/api/admin/leads").expect(403);
   });
 
   it("no admin env var changes behaviour; payload bounds enforced", async () => {

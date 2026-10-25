@@ -24,12 +24,23 @@ export class ApiError extends Error {
   }
 }
 
-/** Wrap async route handlers so rejections reach the centralized error handler. */
+/**
+ * Wrap route handlers/middleware so thrown errors and rejections reach the
+ * centralized error handler. Sync middleware (e.g. requireAuth) can be wrapped
+ * too; it simply invokes next() itself.
+ */
 export function asyncHandler(
-  fn: (req: Request, res: Response, next: NextFunction) => Promise<unknown>
+  fn: (req: Request, res: Response, next: NextFunction) => unknown
 ) {
   return (req: Request, res: Response, next: NextFunction) => {
-    fn(req, res, next).catch(next);
+    try {
+      const result = fn(req, res, next);
+      if (result && typeof (result as PromiseLike<unknown>).then === "function") {
+        (result as Promise<unknown>).catch(next);
+      }
+    } catch (err) {
+      next(err);
+    }
   };
 }
 

@@ -303,8 +303,8 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ currentLang, onOpe
         </h3>
         <p className="text-xs sm:text-sm text-subtle max-w-md mx-auto">
           {currentLang === 'ar'
-            ? 'احصل على متجرك بنطاق فرعي مجاني و 0% عمولة واشتراك شهري ثابت 100 ج.م فقط. ربط النطاق المستقل قيد التطوير.'
-            : 'Get your storefront on a free subdomain with 0% cut and flat 100 EGP/mo. Custom domain connection is planned.'}
+            ? 'احصل على متجرك بنطاق فرعي مجاني و 0% عمولة واشتراك شهري ثابت 100 ج.م فقط. ويمكنك ربط نطاقك المستقل من الإعدادات بعد توثيق ملكيته عبر DNS.'
+            : 'Get your storefront on a free subdomain with 0% cut and flat 100 EGP/mo. Connect your custom domain from settings after DNS ownership verification.'}
         </p>
         <button
           onClick={onOpenStoreModal}

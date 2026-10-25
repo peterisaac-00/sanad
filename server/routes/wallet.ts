@@ -7,16 +7,18 @@ import {
   subdomainParamSchema,
   validateBody,
   validateParams,
+  walletDepositSchema,
 } from "../validate.js";
-import { ensureStoreDefaults, writeAudit } from "../services/account.js";
+import { auditActor, ensureStoreDefaults, writeAudit } from "../services/account.js";
+import { isFeatureEnabled } from "../services/features.js";
 
 export const walletRouter = Router();
 
 /**
- * Wallet deposits stay hidden until a real recharge/approval flow exists.
- * Subscription billing is separate: it never mutates the wallet balance.
+ * Deposits are real requests that only change the balance after an admin
+ * approval. The feature flag lets operations pause intake without deleting the
+ * review trail. Subscription billing is separate: it never mutates the wallet.
  */
-const DEPOSITS_ENABLED = false;
 export const SUBSCRIPTION_PRICES = { monthly: 100, annual: 1000 } as const;
 export const SUBSCRIPTION_CURRENCY = "EGP";
 
@@ -40,6 +42,7 @@ walletRouter.get(
   asyncHandler(async (req, res) => {
     const storeId = req.ownedStore!.id;
     const { store, account } = await storeFor(storeId);
+    const depositsEnabled = await isFeatureEnabled("wallet_deposits", true);
     const [transactions, pending, completed, subscriptionPayments] = await prisma.$transaction([
       prisma.walletTransaction.findMany({ where: { storeId }, orderBy: { createdAt: "desc" }, take: 100 }),
       prisma.walletTransaction.aggregate({
@@ -59,7 +62,7 @@ walletRouter.get(
     res.json({
       account,
       transactions,
-      deposits_enabled: DEPOSITS_ENABLED,
+      deposits_enabled: depositsEnabled,
       summary: {
         balance: account.balance,
         pendingDeposits: pending._sum.amount ?? 0,
@@ -75,7 +78,9 @@ walletRouter.get(
         pending_payment: subscriptionPayments.find((payment) => payment.status === "pending") ?? null,
       },
       subscription_payments: subscriptionPayments,
-      note: "رصيد المحفظة للعرض فقط والإيداع غير متاح حالياً. دفعات اشتراك سند الشهرية أو السنوية تُسجَّل من قسم الاشتراك وتُراجع إدارياً قبل اعتمادها.",
+      note: depositsEnabled
+        ? "طلبات الإيداع تخضع لمراجعة إدارة سند قبل إضافتها إلى الرصيد. لا يُضاف أي مبلغ تلقائياً."
+        : "الإيداع في المحفظة متوقف مؤقتاً من إدارة المنصة. يمكنك متابعة الاشتراك والطلبات الحالية.",
     });
   })
 );
@@ -113,13 +118,13 @@ walletRouter.post(
         reference: req.body.reference,
         payerName: req.body.payerName,
         note: req.body.note,
-        submittedById: req.auth!.merchantId,
+        submittedById: req.auth!.actorId,
         status: "pending",
       },
     });
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "subscription_payment.submitted",
       entity: "subscription_payment",
       entityId: payment.id,
@@ -140,11 +145,49 @@ walletRouter.post(
   asyncHandler(requireAuth),
   validateParams(subdomainParamSchema),
   asyncHandler(requireStoreOwnership),
-  asyncHandler(async () => {
-    throw new ApiError(
-      503,
-      "WALLET_DEPOSITS_DISABLED",
-      "الإيداع في المحفظة غير متاح حالياً. سيُفتح بعد إطلاق مسار الموافقة الإدارية في المرحلة التالية؛ لا تُحوّل أي مبلغ على أساس هذا الخيار."
-    );
+  validateBody(walletDepositSchema),
+  asyncHandler(async (req, res) => {
+    const storeId = req.ownedStore!.id;
+    if (!(await isFeatureEnabled("wallet_deposits", true))) {
+      throw new ApiError(
+        503,
+        "WALLET_DEPOSITS_DISABLED",
+        "الإيداع في المحفظة متوقف مؤقتاً من إدارة المنصة. لا تُحوّل أي مبلغ على أساس هذا الخيار."
+      );
+    }
+    const { account } = await storeFor(storeId);
+    const amount = Math.round(Number(req.body.amount) * 100) / 100;
+    if (!Number.isFinite(amount) || amount < 1 || amount > 1_000_000) {
+      throw new ApiError(400, "INVALID_DEPOSIT_AMOUNT", "Deposit amount must be between 1 and 1,000,000.");
+    }
+    const transaction = await prisma.walletTransaction.create({
+      data: {
+        id: newId("wtx_"),
+        storeId,
+        accountId: account.id,
+        type: "deposit",
+        amount,
+        status: "pending",
+        reference: req.body.reference,
+        note: req.body.note,
+        balanceBefore: account.balance,
+        balanceAfter: account.balance,
+      },
+    });
+    await writeAudit({
+      storeId,
+      ...auditActor(req.auth!),
+      action: "wallet.deposit_requested",
+      entity: "wallet_transaction",
+      entityId: transaction.id,
+      metadata: { amount, method: req.body.method, reference: req.body.reference },
+      ip: req.ip,
+    });
+    res.status(201).json({
+      transaction,
+      deposits_enabled: true,
+      currency: account.currency,
+      note: "تم تسجيل طلب الإيداع. سيُضاف المبلغ إلى الرصيد فقط بعد اعتماد إدارة سند. رصيدك الحالي لم يتغير.",
+    });
   })
 );

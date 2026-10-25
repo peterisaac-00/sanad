@@ -59,16 +59,17 @@ export function Link({
   onClick,
   ...rest
 }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) {
+  const resolved = href === "" ? "/" : href;
   return (
     <a
-      href={href}
+      href={resolved}
       className={className}
       onClick={(event) => {
         onClick?.(event);
         if (event.defaultPrevented) return;
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
         event.preventDefault();
-        navigate(href);
+        navigate(resolved);
       }}
       {...rest}
     >

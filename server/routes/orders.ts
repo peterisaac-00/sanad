@@ -30,7 +30,7 @@ import {
   bulkOrderStatus,
   orderExportRow,
 } from "../services/orders.js";
-import { createNotification, writeAudit } from "../services/account.js";
+import { auditActor, createNotification, writeAudit } from "../services/account.js";
 import { assertExportWithinLimit, CSV_BOM, csvHeader } from "../services/csv.js";
 import { env } from "../env.js";
 import { logger } from "../logger.js";
@@ -127,7 +127,7 @@ ordersRouter.get(
 
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "order.exported",
       entity: "order",
       metadata: {
@@ -216,7 +216,7 @@ ordersRouter.patch(
     });
     await writeAudit({
       storeId: req.ownedStore!.id,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "order.bulk_status",
       entity: "order",
       metadata: { status, ids, results },
@@ -305,7 +305,7 @@ ordersRouter.patch(
     });
     await writeAudit({
       storeId: req.ownedStore!.id,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "order.status_changed",
       entity: "order",
       entityId: req.params.id,
@@ -363,7 +363,7 @@ ordersRouter.patch(
           if (pending) {
             await tx.payment.update({
               where: { id: pending.id },
-              data: { status: "succeeded", providerRef: pending.providerRef || `manual:${req.auth!.merchantId}` },
+              data: { status: "succeeded", providerRef: pending.providerRef || `manual:${req.auth!.actorId}` },
             });
           } else {
             await tx.payment.create({
@@ -372,7 +372,7 @@ ordersRouter.patch(
                 storeId,
                 orderId: current.id,
                 provider: "manual",
-                providerRef: `manual:${req.auth!.merchantId}`,
+                providerRef: `manual:${req.auth!.actorId}`,
                 amount: current.amountEgp,
                 currency: store?.currency ?? "EGP",
                 status: "succeeded",
@@ -402,7 +402,7 @@ ordersRouter.patch(
     });
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "order.payment_status_changed",
       entity: "order",
       entityId: existing.id,
@@ -500,7 +500,7 @@ ordersRouter.post(
     });
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "order.refund_requested",
       entity: "refund",
       entityId: refund.id,
@@ -672,7 +672,7 @@ ordersRouter.post(
       });
       await createNotification({
         storeId,
-        merchantId: req.auth!.merchantId,
+        ...auditActor(req.auth!),
         type: "order",
         title: "طلب جديد",
         body: `تم إنشاء طلب يدوي رقم SND-${orderNumber}`,

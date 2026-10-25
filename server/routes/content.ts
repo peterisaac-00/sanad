@@ -15,7 +15,7 @@ import {
   validateBody,
   validateParams,
 } from "../validate.js";
-import { slugify, writeAudit } from "../services/account.js";
+import { auditActor, slugify, writeAudit } from "../services/account.js";
 
 export const contentRouter = Router();
 
@@ -92,7 +92,7 @@ contentRouter.post(
     });
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "page.created",
       entity: "page",
       entityId: page.id,
@@ -198,7 +198,7 @@ contentRouter.post(
     });
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "blog.created",
       entity: "blog_post",
       entityId: post.id,
@@ -350,7 +350,7 @@ contentRouter.post(
 
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "affiliate.commissions_settled",
       entity: "affiliate",
       entityId: affiliate.id,
@@ -392,7 +392,7 @@ contentRouter.post(
     });
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "affiliate.created",
       entity: "affiliate",
       entityId: affiliate.id,

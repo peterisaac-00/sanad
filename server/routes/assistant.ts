@@ -4,7 +4,7 @@ import { asyncHandler } from "../errors.js";
 import { requireAuth, requireStoreOwnership } from "../middleware.js";
 import { subdomainParamSchema, validateBody, validateParams } from "../validate.js";
 import { aiService, integrationStatus } from "../services/integrations.js";
-import { writeAudit } from "../services/account.js";
+import { auditActor, writeAudit } from "../services/account.js";
 
 export const assistantRouter = Router();
 
@@ -57,7 +57,7 @@ assistantRouter.post(
     const result = await aiService.generate(task, input);
     await writeAudit({
       storeId: req.ownedStore!.id,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "assistant.generated",
       entity: "assistant",
       metadata: { task, provider: result.provider },

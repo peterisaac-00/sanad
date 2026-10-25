@@ -11,7 +11,7 @@ import {
   validateBody,
   validateParams,
 } from "../validate.js";
-import { writeAudit } from "../services/account.js";
+import { auditActor, writeAudit } from "../services/account.js";
 
 export const couponsRouter = Router();
 
@@ -86,7 +86,7 @@ couponsRouter.post(
       });
       await writeAudit({
         storeId,
-        merchantId: req.auth!.merchantId,
+        ...auditActor(req.auth!),
         action: "coupon.created",
         entity: "coupon",
         entityId: coupon.id,
@@ -138,7 +138,7 @@ couponsRouter.patch(
       });
       await writeAudit({
         storeId,
-        merchantId: req.auth!.merchantId,
+        ...auditActor(req.auth!),
         action: "coupon.updated",
         entity: "coupon",
         entityId: coupon.id,
@@ -166,7 +166,7 @@ couponsRouter.delete(
     await prisma.coupon.delete({ where: { id: existing.id } });
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "coupon.deleted",
       entity: "coupon",
       entityId: existing.id,

@@ -14,7 +14,7 @@ import {
   validateParams,
   validateQuery,
 } from "../validate.js";
-import { slugify, writeAudit } from "../services/account.js";
+import { auditActor, slugify, writeAudit } from "../services/account.js";
 
 export const categoriesRouter = Router();
 
@@ -85,7 +85,7 @@ categoriesRouter.post(
         isActive: b.isActive,
       },
     });
-    await writeAudit({ storeId, merchantId: req.auth!.merchantId, action: "category.created", entity: "category", entityId: category.id, ip: req.ip });
+    await writeAudit({ storeId, ...auditActor(req.auth!), action: "category.created", entity: "category", entityId: category.id, ip: req.ip });
     res.status(201).json({ category });
   })
 );
@@ -134,7 +134,7 @@ categoriesRouter.patch(
         ...(b.isActive !== undefined ? { isActive: b.isActive } : {}),
       },
     });
-    await writeAudit({ storeId, merchantId: req.auth!.merchantId, action: "category.updated", entity: "category", entityId: category.id, ip: req.ip });
+    await writeAudit({ storeId, ...auditActor(req.auth!), action: "category.updated", entity: "category", entityId: category.id, ip: req.ip });
     res.json({ category });
   })
 );
@@ -149,7 +149,7 @@ categoriesRouter.delete(
     const existing = await prisma.category.findFirst({ where: { id: req.params.id, storeId }, select: { id: true } });
     if (!existing) throw new ApiError(404, "CATEGORY_NOT_FOUND", "Category not found.");
     await prisma.category.delete({ where: { id: existing.id } });
-    await writeAudit({ storeId, merchantId: req.auth!.merchantId, action: "category.deleted", entity: "category", entityId: existing.id, ip: req.ip });
+    await writeAudit({ storeId, ...auditActor(req.auth!), action: "category.deleted", entity: "category", entityId: existing.id, ip: req.ip });
     res.json({ ok: true });
   })
 );

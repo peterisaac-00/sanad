@@ -57,7 +57,7 @@ export function DashboardRouter() {
   if (path === "/dashboard/assistant") return <AssistantPage />;
   if (path === "/dashboard/pages") return <PagesPage />;
   if (path === "/dashboard/blog") return <BlogPage />;
-  if (path === "/dashboard/wallet") return gate(path, <WalletPage />);
+  if (path === "/dashboard/wallet") return <WalletPage />;
   if (path === "/dashboard/dropshipping") return gate(path, <DropshippingPage />);
   if (path === "/dashboard/settings") return <SettingsPage />;
   if (path === "/dashboard/learn") return <LearnPage />;

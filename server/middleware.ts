@@ -4,25 +4,89 @@ import { hashSessionToken, sessionCookieName } from "./auth.js";
 import { ApiError } from "./errors.js";
 import { env } from "./env.js";
 import { distributedRateLimit, limitKeys } from "./rateLimit.js";
+import {
+  adminPermissions,
+  adminSessionCookieName,
+  findAdminSession,
+  type AdminPermission,
+} from "./services/platformAdmin.js";
 
 /**
- * Authorization model (OWASP A01 — deny by default):
+ * Authorization model (OWASP A01 - deny by default):
  * - Every /api route requires a valid session cookie, except the explicit
  *   public allowlist wired in index.ts.
+ * - Merchant-owner and team-member sessions are distinct principals. Team
+ *   sessions carry a teamMemberId and a computed permission set; merchant
+ *   role strings no longer grant platform administration.
  * - Store-scoped routes never trust the :subdomain (or any store id) from
  *   the client alone: the store is resolved server-side and must equal the
- *   authenticated merchant's own store, otherwise 403.
- * - Sensitive actions (PII exports) additionally require an allowed role.
+ *   authenticated principal's own store, otherwise 403.
+ * - Every mutation is checked against a granular store permission in this
+ *   file, so a viewer/staff member cannot mutate a route just because the UI
+ *   hid the button.
+ * - Platform administration uses a separate cookie and AdminSession table.
  */
 
+export const STORE_PERMISSIONS = [
+  "store.read",
+  "operations.write",
+  "settings.write",
+  "team.manage",
+  "domain.manage",
+  "billing.manage",
+  "export.read",
+  "audit.read",
+] as const;
+export type StorePermission = (typeof STORE_PERMISSIONS)[number];
+
+const ALL_STORE_PERMISSIONS = [...STORE_PERMISSIONS];
+
+/**
+ * Team role capabilities, enforced by the API. Owner accounts always receive
+ * every permission and cannot be demoted by a team member.
+ */
+export const TEAM_ROLE_PERMISSIONS: Record<string, ReadonlySet<StorePermission>> = {
+  admin: new Set(ALL_STORE_PERMISSIONS),
+  manager: new Set<StorePermission>([
+    "store.read",
+    "operations.write",
+    "settings.write",
+    "domain.manage",
+    "export.read",
+    "audit.read",
+  ]),
+  staff: new Set<StorePermission>(["store.read", "operations.write"]),
+  viewer: new Set<StorePermission>(["store.read"]),
+};
+
+export function teamPermissions(role: string): StorePermission[] {
+  return [...(TEAM_ROLE_PERMISSIONS[role] ?? TEAM_ROLE_PERMISSIONS.viewer)];
+}
+
 export interface AuthContext {
-  merchantId: string;
+  /** merchant = store owner; team = invited TeamMember. */
+  principalType: "merchant" | "team";
+  /** Owner merchant id, or null for a team session. */
+  merchantId: string | null;
+  /** Team member id, or null for an owner session. */
+  teamMemberId: string | null;
+  /** Stable id used for audit attribution regardless of principal type. */
+  actorId: string;
   email: string;
   name: string;
   storeId: string | null;
   storeHandle: string;
   role: string;
   emailVerified: boolean;
+  permissions: StorePermission[];
+}
+
+export interface AdminAuthContext {
+  adminId: string;
+  email: string;
+  name: string;
+  role: string;
+  permissions: AdminPermission[];
 }
 
 declare global {
@@ -30,6 +94,7 @@ declare global {
   namespace Express {
     interface Request {
       auth?: AuthContext;
+      adminAuth?: AdminAuthContext;
       ownedStore?: { id: string; subdomain: string; currency: string };
     }
   }
@@ -39,42 +104,100 @@ function unauthorized(): ApiError {
   return new ApiError(401, "UNAUTHENTICATED", "Authentication required.");
 }
 
-export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
+/**
+ * Resolve the merchant/team session cookie into an AuthContext. Returns
+ * "expired" for a known-but-expired session, or null for an unknown,
+ * suspended, or malformed session. Admin cookies are never consulted here.
+ */
+async function resolveSessionAuth(req: Request): Promise<AuthContext | null | "expired"> {
   const token = req.cookies?.[sessionCookieName()];
-  if (!token || typeof token !== "string") {
-    next(unauthorized());
-    return;
-  }
+  if (!token || typeof token !== "string") return null;
   const tokenHash = hashSessionToken(token);
-  const sess = await prisma.session.findUnique({ where: { tokenHash } });
+  const sess = await prisma.session.findUnique({
+    where: { tokenHash },
+    include: {
+      merchant: true,
+      teamMember: { include: { store: { select: { subdomain: true } } } },
+    },
+  });
   if (!sess || sess.expiresAt.getTime() <= Date.now()) {
-    if (sess) {
+    if (sess) await prisma.session.delete({ where: { tokenHash } }).catch(() => undefined);
+    return sess ? "expired" : null;
+  }
+
+  if (sess.merchant) {
+    const merchant = sess.merchant;
+    return {
+      principalType: "merchant",
+      merchantId: merchant.id,
+      teamMemberId: null,
+      actorId: merchant.id,
+      email: merchant.email,
+      name: merchant.name ?? "",
+      storeId: merchant.storeId,
+      storeHandle: merchant.storeHandle ?? "",
+      role: merchant.role,
+      emailVerified: Boolean(merchant.emailVerifiedAt),
+      permissions: ALL_STORE_PERMISSIONS,
+    };
+  }
+
+  if (sess.teamMember) {
+    const member = sess.teamMember;
+    if (member.status !== "active") {
       await prisma.session.delete({ where: { tokenHash } }).catch(() => undefined);
+      return null;
     }
-    next(new ApiError(401, "SESSION_EXPIRED", "Session is invalid or expired."));
+    return {
+      principalType: "team",
+      merchantId: null,
+      teamMemberId: member.id,
+      actorId: member.id,
+      email: member.email,
+      name: member.name ?? "",
+      storeId: member.storeId,
+      storeHandle: member.store?.subdomain ?? "",
+      role: member.role,
+      emailVerified: true,
+      permissions: teamPermissions(member.role),
+    };
+  }
+
+  // Neither principal: treat as corrupt and remove it.
+  await prisma.session.delete({ where: { tokenHash } }).catch(() => undefined);
+  return null;
+}
+
+export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
+  const auth = await resolveSessionAuth(req);
+  if (auth === "expired") {
+    next(new ApiError(401, "SESSION_EXPIRED", "Your session has expired. Sign in again."));
     return;
   }
-  const merchant = await prisma.merchant.findUnique({ where: { id: sess.merchantId } });
-  if (!merchant) {
-    await prisma.session.delete({ where: { tokenHash } }).catch(() => undefined);
+  if (!auth) {
     next(unauthorized());
     return;
   }
-  req.auth = {
-    merchantId: merchant.id,
-    email: merchant.email,
-    name: merchant.name ?? "",
-    storeId: merchant.storeId,
-    storeHandle: merchant.storeHandle ?? "",
-    role: merchant.role,
-    emailVerified: Boolean(merchant.emailVerifiedAt),
-  };
+  req.auth = auth;
+  next();
+}
+
+/** Owner-only routes (onboarding, account deletion, MFA settings, billing). */
+export function requireMerchantSession(req: Request, _res: Response, next: NextFunction) {
+  if (!req.auth) {
+    next(unauthorized());
+    return;
+  }
+  if (req.auth.principalType !== "merchant" || !req.auth.merchantId) {
+    next(new ApiError(403, "OWNER_ONLY", "Only the store owner can perform this action."));
+    return;
+  }
   next();
 }
 
 /**
- * Role gate. Must run after requireAuth. Default deny: only the listed roles
- * pass, and the check uses the role stored in the database, never a header.
+ * Role gate for legacy merchant-role checks. Kept for compatibility but
+ * platform administration no longer uses merchant roles.
  */
 export function requireRole(...roles: string[]): RequestHandler {
   const allowed = new Set(roles);
@@ -91,13 +214,49 @@ export function requireRole(...roles: string[]): RequestHandler {
   };
 }
 
-/** Roles allowed to export customer/order PII. */
-export const EXPORT_ROLES = ["admin", "owner", "merchant", "manager"] as const;
-export const requireExportRole = requireRole(...EXPORT_ROLES);
+/** Resolve the permission implied by the HTTP method and store path. */
+export function storePermissionForRequest(method: string, path: string): StorePermission {
+  const clean = `/${String(path || "").split("?")[0].replace(/^\/+/, "")}`;
+  if (clean.endsWith("/export") || clean.includes("/export/")) return "export.read";
+  // Sensitive read surfaces are permissioned even for GET: a viewer may read
+  // store operations, but not team identities, billing, or the audit trail.
+  if (/\/audit-logs(?:\/|$)/.test(clean)) return "audit.read";
+  if (/\/team(?:\/|$)/.test(clean)) return "team.manage";
+  if (/\/domains(?:\/|$)/.test(clean)) return "domain.manage";
+  if (/\/wallet(?:\/|$)/.test(clean) || /\/subscription-payments(?:\/|$)/.test(clean)) return "billing.manage";
+  if (method === "GET" || method === "HEAD") return "store.read";
+  if (
+    /\/settings(?:\/|$)/.test(clean) ||
+    /\/notification-preferences(?:\/|$)/.test(clean) ||
+    /\/publishing(?:\/|$)/.test(clean)
+  ) {
+    return "settings.write";
+  }
+  return "operations.write";
+}
+
+export function requireStorePermission(permission: StorePermission): RequestHandler {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    const auth = req.auth;
+    if (!auth) {
+      next(unauthorized());
+      return;
+    }
+    if (auth.principalType === "merchant" || auth.permissions.includes(permission)) {
+      next();
+      return;
+    }
+    next(new ApiError(403, "FORBIDDEN", "Your team role does not permit this action."));
+  };
+}
+
+/** Roles allowed to export customer/order PII: owner and manager+ only. */
+export const requireExportRole = requireStorePermission("export.read");
 
 /**
  * Must run after requireAuth on routes with a :subdomain param.
- * Resolves the store server-side and enforces ownership.
+ * Resolves the store server-side, enforces ownership, and applies the
+ * granular team permission derived from the route/method.
  */
 export async function requireStoreOwnership(req: Request, _res: Response, next: NextFunction) {
   const auth = req.auth;
@@ -118,6 +277,15 @@ export async function requireStoreOwnership(req: Request, _res: Response, next: 
     next(new ApiError(403, "FORBIDDEN", "You do not own this store."));
     return;
   }
+
+  if (auth.principalType === "team") {
+    const permission = storePermissionForRequest(req.method, req.path || req.originalUrl);
+    if (!auth.permissions.includes(permission)) {
+      next(new ApiError(403, "FORBIDDEN", "Your team role does not permit this action."));
+      return;
+    }
+  }
+
   req.ownedStore = store;
   next();
 }
@@ -128,31 +296,51 @@ export async function requireStoreOwnership(req: Request, _res: Response, next: 
  * attribute data (e.g. leads) without requiring login.
  */
 export async function attachAuth(req: Request, _res: Response, next: NextFunction) {
-  const token = req.cookies?.[sessionCookieName()];
-  if (!token || typeof token !== "string") {
-    next();
+  const auth = await resolveSessionAuth(req);
+  if (auth && auth !== "expired") req.auth = auth;
+  next();
+}
+
+/**
+ * Platform-admin authentication. Only the admin cookie is read and only the
+ * AdminSession table is consulted. A merchant session can never pass.
+ */
+export async function requirePlatformAdmin(req: Request, _res: Response, next: NextFunction) {
+  const token = req.cookies?.[adminSessionCookieName()];
+  const session = await findAdminSession(typeof token === "string" ? token : undefined);
+  if (!session) {
+    // A signed-in merchant or team member is authenticated but never allowed:
+    // return 403 (not 401) so the two trust boundaries stay unambiguous.
+    const merchantAuth = await resolveSessionAuth(req);
+    if (merchantAuth && merchantAuth !== "expired") {
+      next(new ApiError(403, "ADMIN_ACCESS_DENIED", "Merchant accounts cannot access platform administration."));
+      return;
+    }
+    next(new ApiError(401, "ADMIN_UNAUTHENTICATED", "Platform administrator authentication required."));
     return;
   }
-  const sess = await prisma.session.findUnique({ where: { tokenHash: hashSessionToken(token) } });
-  if (!sess || sess.expiresAt.getTime() <= Date.now()) {
-    next();
-    return;
-  }
-  const merchant = await prisma.merchant.findUnique({ where: { id: sess.merchantId } });
-  if (!merchant) {
-    next();
-    return;
-  }
-  req.auth = {
-    merchantId: merchant.id,
-    email: merchant.email,
-    name: merchant.name ?? "",
-    storeId: merchant.storeId,
-    storeHandle: merchant.storeHandle ?? "",
-    role: merchant.role,
-    emailVerified: Boolean(merchant.emailVerifiedAt),
+  req.adminAuth = {
+    adminId: session.admin.id,
+    email: session.admin.email,
+    name: session.admin.name,
+    role: session.admin.role,
+    permissions: adminPermissions(session.admin.role),
   };
   next();
+}
+
+export function requireAdminPermission(permission: AdminPermission): RequestHandler {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    if (!req.adminAuth) {
+      next(new ApiError(401, "ADMIN_UNAUTHENTICATED", "Platform administrator authentication required."));
+      return;
+    }
+    if (!req.adminAuth.permissions.includes(permission)) {
+      next(new ApiError(403, "ADMIN_FORBIDDEN", "Your administrator role does not permit this action."));
+      return;
+    }
+    next();
+  };
 }
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -301,19 +489,19 @@ export const exportLimiter = distributedRateLimit({
   windowMs: 60 * MINUTE,
   limit: 20,
   identities: (req) => {
-    const merchant = limitKeys.merchant(req, "export");
-    return merchant ? [merchant] : [];
+    const actor = req.auth?.actorId ? { key: `export:actor:${req.auth.actorId}`, limit: 20 } : null;
+    return actor ? [actor] : [];
   },
 });
 
-/** Media uploads: bounded per merchant to prevent disk exhaustion. */
+/** Media uploads: bounded per principal to prevent disk exhaustion. */
 export const mediaLimiter = distributedRateLimit({
   name: "media",
   windowMs: 10 * MINUTE,
   limit: 30,
   identities: (req) => {
-    const merchant = limitKeys.merchant(req, "media");
-    return merchant ? [merchant] : [];
+    const actor = req.auth?.actorId ? { key: `media:actor:${req.auth.actorId}`, limit: 30 } : null;
+    return actor ? [actor] : [];
   },
 });
 

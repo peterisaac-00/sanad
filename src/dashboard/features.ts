@@ -20,6 +20,12 @@ export interface FeatureDefinition {
   badge?: string;
 }
 
+/** Live integration state used to refine the static registry at runtime. */
+export interface FeatureRuntime {
+  /** True when the server has a usable AI provider for the assistant. */
+  assistantConfigured?: boolean;
+}
+
 export const FEATURE_REGISTRY: Record<string, FeatureDefinition> = {
   "/dashboard": { label: "لوحة التحكم", state: "available" },
   "/dashboard/orders": { label: "الطلبات", state: "available" },
@@ -68,8 +74,9 @@ export const FEATURE_REGISTRY: Record<string, FeatureDefinition> = {
   "/dashboard/blog": { label: "المدونة", state: "available" },
   "/dashboard/wallet": {
     label: "المحفظة",
-    state: "coming_soon",
-    reason: "الإيداع معطّل حتى يتوفر مسار موافقة إدارية. عرض الأرصدة القديمة متاح للقراءة فقط عند إعادة تفعيل الصفحة.",
+    state: "available",
+    badge: "بموافقة الإدارة",
+    reason: "طلبات الإيداع تُسجَّل كطلبات معلّقة ولا تُضاف إلى الرصيد إلا بعد اعتماد إدارة المنصة.",
   },
   "/dashboard/dropshipping": {
     label: "الدروبشيبينغ",
@@ -82,6 +89,25 @@ export const FEATURE_REGISTRY: Record<string, FeatureDefinition> = {
 
 export function featureForPath(path: string): FeatureDefinition | undefined {
   return FEATURE_REGISTRY[path];
+}
+
+/**
+ * Applies live integration state to a registry entry.
+ *
+ * The static registry cannot know whether an AI provider was configured in the
+ * server environment, so the assistant would otherwise keep showing "setup
+ * required" even while its page correctly reports a working connection.
+ */
+export function resolveFeature(
+  path: string,
+  runtime: FeatureRuntime = {}
+): FeatureDefinition | undefined {
+  const feature = FEATURE_REGISTRY[path];
+  if (!feature) return undefined;
+  if (path === "/dashboard/assistant" && runtime.assistantConfigured === true) {
+    return { ...feature, state: "available", badge: undefined, reason: undefined };
+  }
+  return feature;
 }
 
 export function isFeatureVisible(path: string): boolean {

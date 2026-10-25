@@ -61,9 +61,63 @@ function qs(params: Record<string, string | number | boolean | undefined | null>
 
 const enc = encodeURIComponent;
 
+export type StorePermission =
+  | "store.read"
+  | "operations.write"
+  | "settings.write"
+  | "team.manage"
+  | "domain.manage"
+  | "billing.manage"
+  | "export.read"
+  | "audit.read";
+
+export interface TeamMemberPayload {
+  id: string;
+  storeId: string;
+  name: string;
+  email: string;
+  role: "admin" | "manager" | "staff" | "viewer";
+  status: "invited" | "active" | "suspended";
+  permissions?: StorePermission[];
+  accepted_at: string | null;
+  last_login_at: string | null;
+  invite_expires_at?: string | null;
+  created_at: string;
+}
+
 export interface SessionPayload {
-  merchant: any;
+  merchant: any | null;
   store: any;
+  team_member?: TeamMemberPayload | null;
+  principal_type?: "merchant" | "team";
+  permissions?: StorePermission[];
+  publishing?: any;
+}
+
+export interface SitePayload {
+  host: string;
+  mode: "platform" | "custom_domain";
+  custom_domain: boolean;
+  canonical_url: string;
+  store: {
+    id: string;
+    store_name: string;
+    subdomain: string;
+    status: string;
+    publish_status: string;
+    canonical_url: string;
+    tls_status?: string;
+  } | null;
+}
+
+export interface AdminPayload {
+  id: string;
+  email: string;
+  name: string;
+  role: "super_admin" | "operations" | "finance" | "support" | "readonly";
+  permissions: string[];
+  two_factor_enabled?: boolean;
+  last_login_at?: string | null;
 }
 
 export interface RegisterPayload {
@@ -121,6 +175,8 @@ export interface CheckoutInput {
 
 export const api = {
   health: () => req<{ ok: boolean }>("/api/health"),
+
+  site: () => req<SitePayload>("/api/site"),
 
   register: (p: RegisterPayload) =>
     req<{ merchant: any; store: any; next?: string; email_verification?: EmailVerificationState }>("/api/auth/register", {
@@ -194,6 +250,23 @@ export const api = {
       method: "DELETE",
       body: JSON.stringify({ password, confirmation: "DELETE" }),
     }),
+
+  team: {
+    invitation: (token: string) =>
+      req<{ invitation: any }>(`/api/team/invitations/${enc(token)}`),
+    accept: (body: { token: string; name?: string; password: string }) =>
+      req<{ team_member: TeamMemberPayload; store: any; scope: "team" }>("/api/team/invitations/accept", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    login: (email: string, password: string) =>
+      req<{ team_member: TeamMemberPayload; store: any; scope: "team" }>("/api/team/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      }),
+    me: () => req<{ team_member: TeamMemberPayload; store: any; scope: "team" }>("/api/team/me"),
+    logout: () => req<{ ok: boolean }>("/api/team/logout", { method: "POST" }),
+  },
 
   getStore: (subdomain: string) => req<{ store: any }>(`/api/stores/${enc(subdomain)}`),
 
@@ -372,7 +445,7 @@ export const api = {
 
   wallet: {
     get: (subdomain: string) => req<any>(`/api/stores/${enc(subdomain)}/wallet`),
-    deposit: (subdomain: string, body: { amount: number; reference?: string; note?: string }) =>
+    deposit: (subdomain: string, body: { amount: number; method?: "bank_transfer" | "instapay" | "vodafone_cash" | "wallet" | "other"; reference?: string; note?: string }) =>
       req<any>(`/api/stores/${enc(subdomain)}/wallet/deposits`, { method: "POST", body: JSON.stringify(body) }),
     submitSubscription: (
       subdomain: string,
@@ -597,11 +670,41 @@ export const api = {
       req<{ ok: boolean }>(`/api/stores/${enc(subdomain)}/domains/${enc(id)}`, { method: "DELETE" }),
     team: (subdomain: string) => req<{ team: any[]; invitation_email_configured: boolean }>(`/api/stores/${enc(subdomain)}/team`),
     invite: (subdomain: string, body: Record<string, unknown>) =>
-      req<any>(`/api/stores/${enc(subdomain)}/team`, { method: "POST", body: JSON.stringify(body) }),
+      req<{
+        member: any;
+        email_sent: boolean;
+        invite_token: string;
+        invite_url: string;
+        expires_at: string;
+        note: string;
+      }>(`/api/stores/${enc(subdomain)}/team`, { method: "POST", body: JSON.stringify(body) }),
     updateMember: (subdomain: string, id: string, body: Record<string, unknown>) =>
-      req<{ member: any }>(`/api/stores/${enc(subdomain)}/team/${enc(id)}`, { method: "PATCH", body: JSON.stringify(body) }),
+      req<{ member: any; invite_token?: string; invite_url?: string; expires_at?: string }>(
+        `/api/stores/${enc(subdomain)}/team/${enc(id)}`,
+        { method: "PATCH", body: JSON.stringify(body) }
+      ),
     removeMember: (subdomain: string, id: string) =>
       req<{ ok: boolean }>(`/api/stores/${enc(subdomain)}/team/${enc(id)}`, { method: "DELETE" }),
+    publish: (subdomain: string) =>
+      req<{ store: any; publishing: any }>(`/api/stores/${enc(subdomain)}/publishing`, {
+        method: "POST",
+        body: JSON.stringify({ action: "publish" }),
+      }),
+    unpublish: (subdomain: string, reason?: string) =>
+      req<{ store: any; publishing: any }>(`/api/stores/${enc(subdomain)}/publishing`, {
+        method: "POST",
+        body: JSON.stringify({ action: "unpublish", reason }),
+      }),
+  },
+
+  support: {
+    list: (subdomain: string) =>
+      req<{ tickets: any[]; enabled: boolean }>(`/api/stores/${enc(subdomain)}/support-tickets`),
+    create: (subdomain: string, body: { subject: string; message: string; category?: string; priority?: string }) =>
+      req<{ ticket: any }>(`/api/stores/${enc(subdomain)}/support-tickets`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
   },
 
   storefront: {
@@ -668,28 +771,61 @@ export const api = {
   },
 
   admin: {
+    auth: {
+      login: (email: string, password: string, secondFactor?: { totp?: string; recovery_code?: string }) =>
+        req<{ admin: AdminPayload; scope: "platform" }>("/api/admin/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email, password, ...(secondFactor ?? {}) }),
+        }),
+      me: () => req<{ admin: AdminPayload; scope: "platform" }>("/api/admin/auth/me"),
+      logout: () => req<{ ok: boolean }>("/api/admin/auth/logout", { method: "POST" }),
+      changePassword: (currentPassword: string, newPassword: string) =>
+        req<{ ok: boolean; revoked_sessions: number }>("/api/admin/auth/password", {
+          method: "POST",
+          body: JSON.stringify({ currentPassword, newPassword }),
+        }),
+      revokeOtherSessions: () =>
+        req<{ ok: boolean; revoked: number }>("/api/admin/auth/sessions/revoke-others", { method: "POST" }),
+      twoFactor: {
+        setup: (password: string) =>
+          req<{ secret: string; otpauth_url: string; issuer: string; account: string }>("/api/admin/auth/2fa/setup", {
+            method: "POST",
+            body: JSON.stringify({ password }),
+          }),
+        enable: (code: string) =>
+          req<{ ok: boolean; recovery_codes: string[] }>("/api/admin/auth/2fa/enable", {
+            method: "POST",
+            body: JSON.stringify({ code }),
+          }),
+        disable: (password: string, code: string) =>
+          req<{ ok: boolean }>("/api/admin/auth/2fa/disable", {
+            method: "POST",
+            body: JSON.stringify({ password, code }),
+          }),
+      },
+    },
     overview: () => req<any>("/api/admin/overview"),
-    subscriptionPayments: (opts?: { status?: string }) =>
-      req<any>(`/api/admin/subscription-payments${qs(opts ?? {})}`),
-    reviewSubscriptionPayment: (id: string, body: { decision: "approve" | "reject"; note?: string }) =>
-      req<{ payment: any; store: any }>(`/api/admin/subscription-payments/${enc(id)}/review`, {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
+    stores: (opts?: { status?: string; publish?: string }) =>
+      req<{ stores: any[] }>(`/api/admin/stores${qs(opts ?? {})}`),
     approveStore: (id: string, note = "") =>
-      req<{ store: any }>(`/api/admin/stores/${enc(id)}/approve`, {
+      req<{ store: any; publishing: any }>(`/api/admin/stores/${enc(id)}/approve`, {
         method: "POST",
         body: JSON.stringify({ note }),
       }),
     rejectStore: (id: string, note = "") =>
-      req<{ store: any }>(`/api/admin/stores/${enc(id)}/reject`, {
+      req<{ store: any; publishing: any }>(`/api/admin/stores/${enc(id)}/reject`, {
         method: "POST",
         body: JSON.stringify({ note }),
       }),
     suspendStore: (id: string, note = "") =>
-      req<{ store: any }>(`/api/admin/stores/${enc(id)}/suspend`, {
+      req<{ store: any; publishing: any }>(`/api/admin/stores/${enc(id)}/suspend`, {
         method: "POST",
         body: JSON.stringify({ note }),
+      }),
+    setStorePublishing: (id: string, action: "publish" | "unpublish", note = "") =>
+      req<{ store: any; publishing: any }>(`/api/admin/stores/${enc(id)}/publishing`, {
+        method: "POST",
+        body: JSON.stringify({ action, note }),
       }),
     storeSettings: (id: string) => req<any>(`/api/admin/stores/${enc(id)}/settings`),
     updateStoreSettings: (id: string, body: Record<string, unknown>) =>
@@ -702,6 +838,54 @@ export const api = {
         `/api/admin/stores/${enc(id)}/media`,
         { method: "POST", body: JSON.stringify(input) }
       ),
+    merchants: () => req<{ merchants: any[] }>("/api/admin/merchants"),
+    subscriptionPayments: (opts?: { status?: string }) =>
+      req<any>(`/api/admin/subscription-payments${qs(opts ?? {})}`),
+    reviewSubscriptionPayment: (id: string, body: { decision: "approve" | "reject"; note?: string }) =>
+      req<{ payment: any; store: any }>(`/api/admin/subscription-payments/${enc(id)}/review`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    walletTransactions: (opts?: { status?: string }) =>
+      req<any>(`/api/admin/wallet/transactions${qs(opts ?? {})}`),
+    reviewWalletTransaction: (id: string, body: { decision: "approve" | "reject"; note?: string }) =>
+      req<{ transaction: any; decision: string }>(`/api/admin/wallet/transactions/${enc(id)}/review`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    supportTickets: (opts?: { status?: string }) =>
+      req<{ tickets: any[] }>(`/api/admin/support-tickets${qs(opts ?? {})}`),
+    updateSupportTicket: (id: string, body: Record<string, unknown>) =>
+      req<{ ticket: any }>(`/api/admin/support-tickets/${enc(id)}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    reports: (opts?: { from?: string; to?: string }) =>
+      req<any>(`/api/admin/reports${qs(opts ?? {})}`),
+    domains: () => req<{ domains: any[] }>("/api/admin/domains"),
+    verifyDomain: (id: string, verified: boolean, note = "") =>
+      req<{ domain: any }>(`/api/admin/domains/${enc(id)}/verify`, {
+        method: "POST",
+        body: JSON.stringify({ verified, note }),
+      }),
+    setDomainTls: (id: string, status: "pending" | "active" | "failed", error = "") =>
+      req<{ domain: any }>(`/api/admin/domains/${enc(id)}/tls`, {
+        method: "POST",
+        body: JSON.stringify({ status, error }),
+      }),
+    audit: (opts?: { actorType?: string; action?: string; storeId?: string }) =>
+      req<{ logs: any[]; security_events: any[] }>(`/api/admin/audit${qs(opts ?? {})}`),
+    featureFlags: () => req<{ flags: any[] }>("/api/admin/feature-flags"),
+    updateFeatureFlag: (key: string, enabled: boolean) =>
+      req<{ flag: any }>(`/api/admin/feature-flags/${enc(key)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ enabled }),
+      }),
+    admins: () => req<{ admins: any[] }>("/api/admin/admins"),
+    createAdmin: (body: { email: string; password: string; name?: string; role: string }) =>
+      req<{ admin: any }>("/api/admin/admins", { method: "POST", body: JSON.stringify(body) }),
+    updateAdmin: (id: string, body: { role?: string; status?: string }) =>
+      req<{ admin: any }>(`/api/admin/admins/${enc(id)}`, { method: "PATCH", body: JSON.stringify(body) }),
     leads: () => req<{ leads: any[] }>("/api/admin/leads"),
   },
 

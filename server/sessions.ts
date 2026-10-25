@@ -1,11 +1,41 @@
 import { prisma } from "./db.js";
 import { logger } from "./logger.js";
+import { hashSessionToken, newSessionToken, SESSION_TTL_MS } from "./auth.js";
+
+/**
+ * Create a merchant-owner or team-member session. Exactly one principal id is
+ * required; the auth resolver rejects a row that carries both or neither.
+ */
+export async function createAuthSession(input: {
+  merchantId?: string | null;
+  teamMemberId?: string | null;
+}): Promise<string> {
+  const merchantId = input.merchantId ?? null;
+  const teamMemberId = input.teamMemberId ?? null;
+  if (Boolean(merchantId) === Boolean(teamMemberId)) {
+    throw new Error("a session must belong to exactly one principal");
+  }
+  const token = newSessionToken();
+  await prisma.session.create({
+    data: {
+      tokenHash: hashSessionToken(token),
+      merchantId,
+      teamMemberId,
+      expiresAt: new Date(Date.now() + SESSION_TTL_MS),
+    },
+  });
+  return token;
+}
 
 /** Delete all expired sessions. Returns the number removed. */
 export async function cleanupExpiredSessions(): Promise<number> {
-  const gone = await prisma.session.deleteMany({ where: { expiresAt: { lt: new Date() } } });
-  if (gone.count > 0) logger.info(`[sessions] cleaned ${gone.count} expired session(s)`);
-  return gone.count;
+  const [gone, adminGone] = await Promise.all([
+    prisma.session.deleteMany({ where: { expiresAt: { lt: new Date() } } }),
+    prisma.adminSession.deleteMany({ where: { expiresAt: { lt: new Date() } } }),
+  ]);
+  const count = gone.count + adminGone.count;
+  if (count > 0) logger.info(`[sessions] cleaned ${count} expired session(s)`);
+  return count;
 }
 
 /**

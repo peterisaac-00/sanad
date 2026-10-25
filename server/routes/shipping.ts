@@ -11,7 +11,7 @@ import {
   validateBody,
   validateParams,
 } from "../validate.js";
-import { writeAudit } from "../services/account.js";
+import { auditActor, writeAudit } from "../services/account.js";
 
 export const shippingRouter = Router();
 
@@ -86,7 +86,7 @@ shippingRouter.post(
     });
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "shipping_zone.created",
       entity: "shipping_zone",
       entityId: zone!.id,
@@ -154,7 +154,7 @@ shippingRouter.patch(
     });
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "shipping_zone.updated",
       entity: "shipping_zone",
       entityId: existing.id,
@@ -176,7 +176,7 @@ shippingRouter.delete(
     await prisma.shippingZone.delete({ where: { id: existing.id } });
     await writeAudit({
       storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "shipping_zone.deleted",
       entity: "shipping_zone",
       entityId: existing.id,

@@ -28,7 +28,9 @@ NODE_ENV=production SESSION_SECRET=<...> DATABASE_URL=<...> npm start
 ```
 
 Put a TLS-terminating reverse proxy (Caddy/nginx/Cloud Run) in front and set
-`TRUST_PROXY=true` so rate limiting sees real client IPs.
+`TRUST_PROXY` to the number of trusted hops (usually `1`) or an explicit proxy
+IP/CIDR list so rate limiting sees real client IPs. `TRUST_PROXY=true` is
+rejected because it would let any client spoof `X-Forwarded-For`.
 
 ## 2. Environment / secrets
 
@@ -42,21 +44,50 @@ All variables are documented in `.env.example`. The critical ones:
 Store them in your hosting provider's secret manager (never in git, chat, or
 screenshots).
 
-There is no seeded admin account and no separate admin login. Register normally,
-then promote that merchant account with SQL:
+### First platform administrator
 
-```sql
-UPDATE merchants SET role='admin' WHERE email='owner@example.com';
+Platform staff are a separate identity from merchants. Do **not** promote a
+merchant account: `Merchant.role` never grants platform administration, and a
+merchant or team session always receives `403 ADMIN_ACCESS_DENIED` at
+`/api/admin`.
+
+Set the bootstrap values before the first boot (both email and password are
+required together; the password must be at least 12 characters):
+
+```powershell
+$env:ADMIN_BOOTSTRAP_EMAIL = "owner@example.com"
+$env:ADMIN_BOOTSTRAP_PASSWORD = "<long-random-password>"
+$env:ADMIN_BOOTSTRAP_NAME = "Owner"   # optional
+docker compose up --build -d
 ```
 
-Sign out and back in (or refresh the page), then open `/admin`. The admin area
-also has direct links for stores, subscription payments, visits, and leads:
-`/admin/stores`, `/admin/payments`, `/admin/visits`, `/admin/leads`. The role
-is checked from PostgreSQL on every admin API request, so a merchant cannot
-self-promote through the UI or a request header.
+At boot the server creates a `super_admin` only when no administrator with that
+email exists. The operation is idempotent: restarting never resets an existing
+password, name, role, or MFA state. Remove `ADMIN_BOOTSTRAP_PASSWORD` (and the
+email/name) from the environment after the first successful sign-in and restart;
+the account persists in PostgreSQL.
 
-Admins can list every lead via `GET /api/admin/leads`. Merchants always see
-only their own store's leads via `GET /api/leads`.
+Open `/admin`, sign in with the bootstrap credentials, and enable TOTP under
+**Security** immediately. Admin sessions use a separate `sanad_admin_session`
+cookie (`__Host-sanad_admin_session` in production) with an 8-hour TTL; a
+merchant cookie cannot open the admin console and an admin cookie cannot open
+the merchant dashboard.
+
+Administrator roles and write access:
+
+| Role | Writes |
+|------|--------|
+| `super_admin` | everything, including administrator management |
+| `operations` | stores, custom domains/TLS, feature flags |
+| `finance` | wallet deposits/transactions, subscription payments |
+| `support` | support tickets |
+| `readonly` | no writes; read-only back-office |
+
+Add further administrators from `/admin` → **Admins**; they can enable their own
+MFA after signing in. Legacy `/admin/payments` and `/admin/visits` links redirect
+to subscriptions and reports. Admins can list every lead via
+`GET /api/admin/leads`; merchants always see only their own store's leads via
+`GET /api/leads`.
 
 ## 3. Create the first merchant account
 
@@ -154,6 +185,10 @@ shows a configuration error instead of pretending the operation happened.
 |---------|--------------|-----|
 | App exits: `DATABASE_URL is required` | missing env | set `DATABASE_URL` |
 | App exits: `SESSION_SECRET must be set` | weak/missing secret in prod | set 32+ char secret |
+| App exits: `ADMIN_BOOTSTRAP_EMAIL and ADMIN_BOOTSTRAP_PASSWORD must be set together` | only one bootstrap value is present | set both, or remove both after the first admin exists |
+| App exits: `ADMIN_BOOTSTRAP_PASSWORD must be at least 12 characters` | bootstrap password too short | use 12+ characters, then remove the variable after first sign-in |
+| `/admin` says the password is wrong after a restart | bootstrap never resets existing admins | sign in with the current password; reset it from **Security** while signed in |
+| Merchant/team account gets `403 ADMIN_ACCESS_DENIED` at `/admin` | expected trust boundary | use a `PlatformAdmin` account or bootstrap the first one |
 | `401 UNAUTHENTICATED` in console | cookie blocked | serve frontend+API same-origin; check `CORS_ORIGIN` |
 | `403 CSRF_BLOCKED` on mutations | cross-site POST | call API from an allowed origin only |
 | `429` on login | rate limit (30/15 min) | wait, or check for brute force in logs |
@@ -171,11 +206,11 @@ Logs are structured (pino JSON). Passwords/tokens/cookies are redacted.
 
 ## 9. Out of scope / future work
 
-- Automatic subscription charging/renewal is out of scope. Owners submit
-  monthly/annual payment details manually, and an admin reviews them from
-  `/admin/payments`. Approval updates `Store.plan` and
-  `Store.subscriptionPaidUntil`; it never changes the merchant wallet balance.
-- Email verification, password reset, 2FA, social login.
+- Subscription billing is manual: owners submit payment details and finance
+  admins review them from `/admin/payments`. Approval updates `Store.plan` and
+  `Store.subscriptionPaidUntil`; automatic charging/renewal is out of scope.
+- Email verification, password reset, merchant/admin 2FA and team invites are
+  implemented. Social login and admin email invitations are not.
 - Multiple stores per merchant (schema-ready; API/UI assume one).
 - Online payment provider adapter (Paymob/Fawry/Mada) — COD is complete.
 - S3/object-storage adapter; local disk is the supported driver today.

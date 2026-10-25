@@ -14,16 +14,15 @@ import {
   hashPasswordArgon2,
   verifyMerchantPassword,
   verifyUnknownEmail,
-  newSessionToken,
   hashSessionToken,
-  SESSION_TTL_MS,
   sessionCookieName,
   sessionCookieOptions,
 } from "./auth.js";
-import { startSessionCleanup } from "./sessions.js";
+import { createAuthSession, startSessionCleanup } from "./sessions.js";
 import { ApiError, asyncHandler, errorHandler, notFoundHandler } from "./errors.js";
 import {
   requireAuth,
+  requireMerchantSession,
   requireStoreOwnership,
   attachAuth,
   csrfOriginCheck,
@@ -47,7 +46,7 @@ import {
   storeUpdateSchema,
   leadBodySchema,
 } from "./validate.js";
-import { ensureStoreDefaults, uniqueSubdomain, writeAudit } from "./services/account.js";
+import { auditActor, ensureStoreDefaults, uniqueSubdomain, writeAudit } from "./services/account.js";
 import { paymentService } from "./services/integrations.js";
 import { issueAuthToken, consumeAuthToken } from "./services/authTokens.js";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./services/email.js";
@@ -85,7 +84,13 @@ import { storefrontRouter } from "./routes/storefront.js";
 import { onboardingRouter } from "./routes/onboarding.js";
 import { mediaRouter } from "./routes/media.js";
 import { adminRouter } from "./routes/admin.js";
+import { teamAuthRouter } from "./routes/teamAuth.js";
+import { supportRouter } from "./routes/support.js";
 import { assertOwnerMayEditStore } from "./services/storePolicy.js";
+import { escapeHtmlAttribute, isPlatformHost, normalizeHost, resolveCustomDomainHost, serializeForHtml } from "./services/domains.js";
+import { publishingSnapshot } from "./services/publishing.js";
+import { teamMemberJson } from "./services/team.js";
+import { ensurePlatformAdmin } from "./services/platformAdmin.js";
 
 export const app = express();
 
@@ -141,16 +146,10 @@ function toMerchantJson(row: Merchant) {
   };
 }
 
-async function createSession(merchantId: string): Promise<string> {
-  const token = newSessionToken();
-  await prisma.session.create({
-    data: {
-      tokenHash: hashSessionToken(token),
-      merchantId,
-      expiresAt: new Date(Date.now() + SESSION_TTL_MS),
-    },
-  });
-  return token;
+async function sessionStoreJson(storeId: string | null) {
+  if (!storeId) return null;
+  const store = await prisma.store.findUnique({ where: { id: storeId } });
+  return store ? { ...store, publishing: publishingSnapshot(store) } : null;
 }
 
 /**
@@ -207,6 +206,33 @@ app.get("/api/health", async (_req, res) => {
     res.status(503).json({ ok: false, service: "sanad-commerce-backend", time: nowIso(), db: "down" });
   }
 });
+
+// ---- public host metadata (used by the SPA on custom domains) ----
+app.get(
+  "/api/site",
+  asyncHandler(async (req, res) => {
+    const host = normalizeHost(req.headers.host);
+    const custom = !isPlatformHost(host);
+    const resolved = custom ? await resolveCustomDomainHost(host) : null;
+    res.json({
+      host,
+      mode: custom ? "custom_domain" : "platform",
+      custom_domain: custom,
+      store: resolved
+        ? {
+            id: resolved.storeId,
+            store_name: resolved.storeName,
+            subdomain: resolved.subdomain,
+            status: resolved.status,
+            publish_status: resolved.publishStatus,
+            canonical_url: resolved.canonicalUrl,
+            tls_status: resolved.tlsStatus,
+          }
+        : null,
+      canonical_url: resolved?.canonicalUrl ?? "",
+    });
+  })
+);
 
 // ---- auth (public: register, login) ----
 app.post(
@@ -303,7 +329,7 @@ app.post(
     // When verification is mandatory, registration proves the account exists
     // but does not grant a console session until the email link is consumed.
     if (!env.email.requireVerification) {
-      const token = await createSession(merchantId);
+      const token = await createAuthSession({ merchantId });
       res.cookie(sessionCookieName(), token, sessionCookieOptions());
     }
 
@@ -390,7 +416,7 @@ app.post(
     if (typeof incoming === "string" && incoming) {
       await prisma.session.delete({ where: { tokenHash: hashSessionToken(incoming) } }).catch(() => undefined);
     }
-    const token = await createSession(merchant.id);
+    const token = await createAuthSession({ merchantId: merchant.id });
     res.cookie(sessionCookieName(), token, sessionCookieOptions());
     const store = merchant.storeId ? await prisma.store.findUnique({ where: { id: merchant.storeId } }) : null;
     res.json({ merchant: toMerchantJson(merchant), store });
@@ -414,20 +440,42 @@ app.get(
   "/api/auth/me",
   asyncHandler(requireAuth),
   asyncHandler(async (req, res) => {
-    const merchant = await prisma.merchant.findUnique({ where: { id: req.auth!.merchantId } });
+    const auth = req.auth!;
+    const store = await sessionStoreJson(auth.storeId);
+    if (auth.principalType === "team" && auth.teamMemberId) {
+      const member = await prisma.teamMember.findUnique({ where: { id: auth.teamMemberId } });
+      if (!member) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required.");
+      res.json({
+        merchant: null,
+        store,
+        team_member: teamMemberJson(member),
+        principal_type: "team",
+        permissions: auth.permissions,
+        publishing: store?.publishing ?? null,
+      });
+      return;
+    }
+    const merchant = await prisma.merchant.findUnique({ where: { id: auth.merchantId! } });
     if (!merchant) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required.");
-    const store = merchant.storeId ? await prisma.store.findUnique({ where: { id: merchant.storeId } }) : null;
-    res.json({ merchant: toMerchantJson(merchant), store });
+    res.json({
+      merchant: toMerchantJson(merchant),
+      store,
+      team_member: null,
+      principal_type: "merchant",
+      permissions: auth.permissions,
+      publishing: store?.publishing ?? null,
+    });
   })
 );
 
 app.post(
   "/api/auth/password",
   asyncHandler(requireAuth),
+  asyncHandler(requireMerchantSession),
   validateBody(changePasswordSchema),
   asyncHandler(async (req, res) => {
     const { currentPassword, newPassword } = req.body;
-    const merchant = await prisma.merchant.findUnique({ where: { id: req.auth!.merchantId } });
+    const merchant = await prisma.merchant.findUnique({ where: { id: req.auth!.merchantId! } });
     if (!merchant) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required.");
 
     const { ok } = await verifyMerchantPassword(
@@ -592,9 +640,10 @@ app.post(
 app.post(
   "/api/auth/2fa/setup",
   asyncHandler(requireAuth),
+  asyncHandler(requireMerchantSession),
   validateBody(twoFactorSetupSchema),
   asyncHandler(async (req, res) => {
-    const merchant = await prisma.merchant.findUnique({ where: { id: req.auth!.merchantId } });
+    const merchant = await prisma.merchant.findUnique({ where: { id: req.auth!.merchantId! } });
     if (!merchant) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required.");
     const { ok } = await verifyMerchantPassword(
       { password_hash: merchant.passwordHash, password_salt: merchant.passwordSalt, password_algo: merchant.passwordAlgo },
@@ -626,9 +675,10 @@ app.post(
 app.post(
   "/api/auth/2fa/enable",
   asyncHandler(requireAuth),
+  asyncHandler(requireMerchantSession),
   validateBody(twoFactorCodeSchema),
   asyncHandler(async (req, res) => {
-    const merchant = await prisma.merchant.findUnique({ where: { id: req.auth!.merchantId } });
+    const merchant = await prisma.merchant.findUnique({ where: { id: req.auth!.merchantId! } });
     if (!merchant) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required.");
     if (merchant.twoFactorEnabled) {
       throw new ApiError(409, "TWO_FACTOR_ALREADY_ENABLED", "Two-factor authentication is already enabled.");
@@ -665,9 +715,10 @@ app.post(
 app.post(
   "/api/auth/2fa/disable",
   asyncHandler(requireAuth),
+  asyncHandler(requireMerchantSession),
   validateBody(twoFactorDisableSchema),
   asyncHandler(async (req, res) => {
-    const merchant = await prisma.merchant.findUnique({ where: { id: req.auth!.merchantId } });
+    const merchant = await prisma.merchant.findUnique({ where: { id: req.auth!.merchantId! } });
     if (!merchant) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required.");
     if (!merchant.twoFactorEnabled) {
       throw new ApiError(409, "TWO_FACTOR_NOT_ENABLED", "Two-factor authentication is not enabled.");
@@ -720,6 +771,7 @@ app.post(
 app.post(
   "/api/auth/sessions/revoke-others",
   asyncHandler(requireAuth),
+  asyncHandler(requireMerchantSession),
   asyncHandler(async (req, res) => {
     const current = req.cookies?.[sessionCookieName()];
     const result = await prisma.session.deleteMany({
@@ -730,10 +782,10 @@ app.post(
     });
     await writeAudit({
       storeId: req.auth!.storeId,
-      merchantId: req.auth!.merchantId,
+      ...auditActor(req.auth!),
       action: "account.sessions_revoked",
       entity: "merchant",
-      entityId: req.auth!.merchantId,
+      entityId: req.auth!.actorId,
       metadata: { revoked: result.count },
       ip: req.ip,
     });
@@ -765,6 +817,7 @@ app.get(
 app.get(
   "/api/account/store",
   asyncHandler(requireAuth),
+  asyncHandler(requireMerchantSession),
   asyncHandler(async (req, res) => {
     if (!req.auth!.storeId) throw new ApiError(404, "STORE_NOT_FOUND", "No store linked to this account.");
     const store = await prisma.store.findUnique({ where: { id: req.auth!.storeId } });
@@ -776,6 +829,7 @@ app.get(
 app.patch(
   "/api/account/store",
   asyncHandler(requireAuth),
+  asyncHandler(requireMerchantSession),
   validateBody(storeUpdateSchema),
   asyncHandler(async (req, res) => {
     if (!req.auth!.storeId) throw new ApiError(404, "STORE_NOT_FOUND", "No store linked to this account.");
@@ -851,6 +905,7 @@ app.get(
 
 // ---- domain routers ----
 app.use("/api/admin", adminRouter);
+app.use(teamAuthRouter);
 app.use("/api/onboarding", onboardingRouter);
 app.use(productsRouter);
 app.use(categoriesRouter);
@@ -869,6 +924,7 @@ app.use(dashboardRouter);
 app.use(abandonedRouter);
 app.use(reportsRouter);
 app.use(settingsRouter);
+app.use(supportRouter);
 app.use(storefrontRouter);
 
 // ---- uploaded media (local storage driver) ----
@@ -904,10 +960,66 @@ app.use(
 // ---- frontend build in production ----
 const distDir = path.join(process.cwd(), "dist");
 if (fs.existsSync(distDir)) {
-  app.use(express.static(distDir));
-  app.get(/^(?!\/api\/).*/, (_req, res) => {
-    res.sendFile(path.join(distDir, "index.html"));
-  });
+  const indexFile = path.join(distDir, "index.html");
+  let cachedIndexHtml = "";
+  const readIndexHtml = () => {
+    if (!cachedIndexHtml) cachedIndexHtml = fs.readFileSync(indexFile, "utf8");
+    return cachedIndexHtml;
+  };
+
+  app.use(express.static(distDir, { index: false }));
+
+  // Resolve the raw Host header before the SPA is served. Verified custom
+  // domains receive the store boot metadata in a <meta> tag (not an inline
+  // script, which the CSP would block). Unknown custom hosts never receive the
+  // platform SPA, so host-header poisoning cannot open a random store.
+  app.get(/^(?!\/api\/).*/, asyncHandler(async (req, res) => {
+    const host = normalizeHost(req.headers.host);
+    const wantsHtml = Boolean(req.accepts("html")) && !path.extname(req.path);
+    if (!wantsHtml) {
+      res.status(404).type("text/plain").send("Not found");
+      return;
+    }
+
+    if (isPlatformHost(host)) {
+      res.sendFile(indexFile);
+      return;
+    }
+
+    const resolved = await resolveCustomDomainHost(host);
+    if (!resolved) {
+      res.status(404).type("html").send(
+        "<!doctype html><html lang=\"ar\" dir=\"rtl\"><meta charset=\"utf-8\"><title>المتجر غير متاح</title>" +
+        "<body style=\"font-family:system-ui;display:grid;place-items:center;min-height:100vh;margin:0;background:#f8fafc;color:#0f172a\">" +
+        "<main style=\"text-align:center;padding:32px\"><h1 style=\"font-size:20px\">المتجر غير متاح</h1>" +
+        "<p style=\"color:#64748b\">تحقق من عنوان الموقع أو تواصل مع صاحب المتجر.</p></main></body></html>"
+      );
+      return;
+    }
+
+    const boot = {
+      host,
+      mode: "custom_domain" as const,
+      custom_domain: true,
+      canonical_url: resolved.canonicalUrl,
+      tls_status: resolved.tlsStatus,
+      store: {
+        id: resolved.storeId,
+        store_name: resolved.storeName,
+        subdomain: resolved.subdomain,
+        status: resolved.status,
+        publish_status: resolved.publishStatus,
+        canonical_url: resolved.canonicalUrl,
+        tls_status: resolved.tlsStatus,
+      },
+    };
+    const meta = `<meta name="sanad-site" content="${escapeHtmlAttribute(serializeForHtml(boot))}">`;
+    const canonical = `<link rel="canonical" href="${escapeHtmlAttribute(resolved.canonicalUrl)}">`;
+    let html = readIndexHtml();
+    html = html.includes("</head>") ? html.replace("</head>", `${meta}${canonical}</head>`) : `${meta}${canonical}${html}`;
+    res.setHeader("Cache-Control", "no-store");
+    res.type("html").send(html);
+  }));
 }
 
 app.use("/api", notFoundHandler);
@@ -934,6 +1046,20 @@ async function waitForDatabase(attempts = 30, delayMs = 1000): Promise<void> {
 
 async function boot() {
   await waitForDatabase();
+  if (env.adminBootstrap) {
+    const { admin, created } = await ensurePlatformAdmin({
+      ...env.adminBootstrap,
+      role: "super_admin",
+    });
+    if (created) {
+      logger.info({ adminId: admin.id, email: admin.email }, "[sanad-backend] created bootstrap platform administrator");
+    } else {
+      logger.info(
+        { adminId: admin.id, email: admin.email },
+        "[sanad-backend] bootstrap platform administrator already exists; password and role unchanged (remove ADMIN_BOOTSTRAP_PASSWORD)"
+      );
+    }
+  }
   startSessionCleanup();
   startRetentionSweep();
   const server = app.listen(env.port, "0.0.0.0", () => {

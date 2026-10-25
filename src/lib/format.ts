@@ -183,5 +183,11 @@ export function safeError(err: any): string {
   if (err?.code === "VALIDATION_ERROR") return "تحقق من البيانات المدخلة ثم حاول مجدداً.";
   if (err?.code === "AI_NOT_CONFIGURED") return "المساعد الذكي غير متصل بعد. أضف بيانات مزود الذكاء الاصطناعي في بيئة الخادم.";
   if (err?.code === "PAYMENT_PROVIDER_NOT_CONFIGURED") return "بوابة الدفع الإلكتروني غير مهيأة بعد.";
+  if (err?.code === "INVITE_NOT_FOUND") return "رابط الدعوة غير صالح أو تم استخدامه بالفعل. اطلب دعوة جديدة من مالك المتجر.";
+  if (err?.code === "INVITE_ALREADY_ACCEPTED") return "تم قبول هذه الدعوة بالفعل. سجّل الدخول بحساب الفريق.";
+  if (err?.code === "INVITE_EXPIRED") return "انتهت صلاحية الدعوة. اطلب من مالك المتجر إرسال دعوة جديدة.";
+  if (err?.code === "TEAM_INVITE_PENDING") return "لم تُقبل دعوتك بعد. افتح رابط الدعوة وأكمل إنشاء كلمة المرور أولاً.";
+  if (err?.code === "TEAM_MEMBER_SUSPENDED") return "حسابك في فريق المتجر موقوف. تواصل مع مالك المتجر.";
+  if (err?.code === "TEAM_MEMBER_EXISTS") return "هذا البريد عضو في الفريق بالفعل.";
   return message || "حدث خطأ غير متوقع. حاول مرة أخرى.";
 }

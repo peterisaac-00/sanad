@@ -96,6 +96,33 @@ export async function sendVerificationEmail(input: { to: string; link: string; t
   });
 }
 
+export async function sendTeamInviteEmail(input: {
+  to: string;
+  link: string;
+  storeName: string;
+  role: string;
+  expiresAt?: Date;
+}): Promise<boolean> {
+  const expiryLabel = input.expiresAt
+    ? input.expiresAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+    : "7 days";
+  return trySendEmail({
+    to: input.to,
+    subject: `You are invited to ${input.storeName} on Sanad`,
+    text:
+      `Hello,\n\n` +
+      `You have been invited to join ${input.storeName} on Sanad with the role "${input.role}".\n` +
+      `Accept the invitation and set your password:\n${input.link}\n\n` +
+      `This link expires on ${expiryLabel}. If you were not expecting it, ignore this email.\n`,
+    html: `<div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.8;color:#0f172a">
+      <p>Hello,</p>
+      <p>You have been invited to join <strong>${escapeHtml(input.storeName)}</strong> on Sanad with the role <strong>${escapeHtml(input.role)}</strong>.</p>
+      <p><a href="${escapeHtml(input.link)}">Accept the invitation and set your password</a></p>
+      <p style="color:#64748b;font-size:12px">This link expires on ${escapeHtml(expiryLabel)}. If you were not expecting it, ignore this email.</p>
+    </div>`,
+  });
+}
+
 export async function sendPasswordResetEmail(input: { to: string; link: string; ttlMinutes: number }): Promise<boolean> {
   const text =
     `مرحباً،\n\n` +

@@ -14,14 +14,16 @@ async function createProduct(agent: Agent, subdomain: string, body: Record<strin
 
 describe("storefront publishing gate", () => {
   it("keeps unpublished stores behind the coming-soon gate and publishes through onboarding", async () => {
-    const merchant = await registerMerchant("pub");
+    // Approved but not yet published: the storefront must show coming-soon.
+    const merchant = await registerMerchant("pub", { publish: false });
     const publicBase = `/api/storefront/${merchant.subdomain}`;
 
     const draft = await request(app).get(publicBase).expect(200);
     expect(draft.body.published).toBe(false);
     expect(draft.body.store.store_name).toBe("Shop pub");
     expect(draft.body.store.phone).toBeUndefined();
-    expect(draft.body.payments.cod_enabled).toBe(true);
+    // Coming-soon hides every payment/catalog detail, not only products.
+    expect(draft.body.payments.cod_enabled).toBe(false);
     expect(draft.body.payments.online_enabled).toBe(false);
     expect(draft.body.featured_products).toEqual([]);
 

@@ -11,16 +11,19 @@ integration boundaries for online payments, AI, WhatsApp and carriers.
 |---------|------|-------|
 | Marketing site | `/` | Public landing page; signed-in visitors are routed to the dashboard |
 | Sign in / register | `/auth/login`, `/auth/register` | Cookie session, show/hide password, inline errors, safe redirect |
+| Team sign in / invite | `/team/login`, `/team/invite/:token` | Invited members sign in to the owner's store with a scoped team role |
+| Platform admin | `/admin` | Separate `PlatformAdmin` identity, its own cookie + MFA, permission-scoped back-office |
 | Onboarding | `/onboarding` | Five RTL steps, autosave, real image upload, template + selling setup, publish |
 | Dashboard | `/dashboard`, `/dashboard/*` | Dark-first RTL shell, 22 routes in five groups; incomplete features are gated with a visible reason |
-| Storefront | `/store/:subdomain`, `/store/:subdomain/*` | Published stores only; unpublished stores show a branded “قيد التجهيز” page |
+| Storefront | `/store/:subdomain`, custom domains | Published stores only; unpublished stores show a branded “قيد التجهيز” page |
 
 The dashboard covers overview, products, categories, orders, customers,
 abandoned carts, related products, coupons, shipping, pages, design, blog,
 affiliates, reviews, AI assistant, reports, settings, audit logs, domains,
-team and the quick guide. Wallet, upsells, loyalty and dropshipping remain in
-the codebase but are gated and hidden from navigation until their approval
-and settlement workflows ship.
+team, wallet and the quick guide. Wallet deposits are real pending requests that
+change the balance only after a finance admin approves them. Upsells, loyalty
+and dropshipping remain in the codebase but are gated and hidden from navigation
+until their approval and settlement workflows ship.
 
 ## Architecture
 
@@ -48,7 +51,7 @@ flowchart LR
 |-------|--------|
 | Frontend | React 19, Vite 8, Tailwind 4, lucide-react |
 | Backend | Express 4, Prisma 7 (@prisma/adapter-pg), PostgreSQL 16 |
-| Auth | Argon2id (m=19456, t=2, p=1), opaque HMAC'd session cookies |
+| Auth | Argon2id (m=19456, t=2, p=1), opaque HMAC'd session cookies, separate platform-admin cookie, TOTP 2FA |
 | Validation | Zod strict schemas; params, query and JSON bodies |
 | Hardening | helmet, strict CORS/CSRF, PostgreSQL-shared rate limits, validated media, 2FA, PII masking, pino logs |
 | Media | Local-disk `MediaAsset` storage with an explicit future S3 boundary |
@@ -82,6 +85,8 @@ Seeded demo login (dev only): `merchant@saraya.sanad.app` + `DEMO_MERCHANT_PASSW
 | `NODE_ENV` | no | `development` | `development` / `test` / `production` |
 | `DATABASE_URL` | **yes** | — | `postgresql://…`; boot fails without it |
 | `SESSION_SECRET` | prod: **yes** | insecure dev default | 32+ chars in production; rotation logs everyone out |
+| `ADMIN_BOOTSTRAP_EMAIL` / `ADMIN_BOOTSTRAP_PASSWORD` | pair | — | creates the first `super_admin` at boot; 12+ char password; idempotent, never resets an existing admin |
+| `ADMIN_BOOTSTRAP_NAME` | no | `Platform Admin` | display name for the bootstrapped first admin |
 | `CORS_ORIGIN` | no | `http://localhost:3000` | comma-separated, no wildcards |
 | `TRUST_PROXY` | no | `false` | `false`, a trusted hop count (`1`), or proxy IP/CIDR list; `true` is rejected |
 | `JSON_BODY_LIMIT` | no | `256kb` | max JSON body (media has its own parser/limit) |
@@ -129,9 +134,12 @@ Seeded demo login (dev only): `merchant@saraya.sanad.app` + `DEMO_MERCHANT_PASSW
 
 ## API reference
 
-Auth uses the httpOnly cookie `sanad_session`. Every store-scoped route
-resolves `:subdomain` server-side and returns `403` when it is not the caller's
-store. Public routes are explicitly allowlisted and rate-limited.
+Merchant-owner and invited team sessions use the httpOnly cookie
+`sanad_session`; platform administrators use a separate `sanad_admin_session`
+cookie and a separate `AdminSession` table. Every store-scoped route resolves
+`:subdomain` server-side, enforces the owner's store or the team member's
+permission, and returns `403` when it is not allowed. Public routes are
+explicitly allowlisted and rate-limited.
 
 ### Public
 
@@ -176,8 +184,24 @@ store. Public routes are explicitly allowlisted and rate-limited.
 | Dropshipping | `/api/stores/:sub/dropshipping`, `/suppliers`, `/dropship-products` |
 | Assistant | `GET/POST /api/stores/:sub/assistant`, `/assistant/generate` |
 | Reports | `GET /api/stores/:sub/reports` |
-| Settings | `GET/PATCH /api/stores/:sub/settings`, `/notification-preferences`, `/audit-logs`, `/domains` (+ one-time challenge rotation), `/team` |
+| Settings | `GET/PATCH /api/stores/:sub/settings`, `/notification-preferences`, `/audit-logs`, `/domains` (+ one-time challenge rotation), `/team`, `/publishing` |
 | Media | `POST/GET /api/media` (base64 image upload, local disk) |
+
+### Team member
+
+| Area | Paths |
+|------|-------|
+| Invitation | `GET /api/team/invitations/:token`, `POST /api/team/invitations/accept` (single-use token, password setup) |
+| Session | `POST /api/team/login`, `GET /api/team/me`, `POST /api/team/logout` (same `sanad_session` cookie, bound to `teamMemberId`) |
+| Store | The same store routes as the owner, filtered by `admin` / `manager` / `staff` / `viewer` permissions; sensitive reads (`team`, `domains`, `wallet`, `audit-logs`) require their named permission |
+
+### Platform administrator
+
+| Area | Paths |
+|------|-------|
+| Auth | `POST /api/admin/auth/login`, `/logout`, `GET /api/admin/auth/me`, `/2fa/setup`, `/2fa/enable`, `/2fa/disable`, `/password`, `/sessions/revoke-others` |
+| Back-office | `GET /api/admin/overview`, `/stores`, `/merchants`, `/subscription-payments`, `/wallet/transactions`, `/support-tickets`, `/reports`, `/domains`, `/audit`, `/feature-flags`, `/admins`, `/leads` |
+| Writes | Store approval/suspension/settings, domain/TLS review, subscription and wallet approvals, support replies, feature flags, administrator management — each requires a named admin permission and is audited |
 
 Order statuses: `pending`, `needs_confirmation`, `confirmed`, `preparing`,
 `ready_to_ship`, `shipped`, `out_for_delivery`, `delivered`, `cancelled`,
@@ -191,7 +215,15 @@ Order statuses: `pending`, `needs_confirmation`, `confirmed`, `preparing`,
 - Passwords: Argon2id; legacy scrypt hashes verify once and upgrade on login.
 - Sessions: 256-bit tokens, HMAC-`SESSION_SECRET` hashes in DB, 7-day expiry,
   rotation on login, logout invalidates server-side. Password change keeps the
-  current session and revokes the rest; reset revokes all sessions.
+  current session and revokes the rest; reset revokes all sessions. Platform
+  admins use a separate 8-hour cookie/table and MFA state; merchant/team cookies
+  can never authenticate `/api/admin`.
+- Team RBAC: owner sessions always have full access; team roles are `admin`,
+  `manager`, `staff`, `viewer`, and the API derives the required permission from
+  the method/path. Role changes and suspensions apply on the next request.
+- Custom domains: only the raw `Host` header is trusted (`X-Forwarded-Host` is
+  ignored), the domain must be verified and its store published, and unknown
+  hosts receive a 404 instead of the platform SPA.
 - Email verification and password reset: random 256-bit tokens, only an HMAC is
   stored, links are single-use and expire. `REQUIRE_EMAIL_VERIFICATION` blocks
   login until the address is confirmed.
@@ -214,7 +246,7 @@ Order statuses: `pending`, `needs_confirmation`, `confirmed`, `preparing`,
 - Order tracking prefers an HMAC-signed, expiring token bound to one store/order;
   phone fallback is rate-limited and both return masked phone only (no order id,
   address or email).
-- Exports are role-gated (`admin`, `owner`, `merchant`, `manager`), audited,
+- Exports are role-gated (owner, team `admin`/`manager`), audited,
   rate-limited, `no-store`, streamed, row-capped, and CSV formula-injection safe.
 - Domain verification tokens are disclosed once at creation/rotation; list,
   settings and verify responses never echo tokens or raw DNS records.
@@ -273,7 +305,8 @@ docker compose up --build   # db + migrate + app (set SESSION_SECRET first)
 - One store per merchant account (schema supports more; API/UI assume one).
 - Verification/reset emails require `SMTP_URL` + `EMAIL_FROM`; without them the
   API reports email as unconfigured (dev-only debug tokens are returned outside production).
-- Subscription billing is not implemented.
+- Subscription billing is manual: owners submit payment details and an admin
+  approves them; automatic charging/renewal is not implemented.
 - Rate limits are shared through PostgreSQL; no Redis dependency is required.
 - `docker compose up` end-to-end is documented but was not re-verified in this
   environment; the production bundle itself is built and tested with plain Node.
