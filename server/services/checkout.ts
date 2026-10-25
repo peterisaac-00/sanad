@@ -46,12 +46,12 @@ function priceOf(
   currency: string,
   sku: string
 ): number {
-  const column = currency === "EGP" ? product.priceEgp : currency === "SAR" ? product.priceSar : null;
+  const column = currency === "EGP" ? product.priceEgp : null;
   if (column === null) {
     throw new ApiError(
       400,
       "CHECKOUT_CURRENCY_UNSUPPORTED",
-      `Checkout supports EGP and SAR priced catalogs; this store uses ${currency}.`
+      `Checkout supports EGP-priced catalogs; this store uses ${currency}.`
     );
   }
   if (!(column > 0)) {

@@ -438,7 +438,7 @@ export const GrowthCenterPreview: React.FC<GrowthCenterPreviewProps> = ({
                           <input value={sName} onChange={(e) => setSName(e.target.value)} placeholder={ar ? 'اسم المتجر' : 'Store name'} className="border border-line rounded-brand-sm px-2 py-2" />
                           <input value={sPhone} onChange={(e) => setSPhone(e.target.value)} placeholder={ar ? 'الهاتف' : 'Phone'} className="border border-line rounded-brand-sm px-2 py-2" />
                           <select value={sCurrency} onChange={(e) => setSCurrency(e.target.value)} className="border border-line rounded-brand-sm px-2 py-2">
-                            {['EGP', 'SAR', 'AED', 'KWD', 'QAR', 'BHD', 'OMR', 'USD'].map((c) => (
+                            {['EGP'].map((c) => (
                               <option key={c} value={c}>{c}</option>
                             ))}
                           </select>

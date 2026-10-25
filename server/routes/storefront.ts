@@ -45,9 +45,7 @@ const productInclude = {
 };
 
 function productPrice(product: { priceEgp: number; priceSar: number; basePrice: number }, currency: string) {
-  if (currency === "EGP") return product.priceEgp || product.basePrice;
-  if (currency === "SAR") return product.priceSar || product.basePrice;
-  return product.basePrice;
+  return product.priceEgp || product.basePrice;
 }
 function responsiveImage(image: any) {
   const url = String(image?.url ?? "");
@@ -325,20 +323,19 @@ storefrontRouter.get(
     }
     if (category) where.category = { slug: category, isActive: true };
     if (featured === "true") where.isFeatured = true;
-    const priceField = store.currency === "SAR" ? "priceSar" : "priceEgp";
+    const priceField = "priceEgp";
     if (minPrice !== undefined || maxPrice !== undefined) {
       const priceRange = {
         ...(minPrice !== undefined ? { gte: minPrice } : {}),
         ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
       };
-      if (priceField === "priceSar") where.priceSar = priceRange;
-      else where.priceEgp = priceRange;
+      where.priceEgp = priceRange;
     }
     const orderBy: Prisma.ProductOrderByWithRelationInput =
       sort === "oldest" ? { createdAt: "asc" } :
       sort === "name" ? { nameAr: "asc" } :
-      sort === "price_asc" ? (priceField === "priceSar" ? { priceSar: "asc" } : { priceEgp: "asc" }) :
-      sort === "price_desc" ? (priceField === "priceSar" ? { priceSar: "desc" } : { priceEgp: "desc" }) :
+      sort === "price_asc" ? { priceEgp: "asc" } :
+      sort === "price_desc" ? { priceEgp: "desc" } :
       { createdAt: "desc" };
     const [total, products] = await prisma.$transaction([
       prisma.product.count({ where }),

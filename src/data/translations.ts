@@ -31,7 +31,7 @@ export const UI_TRANSLATIONS = {
     switch_language: 'English',
     current_lang: 'العربية',
     currency_switch_label: 'عملة العرض التوضيحية',
-    platform_billing_note: 'ملاحظة معمارية: عملة الفوترة الأساسية للمنصة داخلياً هي USD، بينما عملة متجرك ومبيعاتك هي اختيارك الحر (EGP / SAR / AED / KWD...).'
+    platform_billing_note: 'ملاحظة: الجنيه المصري (EGP) هو العملة الوحيدة للفوترة ومتاجر التجار.'
   },
   en: {
     brand_name: 'Sanad Commerce',
@@ -63,6 +63,6 @@ export const UI_TRANSLATIONS = {
     switch_language: 'العربية',
     current_lang: 'English',
     currency_switch_label: 'Demo Display Currency',
-    platform_billing_note: 'Architectural note: Platform internal base billing currency is USD; merchant store currency is fully chosen by the merchant (EGP / SAR / AED / KWD...).'
+    platform_billing_note: 'Note: Egyptian Pound (EGP) is the only billing and merchant-store currency.'
   }
 };

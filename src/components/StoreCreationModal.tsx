@@ -262,28 +262,8 @@ export const StoreCreationModal: React.FC<StoreCreationModalProps> = ({
                     <label className="block font-semibold text-ink-soft mb-1">
                       {currentLang === 'ar' ? 'سوق الإطلاق الرئيسي لمتجرك:' : 'Primary Launch Market:'}
                     </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {COUNTRIES_DATA.map((c) => (
-                        <button
-                          key={c.code}
-                          type="button"
-                          onClick={() => {
-                            setCountryCode(c.code);
-                            setStoreCurrency(c.currency_code);
-                          }}
-                          className={`p-2.5 rounded-brand-sm border text-start flex items-center gap-2 transition-all cursor-pointer ${
-                            countryCode === c.code
-                              ? 'border-brand bg-brand-soft text-brand-active font-bold ring-1 ring-brand/30'
-                              : 'border-line text-ink-soft hover:border-brand/40'
-                          }`}
-                        >
-                          <span className="text-base">{c.flag}</span>
-                          <div className="truncate">
-                            <div>{currentLang === 'ar' ? c.name_ar : c.name_en}</div>
-                            <div className="text-[10px] text-subtle">{c.currency_code}</div>
-                          </div>
-                        </button>
-                      ))}
+                    <div className="rounded-brand-sm border border-brand bg-brand-soft p-3 text-start font-semibold text-brand-active">
+                      🇪🇬 {currentLang === 'ar' ? 'جمهورية مصر العربية' : 'Egypt'} · EGP — الجنيه المصري
                     </div>
                   </div>
 
@@ -291,23 +271,10 @@ export const StoreCreationModal: React.FC<StoreCreationModalProps> = ({
                     <label className="block font-semibold text-ink-soft mb-1">
                       {currentLang === 'ar' ? 'العملة الأساسية لمتجرك (Merchant Store Currency):' : 'Primary Store Currency:'}
                     </label>
-                    <select
-                      value={storeCurrency}
-                      onChange={(e) => setStoreCurrency(e.target.value)}
-                      className="input-control text-xs"
-                    >
-                      <option value="EGP">EGP - الجنيه المصري 🇪🇬</option>
-                      <option value="SAR">SAR - الريال السعودي 🇸🇦</option>
-                      <option value="AED">AED - الدرهم الإماراتي 🇦🇪</option>
-                      <option value="KWD">KWD - الدينار الكويتي 🇰🇼</option>
-                      <option value="QAR">QAR - الريال القطري 🇶🇦</option>
-                      <option value="BHD">BHD - الدينار البحريني 🇧🇭</option>
-                      <option value="OMR">OMR - الريال العُماني 🇴🇲</option>
-                      <option value="USD">USD - الدولار الأمريكي 🌐</option>
-                    </select>
+                    <div className="input-control text-xs font-semibold">EGP - الجنيه المصري 🇪🇬</div>
                     <p className="text-[10px] text-subtle mt-1">
                       {currentLang === 'ar'
-                        ? 'تتحكم هذه العملة في تسعير منتجاتك، طلباتك، وسلة الشراء. ويمكنك تفعيل العملات الإضافية بأي وقت.'
+                        ? 'تتحكم هذه العملة في تسعير منتجاتك، طلباتك، وسلة الشراء. ويتم استخدام الجنيه المصري في جميع الأسعار والطلبات والفواتير.'
                         : 'Controls your product prices, checkout, and invoices. You can enable more currencies anytime.'}
                     </p>
                   </div>

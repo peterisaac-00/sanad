@@ -91,7 +91,7 @@ export const SolutionsView: React.FC<SolutionsViewProps> = ({
       icon: Globe,
       headline_ar: 'انطلق من السوق المصري وافتح مبيعاتك لعملاء الخليج',
       headline_en: 'Expand From Egypt to High-Value Gulf Consumers',
-      desc_ar: 'المنتجات المصرية المصنعة محلياً في الأزياء والجلود والمأكولات تحظى بطلب هائل في السعودية والإمارات والكويت. يمكنك تسجيل الطلبات الإقليمية بعملة متجرك، مع تنسيق الشحن الجوي مع شركة شحن خارج سند.',
+      desc_ar: 'المنتجات المصرية المصنعة محلياً في الأزياء والجلود والمأكولات تصل إلى العملاء في جميع المحافظات المصرية، مع تسجيل الطلبات بالجنيه المصري.',
       desc_en: 'Egyptian fashion, footwear, and artisanal products enjoy immense demand across Saudi Arabia, UAE, and Kuwait. Record regional orders in your store currency and coordinate cross-border shipping with a courier outside Sanad.',
       points_ar: [
         'عرض أسعار المنتجات بعملة متجرك الأساسية؛ تعدد العملات قيد التطوير',

@@ -34,7 +34,6 @@ interface TemplateStore {
     title_ar: string;
     title_en: string;
     price_egp: number;
-    price_sar: number;
     badge_ar?: string;
     image_accent: string;
   }[];
@@ -53,10 +52,10 @@ const TEMPLATES: TemplateStore[] = [
     hero_subtitle_en: 'Fast nationwide shipping with Cash on Delivery and inspection options.',
     primary_color: 'bg-secondary',
     sample_products: [
-      { title_ar: 'قميص كتان طبيعي فاخر', title_en: 'Natural Linen Shirt', price_egp: 750, price_sar: 57, badge_ar: 'الأكثر طلباً', image_accent: 'bg-line' },
-      { title_ar: 'عباية حرير مطرزة يدوياً', title_en: 'Embroidered Silk Abaya', price_egp: 1850, price_sar: 140, badge_ar: 'كمية محدودة', image_accent: 'bg-surface' },
-      { title_ar: 'حذاء كاجوال جلد طبيعي', title_en: 'Casual Leather Loafers', price_egp: 980, price_sar: 74, image_accent: 'bg-line' },
-      { title_ar: 'فستان صيفي مطبوع', title_en: 'Summer Printed Dress', price_egp: 890, price_sar: 68, image_accent: 'bg-surface' }
+      { title_ar: 'قميص كتان طبيعي فاخر', title_en: 'Natural Linen Shirt', price_egp: 750, badge_ar: 'الأكثر طلباً', image_accent: 'bg-line' },
+      { title_ar: 'عباية حرير مطرزة يدوياً', title_en: 'Embroidered Silk Abaya', price_egp: 1850, badge_ar: 'كمية محدودة', image_accent: 'bg-surface' },
+      { title_ar: 'حذاء كاجوال جلد طبيعي', title_en: 'Casual Leather Loafers', price_egp: 980, image_accent: 'bg-line' },
+      { title_ar: 'فستان صيفي مطبوع', title_en: 'Summer Printed Dress', price_egp: 890, image_accent: 'bg-surface' }
     ]
   },
   {
@@ -67,14 +66,14 @@ const TEMPLATES: TemplateStore[] = [
     industry_en: 'Skincare, Fragrances & Oils',
     hero_title_ar: 'روتين العناية المتكامل بمكونات طبيعية نقية 100%',
     hero_title_en: 'Pure Skincare Essentials with 100% Organic Botanicals',
-    hero_subtitle_ar: 'باقات توفيرية مع شحن مجاني للطلبات فوق 500 ج.م في مصر و 200 ر.س بالخليج.',
-    hero_subtitle_en: 'Bundle savings with free shipping over 500 EGP or 200 SAR.',
+    hero_subtitle_ar: 'باقات توفيرية مع شحن مجاني للطلبات فوق 500 ج.م في جميع المحافظات المصرية.',
+    hero_subtitle_en: 'Bundle savings with free shipping over 500 EGP across Egypt.',
     primary_color: 'bg-danger',
     sample_products: [
-      { title_ar: 'مجموعة الترطيب العميق اليومية', title_en: 'Daily Hydration Kit', price_egp: 620, price_sar: 47, badge_ar: 'عرض باقة', image_accent: 'bg-danger-soft' },
-      { title_ar: 'سيروم فيتامين C النقي المركز', title_en: 'Vitamin C Pure Serum', price_egp: 450, price_sar: 34, image_accent: 'bg-danger-soft' },
-      { title_ar: 'زيت الأرجان العضوي المعصور بارداً', title_en: 'Cold-Pressed Argan Oil', price_egp: 380, price_sar: 29, image_accent: 'bg-danger-soft' },
-      { title_ar: 'عطر مسك الليل الفاخر 50ml', title_en: 'Night Musk Perfume 50ml', price_egp: 950, price_sar: 72, badge_ar: 'فاخر', image_accent: 'bg-danger-soft' }
+      { title_ar: 'مجموعة الترطيب العميق اليومية', title_en: 'Daily Hydration Kit', price_egp: 620, badge_ar: 'عرض باقة', image_accent: 'bg-danger-soft' },
+      { title_ar: 'سيروم فيتامين C النقي المركز', title_en: 'Vitamin C Pure Serum', price_egp: 450, image_accent: 'bg-danger-soft' },
+      { title_ar: 'زيت الأرجان العضوي المعصور بارداً', title_en: 'Cold-Pressed Argan Oil', price_egp: 380, image_accent: 'bg-danger-soft' },
+      { title_ar: 'عطر مسك الليل الفاخر 50ml', title_en: 'Night Musk Perfume 50ml', price_egp: 950, badge_ar: 'فاخر', image_accent: 'bg-danger-soft' }
     ]
   },
   {
@@ -89,10 +88,10 @@ const TEMPLATES: TemplateStore[] = [
     hero_subtitle_en: 'Full technical specs with a prepared WhatsApp message your team sends manually; no automatic notification or tracking number.',
     primary_color: 'bg-secondary',
     sample_products: [
-      { title_ar: 'شاحن GaN فائق السرعة 65W', title_en: '65W Fast GaN Charger', price_egp: 550, price_sar: 42, badge_ar: 'ضمان سنة', image_accent: 'bg-line' },
-      { title_ar: 'سماعة رأس لاسلكية بخاصية عزل الضجيج', title_en: 'ANC Wireless Headphones', price_egp: 1400, price_sar: 106, image_accent: 'bg-line' },
-      { title_ar: 'باور بانك مغناطيسي 10000mAh', title_en: 'Magnetic Powerbank 10k', price_egp: 720, price_sar: 55, image_accent: 'bg-line' },
-      { title_ar: 'حامل هاتف للسيارة لاسلكي ذكي', title_en: 'Smart Wireless Car Mount', price_egp: 390, price_sar: 30, image_accent: 'bg-surface' }
+      { title_ar: 'شاحن GaN فائق السرعة 65W', title_en: '65W Fast GaN Charger', price_egp: 550, badge_ar: 'ضمان سنة', image_accent: 'bg-line' },
+      { title_ar: 'سماعة رأس لاسلكية بخاصية عزل الضجيج', title_en: 'ANC Wireless Headphones', price_egp: 1400, image_accent: 'bg-line' },
+      { title_ar: 'باور بانك مغناطيسي 10000mAh', title_en: 'Magnetic Powerbank 10k', price_egp: 720, image_accent: 'bg-line' },
+      { title_ar: 'حامل هاتف للسيارة لاسلكي ذكي', title_en: 'Smart Wireless Car Mount', price_egp: 390, image_accent: 'bg-surface' }
     ]
   }
 ];
@@ -100,7 +99,6 @@ const TEMPLATES: TemplateStore[] = [
 export const TemplatesView: React.FC<TemplatesViewProps> = ({ currentLang, onOpenStoreModal }) => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('fashion');
   const [deviceMode, setDeviceMode] = useState<'mobile' | 'desktop'>('mobile');
-  const [selectedCurrency, setSelectedCurrency] = useState<'EGP' | 'SAR'>('EGP');
 
   const currentTemplate =
     TEMPLATES.find((t) => t.id === selectedTemplateId) || TEMPLATES[0];
@@ -166,24 +164,9 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ currentLang, onOpe
             </button>
           </div>
 
-          {/* Currency Toggle inside preview */}
-          <div className="inline-flex p-1 bg-surface rounded-brand border border-line text-xs">
-            <button
-              onClick={() => setSelectedCurrency('EGP')}
-              className={`px-2.5 py-1 rounded-brand-sm font-bold transition-all cursor-pointer ${
-                selectedCurrency === 'EGP' ? 'bg-card text-ink shadow-xs' : 'text-ink-soft'
-              }`}
-            >
-              EGP 🇪🇬
-            </button>
-            <button
-              onClick={() => setSelectedCurrency('SAR')}
-              className={`px-2.5 py-1 rounded-brand-sm font-bold transition-all cursor-pointer ${
-                selectedCurrency === 'SAR' ? 'bg-card text-ink shadow-xs' : 'text-ink-soft'
-              }`}
-            >
-              SAR 🇸🇦
-            </button>
+          {/* Currency is fixed to Egyptian Pound */}
+          <div className="inline-flex items-center px-2.5 py-1 bg-surface rounded-brand border border-line text-xs font-bold text-ink">
+            EGP 🇪🇬 — ج.م
           </div>
         </div>
       </div>
@@ -219,7 +202,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ currentLang, onOpe
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold text-brand bg-brand-soft px-2 py-0.5 rounded">
-                  {selectedCurrency === 'EGP' ? 'الجنيه 🇪🇬' : 'الريال 🇸🇦'}
+                  الجنيه 🇪🇬
                 </span>
                 <div className="w-7 h-7 rounded-brand-sm bg-surface flex items-center justify-center text-ink-soft">
                   <ShoppingBag className="w-3.5 h-3.5" />
@@ -249,8 +232,8 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ currentLang, onOpe
 
               <div className={`grid gap-3 ${deviceMode === 'mobile' ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'}`}>
                 {currentTemplate.sample_products.map((prod, idx) => {
-                  const price = selectedCurrency === 'EGP' ? prod.price_egp : prod.price_sar;
-                  const currSymbol = selectedCurrency === 'EGP' ? (currentLang === 'ar' ? 'ج.م' : 'EGP') : (currentLang === 'ar' ? 'ر.س' : 'SAR');
+                  const price = prod.price_egp;
+                  const currSymbol = currentLang === 'ar' ? 'ج.م' : 'EGP';
 
                   return (
                     <div key={idx} className="bg-card rounded-brand border border-line overflow-hidden p-2.5 flex flex-col justify-between space-y-2 shadow-2xs">

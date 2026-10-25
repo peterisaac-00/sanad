@@ -272,7 +272,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </h2>
           <p className="text-xs sm:text-sm text-subtle">
             {currentLang === 'ar'
-              ? 'انطلاقة قوية في مصر، وتجهيز معمارية التوسع للسعودية والإمارات والكويت وقطر والبحرين وسلطنة عُمان.'
+              ? 'انطلاقة مصرية قوية، مع تشغيل كامل للتجارة الإلكترونية داخل جميع المحافظات المصرية.'
               : 'Launched strongly in Egypt, with complete architectural readiness for Saudi Arabia, UAE, Kuwait, Qatar, Bahrain, and Oman.'}
           </p>
         </div>

@@ -18,9 +18,9 @@ describe("Phase 5 public discovery and currency contracts", () => {
   });
 
   it("accepts only currencies backed by product pricing and checkout", () => {
-    expect(SUPPORTED_STORE_CURRENCIES).toEqual(["EGP", "SAR"]);
-    expect(registerSchema.parse({ email: "merchant@example.com", password: "password123", storeCurrency: "SAR" }).storeCurrency).toBe("SAR");
+    expect(SUPPORTED_STORE_CURRENCIES).toEqual(["EGP"]);
+    expect(registerSchema.parse({ email: "merchant@example.com", password: "password123", storeCurrency: "EGP" }).storeCurrency).toBe("EGP");
     expect(() => registerSchema.parse({ email: "merchant@example.com", password: "password123", storeCurrency: "AED" })).toThrow();
-    expect(() => storeUpdateSchema.parse({ storeCurrency: "AED" })).toThrow();
+    expect(() => storeUpdateSchema.parse({ storeCurrency: "SAR" })).toThrow();
   });
 });

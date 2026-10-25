@@ -33,8 +33,9 @@ const registerSubdomainField = subdomainField
 
 const passwordField = z.string().min(8, { message: "password must be at least 8 characters" }).max(128);
 
-export const SUPPORTED_STORE_CURRENCIES = ["EGP", "SAR"] as const;
-const storeCurrencyField = z.enum(SUPPORTED_STORE_CURRENCIES, { message: "Only EGP and SAR are supported for store pricing." });
+export const SUPPORTED_STORE_CURRENCIES = ["EGP"] as const;
+const storeCurrencyField = z.literal("EGP", { message: "Only EGP is supported for store pricing." });
+const egyptCountryCodeField = z.literal("EG", { message: "Only Egypt is supported." });
 
 const optionalUrl = z.union([z.literal(""), z.string().trim().max(2000)]).optional();
 
@@ -47,7 +48,7 @@ export const registerSchema = z.strictObject({
   phone: z.string().trim().max(32).default(""),
   storeName: z.string().trim().min(2, { message: "storeName is required (min 2 chars)" }).max(120).optional(),
   subdomain: registerSubdomainField.optional(),
-  countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, { message: "countryCode must be a 2-letter code" }).default("EG"),
+  countryCode: egyptCountryCodeField.default("EG"),
   storeCurrency: storeCurrencyField.default("EGP"),
   acceptTerms: z.boolean().optional(),
 });
@@ -683,8 +684,8 @@ export const onboardingPatchSchema = z.strictObject({
   subdomain: registerSubdomainField.optional(),
   businessType: z.enum(["fashion", "electronics", "restaurant", "beauty", "furniture", "digital", "services", "other"]).optional(),
   description: z.string().trim().max(3000).optional(),
-  country: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/).optional(),
-  countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/).optional(),
+  country: egyptCountryCodeField.optional(),
+  countryCode: egyptCountryCodeField.optional(),
   governorate: z.string().trim().max(120).optional(),
   currency: storeCurrencyField.optional(),
   primaryLanguage: z.enum(["ar", "en"]).optional(),
@@ -827,7 +828,7 @@ export const storeUpdateSchema = z
   .strictObject({
     storeName: z.string().trim().min(2).max(120).optional(),
     phone: z.string().trim().max(32).optional(),
-    countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, { message: "countryCode must be a 2-letter code" }).optional(),
+    countryCode: egyptCountryCodeField.optional(),
     storeCurrency: storeCurrencyField.optional(),
     description: z.string().trim().max(3000).optional(),
     supportEmail: z.string().trim().max(254).optional(),
@@ -889,7 +890,7 @@ export const adminStoreSettingsSchema = z
     supportEmail: z.string().trim().max(254).optional(),
     whatsapp: z.string().trim().max(32).optional(),
     phone: z.string().trim().max(32).optional(),
-    countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/).optional(),
+    countryCode: egyptCountryCodeField.optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: "at least one field must be provided" });
 

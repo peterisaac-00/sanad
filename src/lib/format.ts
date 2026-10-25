@@ -1,10 +1,5 @@
 export const CURRENCIES: Record<string, { label: string; symbol: string }> = {
   EGP: { label: "جنيه مصري", symbol: "ج.م" },
-  SAR: { label: "ريال سعودي", symbol: "ر.س" },
-  AED: { label: "درهم إماراتي", symbol: "د.إ" },
-  KWD: { label: "دينار كويتي", symbol: "د.ك" },
-  QAR: { label: "ريال قطري", symbol: "ر.ق" },
-  USD: { label: "دولار أمريكي", symbol: "$" },
 };
 
 export function money(value: number | null | undefined, currency = "EGP"): string {

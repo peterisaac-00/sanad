@@ -151,7 +151,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <Truck className="w-4 h-4 text-brand" />
                     <div>
                       <div className="font-semibold text-ink">{t.nav_countries}</div>
-                      <div className="text-[11px] text-subtle">{currentLang === 'ar' ? 'مصر، السعودية، الإمارات والخليج' : 'Egypt, KSA, UAE, GCC'}</div>
+                      <div className="text-[11px] text-subtle">{currentLang === 'ar' ? 'مصر والمحافظات المصرية' : 'Egypt and all Egyptian governorates'}</div>
                     </div>
                   </button>
 

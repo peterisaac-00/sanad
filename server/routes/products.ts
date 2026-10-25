@@ -47,9 +47,8 @@ function mapPrices(body: Record<string, unknown>, storeCurrency: string) {
   let priceSar = body.price_sar as number | undefined;
   if (base !== undefined) {
     if (storeCurrency === "EGP") priceEgp = base;
-    if (storeCurrency === "SAR") priceSar = base;
   }
-  const fallback = base ?? (storeCurrency === "SAR" ? priceSar : priceEgp) ?? 0;
+  const fallback = base ?? priceEgp ?? 0;
   return {
     priceEgp: priceEgp ?? 0,
     priceSar: priceSar ?? 0,
@@ -257,7 +256,7 @@ productsRouter.put(
     const { nameAr, nameEn } = names(b);
     const hasBase = b.basePrice !== undefined || b.price_egp !== undefined || b.price_sar !== undefined;
     const prices = hasBase
-      ? mapPrices({ ...b, basePrice: b.basePrice ?? (store?.currency === "SAR" ? b.price_sar : b.price_egp) }, store?.currency ?? "EGP")
+      ? mapPrices({ ...b, basePrice: b.basePrice ?? (b.price_egp) }, store?.currency ?? "EGP")
       : {};
     try {
       const product = await prisma.$transaction(async (tx) => {
