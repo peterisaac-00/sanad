@@ -16,7 +16,7 @@
 | 2 | Security, media, and data protection | ✅ Complete  |
 | 3 | Feature truthfulness and integrations | ✅ Complete |
 | 4 | Admin, RBAC, team, and custom domains | ✅ Complete |
-| 5 | Storefront, SEO, performance, and currency model | ⏳ Pending |
+| 5 | Storefront, SEO, performance, and currency model | ✅ Complete |
 | 6 | UX, accessibility, retention, and launch readiness | ⏳ Pending |
 
 ## Verification — 2026-10-23
@@ -152,21 +152,23 @@
 **Goal:** improve crawlability and performance, and make currency data honest.  
 **Exit gate:** metadata is available without JS, bundle budgets pass, currency is explicit everywhere, and published stores have correct sitemaps/canonicals.
 
+**Phase 5 verification:** `npm run lint`, `npm run build`, `npm run build:server`, and `tests/phase5-seo.test.ts` pass. The full integration suite remains dependent on the repository's PostgreSQL service being available at `DATABASE_URL`.
+
 ## Data Model
 
 - [x] **R3.11 — Rename misleading currency fields.** `amountEgp`/`unitPriceEgp` store whatever the store currency is, and checkout supports fewer currencies than the UI advertises. Migrate to `amount`/`unitPrice` with `currency`, or isolate legacy fields and block unsupported currencies. **Done when** SAR/AED values are never read as EGP.
 
 ## Crawlability
 
-- [ ] **R9.1 — Add SSR/prerender to the storefront.** Titles and JSON-LD currently depend on client JS. Prerender or server-render home, product, blog, and page routes. **Done when** crawlers and social previews see metadata without executing JS.
-- [ ] **R8.4 — Generate dynamic sitemaps.** The current sitemap uses a fixed domain and hash URLs. Add a marketing sitemap plus per-store sitemap/robots for published stores only; use real `lastmod` values. **Done when** unpublished stores are excluded.
-- [ ] **R8.5 — Fix canonical coverage.** Canonical handling covers only some search cases. Define canonical URLs for category/sort/page, mark unwanted filters `noindex`, and add prev/next where appropriate. **Done when** sorting and pagination do not create duplicate canonicals.
-- [ ] **R8.6 — Return real 404s.** SPA fallback currently returns `index.html` for unknown assets and hosts. Return 404 for missing assets and unknown hosts. **Done when** `/missing.js` and unknown domains do not receive the SPA.
+- [x] **R9.1 — Add SSR/prerender to the storefront.** The production HTML shell now receives server-rendered title, description, Open Graph, canonical, robots and JSON-LD metadata for home, product, blog and page routes before client JavaScript runs.
+- [x] **R8.4 — Generate dynamic sitemaps.** Added a marketing sitemap plus per-store sitemap and robots endpoints for published stores only, with database-backed `lastmod` timestamps and no hash URLs.
+- [x] **R8.5 — Fix canonical coverage.** Storefront HTML now emits route canonicals; search, price and featured filters are `noindex`, while category/sort/page URLs collapse to stable route canonicals.
+- [x] **R8.6 — Return real 404s.** Unknown `/store/*` routes, missing assets and unknown custom hosts return 404 instead of the SPA shell.
 
 ## Performance
 
-- [ ] **R9.2 — Split the bundle.** Dashboard, marketing, and storefront ship together (~1.43 MB minified). Lazy-load surfaces, split vendor/feature chunks, analyze the bundle, and set an initial-load budget (e.g. ≤250 KB gzip). **Done when** each surface loads independently.
-- [ ] **R9.4 — Generate responsive image variants.** Images are stored and served at original size. Add thumbnails, responsive URLs, and dimension limits. **Done when** mobile storefront pages do not download desktop originals.
+- [x] **R9.2 — Split the bundle.** Marketing, auth, onboarding, dashboard, admin and storefront surfaces are lazy-loaded. The build now emits independent route chunks; the largest initial chunk is 80 KB gzip.
+- [x] **R9.4 — Generate responsive image variants.** Public product images expose 320/640/960/1280 `srcset` URLs, and the server generates cached WebP variants from validated originals with bounded widths.
 
 ---
 

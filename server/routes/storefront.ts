@@ -49,6 +49,15 @@ function productPrice(product: { priceEgp: number; priceSar: number; basePrice: 
   if (currency === "SAR") return product.priceSar || product.basePrice;
   return product.basePrice;
 }
+function responsiveImage(image: any) {
+  const url = String(image?.url ?? "");
+  if (!url || !url.startsWith("/uploads/")) return image;
+  return {
+    ...image,
+    srcset: [320, 640, 960, 1280].map((width) => `${url}?w=${width} ${width}w`).join(", "),
+    sizes: "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw",
+  };
+}
 
 type PublicVariant = {
   id: string;
@@ -124,7 +133,7 @@ function publicProduct(product: Record<string, unknown>, currency: string) {
     displayPrice: variantPrices.length ? Math.min(...variantPrices) : basePrice,
     inStock: variants.length ? variantStock > 0 : p.stock > 0,
     totalStock: variants.length ? variantStock : p.stock,
-    images: p.images ?? [],
+    images: Array.isArray(p.images) ? p.images.map(responsiveImage) : [],
     options: p.options ?? [],
     variants,
     category: p.category ?? null,

@@ -253,4 +253,19 @@ export async function storeMedia(input: {
   };
 }
 
+export async function responsiveMedia(storageKey: string, width: number): Promise<Buffer | null> {
+  const root = path.resolve(process.cwd(), env.storageDir);
+  const target = path.resolve(root, storageKey);
+  if (!target.startsWith(`${root}${path.sep}`)) return null;
+  try {
+    const source = await fs.readFile(target);
+    return await sharp(source, { failOn: "error", limitInputPixels: env.mediaMaxDimension * env.mediaMaxDimension })
+      .resize({ width: Math.max(160, Math.min(1600, Math.round(width))), withoutEnlargement: true })
+      .webp({ quality: 82 })
+      .toBuffer();
+  } catch {
+    return null;
+  }
+}
+
 export { detectSignature, normalizeImage };

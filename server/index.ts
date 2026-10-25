@@ -60,7 +60,7 @@ import {
   verifyTotp,
 } from "./totp.js";
 import { startRetentionSweep } from "./retention.js";
-import { UPLOAD_EXTENSIONS } from "./services/media.js";
+import { UPLOAD_EXTENSIONS, responsiveMedia } from "./services/media.js";
 
 // Feature routers
 import { productsRouter } from "./routes/products.js";
@@ -88,9 +88,10 @@ import { teamAuthRouter } from "./routes/teamAuth.js";
 import { supportRouter } from "./routes/support.js";
 import { assertOwnerMayEditStore } from "./services/storePolicy.js";
 import { escapeHtmlAttribute, isPlatformHost, normalizeHost, resolveCustomDomainHost, serializeForHtml } from "./services/domains.js";
-import { publishingSnapshot } from "./services/publishing.js";
+import { isPublished, publishingSnapshot } from "./services/publishing.js";
 import { teamMemberJson } from "./services/team.js";
 import { ensurePlatformAdmin } from "./services/platformAdmin.js";
+import { marketingSitemap, resolveStoreForRequest, storefrontSeo, storeSitemap } from "./services/seo.js";
 
 export const app = express();
 
@@ -206,6 +207,28 @@ app.get("/api/health", async (_req, res) => {
     res.status(503).json({ ok: false, service: "sanad-commerce-backend", time: nowIso(), db: "down" });
   }
 });
+
+// Crawlable public discovery surfaces. Store maps are emitted only for active,
+// published stores; draft and suspended catalogs never enter search indexes.
+app.get("/sitemap.xml", asyncHandler(async (req, res) => {
+  const store = await resolveStoreForRequest(req);
+  if (store) {
+    const sitemap = await storeSitemap(store);
+    if (!sitemap) return res.status(404).type("text/plain").send("Not found");
+    return res.type("application/xml").set("Cache-Control", "public, max-age=300").send(sitemap);
+  }
+  const host = normalizeHost(req.headers.host);
+  if (!isPlatformHost(host)) return res.status(404).type("text/plain").send("Not found");
+  return res.type("application/xml").set("Cache-Control", "public, max-age=300").send(marketingSitemap());
+}));
+app.get("/robots.txt", asyncHandler(async (req, res) => {
+  const store = await resolveStoreForRequest(req);
+  if (store) {
+    const sitemap = `${store.customDomain ? `https://${store.customDomain}` : `${env.appUrl}/store/${encodeURIComponent(store.subdomain)}`}/sitemap.xml`;
+    return res.type("text/plain").send(isPublished(store) ? `User-agent: *\nAllow: /\nDisallow: /cart\nDisallow: /checkout\nDisallow: /track\nSitemap: ${sitemap}\n` : "User-agent: *\nDisallow: /\n");
+  }
+  return res.type("text/plain").send(`User-agent: *\nAllow: /\nDisallow: /dashboard\nDisallow: /admin\nSitemap: ${env.appUrl}/sitemap.xml\n`);
+}));
 
 // ---- public host metadata (used by the SPA on custom domains) ----
 app.get(
@@ -927,6 +950,20 @@ app.use(settingsRouter);
 app.use(supportRouter);
 app.use(storefrontRouter);
 
+// Responsive variants are generated from the validated original and cached by
+// URL. The path is constrained inside STORAGE_DIR by responsiveMedia().
+app.get("/uploads/*", asyncHandler(async (req, res, next) => {
+  const width = Number(req.query.w);
+  if (!Number.isFinite(width) || width < 160) return next();
+  const key = decodeURIComponent(req.path.replace(/^\/uploads\//, ""));
+  const image = await responsiveMedia(key, width);
+  if (!image) return next();
+  res.setHeader("Content-Type", "image/webp");
+  res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.send(image);
+}));
+
 // ---- uploaded media (local storage driver) ----
 // Only inert raster images may be served. The extension allowlist plus
 // nosniff, a sandboxing CSP and a cross-origin resource policy prevent an
@@ -982,6 +1019,19 @@ if (fs.existsSync(distDir)) {
     }
 
     if (isPlatformHost(host)) {
+      const store = await resolveStoreForRequest(req);
+      if (req.path.startsWith("/store/") && !store) {
+        res.status(404).type("text/plain").send("Not found");
+        return;
+      }
+      if (store) {
+        const seo = await storefrontSeo(req, store);
+        const tags = `<title>${escapeHtmlAttribute(seo.title)}</title><meta name="description" content="${escapeHtmlAttribute(seo.description)}"><meta property="og:title" content="${escapeHtmlAttribute(seo.title)}"><meta property="og:description" content="${escapeHtmlAttribute(seo.description)}"><link rel="canonical" href="${escapeHtmlAttribute(seo.canonical)}">${seo.noindex ? '<meta name="robots" content="noindex, nofollow">' : ''}<script type="application/ld+json">${serializeForHtml(seo.jsonLd)}</script>`;
+        let html = readIndexHtml();
+        html = html.includes("</head>") ? html.replace("</head>", `${tags}</head>`) : `${tags}${html}`;
+        res.status(seo.status).set("Cache-Control", seo.noindex ? "no-store" : "public, max-age=60").type("html").send(html);
+        return;
+      }
       res.sendFile(indexFile);
       return;
     }
@@ -1014,7 +1064,8 @@ if (fs.existsSync(distDir)) {
       },
     };
     const meta = `<meta name="sanad-site" content="${escapeHtmlAttribute(serializeForHtml(boot))}">`;
-    const canonical = `<link rel="canonical" href="${escapeHtmlAttribute(resolved.canonicalUrl)}">`;
+    const seo = await storefrontSeo(req, await prisma.store.findUniqueOrThrow({ where: { id: resolved.storeId } }));
+    const canonical = `<title>${escapeHtmlAttribute(seo.title)}</title><meta name="description" content="${escapeHtmlAttribute(seo.description)}"><meta property="og:title" content="${escapeHtmlAttribute(seo.title)}"><meta property="og:description" content="${escapeHtmlAttribute(seo.description)}"><link rel="canonical" href="${escapeHtmlAttribute(seo.canonical)}">${seo.noindex ? '<meta name="robots" content="noindex, nofollow">' : ''}<script type="application/ld+json">${serializeForHtml(seo.jsonLd)}</script>`;
     let html = readIndexHtml();
     html = html.includes("</head>") ? html.replace("</head>", `${meta}${canonical}</head>`) : `${meta}${canonical}${html}`;
     res.setHeader("Cache-Control", "no-store");

@@ -152,7 +152,7 @@ export function Price({
   );
 }
 
-export function ProductImage({ src, alt, className }: { src?: string | null; alt: string; className?: string }) {
+export function ProductImage({ src, srcSet, sizes, alt, className }: { src?: string | null; srcSet?: string; sizes?: string; alt: string; className?: string }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [src]);
   if (!src || failed) {
@@ -165,6 +165,11 @@ export function ProductImage({ src, alt, className }: { src?: string | null; alt
   return (
     <img
       src={mediaUrl(src)}
+      srcSet={srcSet ? srcSet.split(", ").map((entry) => {
+        const [url, descriptor] = entry.split(" ");
+        return `${mediaUrl(url)} ${descriptor || ""}`.trim();
+      }).join(", ") : undefined}
+      sizes={sizes}
       alt={alt}
       loading="lazy"
       onError={() => setFailed(true)}
@@ -228,7 +233,8 @@ export function ProductCard({ product }: { product: any }) {
   const name = product.nameAr || product.nameEn || product.sku;
   const price = Number(product.displayPrice ?? product.basePrice ?? 0);
   const compare = Number(product.compareAtPrice ?? 0) || null;
-  const image = product.images?.[0]?.url || product.imageUrl || "";
+  const imageData = product.images?.[0] || {};
+  const image = imageData.url || product.imageUrl || "";
   const stock = Number(product.totalStock ?? product.stock ?? 0);
   const inStock = product.inStock !== false && stock > 0;
   const hasVariants = Array.isArray(product.variants) && product.variants.length > 0;
@@ -237,8 +243,10 @@ export function ProductCard({ product }: { product: any }) {
   return (
     <article className={cn("group overflow-hidden rounded-brand border transition", theme.panel, theme.panelHover)}>
       <Link href={href} className="relative block aspect-square overflow-hidden">
-        <ProductImage
-          src={image}
+          <ProductImage
+            src={image}
+            srcSet={imageData.srcset}
+            sizes={imageData.sizes}
           alt={name}
           className="transition duration-300 group-hover:scale-[1.04]"
         />

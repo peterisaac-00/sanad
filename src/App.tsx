@@ -1,21 +1,21 @@
-import React, { useMemo } from 'react';
+import React, { lazy, Suspense, useMemo } from 'react';
 import { SessionProvider } from './lib/session';
 import { ThemeProvider } from './lib/theme';
 import { ToastProvider } from './components/ui';
 import { usePath } from './lib/router';
-import { MarketingApp } from './marketing/MarketingApp';
-import { LoginPage } from './auth/LoginPage';
-import { RegisterPage } from './auth/RegisterPage';
-import { ForgotPasswordPage } from './auth/ForgotPasswordPage';
-import { ResetPasswordPage } from './auth/ResetPasswordPage';
-import { VerifyEmailPage } from './auth/VerifyEmailPage';
-import { TeamInvitePage } from './auth/TeamInvitePage';
-import { TeamLoginPage } from './auth/TeamLoginPage';
-import { OnboardingPage } from './onboarding/OnboardingPage';
-import { DashboardShell } from './dashboard/DashboardShell';
-import { DashboardRouter } from './dashboard/DashboardRouter';
-import { AdminApp } from './admin/AdminApp';
-import { StorefrontApp } from './storefront/StorefrontApp';
+const MarketingApp = lazy(() => import('./marketing/MarketingApp').then((m) => ({ default: m.MarketingApp })));
+const LoginPage = lazy(() => import('./auth/LoginPage').then((m) => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import('./auth/RegisterPage').then((m) => ({ default: m.RegisterPage })));
+const ForgotPasswordPage = lazy(() => import('./auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = lazy(() => import('./auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
+const VerifyEmailPage = lazy(() => import('./auth/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })));
+const TeamInvitePage = lazy(() => import('./auth/TeamInvitePage').then((m) => ({ default: m.TeamInvitePage })));
+const TeamLoginPage = lazy(() => import('./auth/TeamLoginPage').then((m) => ({ default: m.TeamLoginPage })));
+const OnboardingPage = lazy(() => import('./onboarding/OnboardingPage').then((m) => ({ default: m.OnboardingPage })));
+const DashboardShell = lazy(() => import('./dashboard/DashboardShell').then((m) => ({ default: m.DashboardShell })));
+const DashboardRouter = lazy(() => import('./dashboard/DashboardRouter').then((m) => ({ default: m.DashboardRouter })));
+const AdminApp = lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
+const StorefrontApp = lazy(() => import('./storefront/StorefrontApp').then((m) => ({ default: m.StorefrontApp })));
 
 interface SiteBoot {
   mode?: string;
@@ -111,7 +111,9 @@ export default function App() {
     <ThemeProvider>
       <ToastProvider>
         <SessionProvider>
-          <RoutedApp />
+            <Suspense fallback={<div className="min-h-screen bg-canvas" aria-busy="true" />}>
+              <RoutedApp />
+            </Suspense>
         </SessionProvider>
       </ToastProvider>
     </ThemeProvider>
