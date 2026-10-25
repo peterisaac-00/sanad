@@ -18,6 +18,7 @@ import {
   cn,
 } from "../../components/ui";
 import { useDashboard } from "../DashboardShell";
+import { getBusinessExamples } from "../businessExamples";
 
 const TASK_ICONS: Record<string, string> = {
   product_description: "📝",
@@ -65,7 +66,8 @@ const TASK_FIELDS: Record<string, TaskFieldConfig[]> = {
 };
 
 export function AssistantPage() {
-  const { subdomain } = useDashboard();
+  const { subdomain, store } = useDashboard();
+  const examples = getBusinessExamples(store?.businessType);
   const toast = useToast();
   const [task, setTask] = useState("product_description");
   const [inputs, setInputs] = useState<Record<string, string>>({});
@@ -76,7 +78,16 @@ export function AssistantPage() {
 
   const configured = Boolean(data?.configured);
   const capabilities: Record<string, string> = data?.capabilities ?? {};
-  const fields = TASK_FIELDS[task] ?? [];
+  const fields = (TASK_FIELDS[task] ?? []).map((field) => ({
+    ...field,
+    placeholder:
+      field.key === "productName" ? examples.productAr :
+      field.key === "features" ? examples.featuresAr :
+      field.key === "audience" ? examples.audienceAr :
+      field.key === "industry" ? examples.categoryAr :
+      field.key === "keywords" ? `${examples.categoryAr}، ${examples.productAr}` :
+      field.placeholder,
+  }));
 
   const generate = async () => {
     for (const field of fields) {

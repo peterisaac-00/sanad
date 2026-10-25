@@ -31,6 +31,7 @@ import {
 } from "../../components/ui";
 import { useDashboard } from "../DashboardShell";
 import { dateInputToIso, PaymentBadge, StatusBadge, TableShell, Td, Th } from "../common";
+import { getBusinessExamples } from "../businessExamples";
 
 const enc = encodeURIComponent;
 
@@ -38,6 +39,7 @@ const enc = encodeURIComponent;
 
 export function OrdersPage() {
   const { subdomain, store } = useDashboard();
+  const examples = getBusinessExamples(store?.businessType);
   const toast = useToast();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -256,7 +258,7 @@ export function OrdersPage() {
         )}
       </Card>
 
-      <ManualOrderModal open={manualOpen} onClose={() => setManualOpen(false)} onCreated={() => { setManualOpen(false); reload(); }} subdomain={subdomain} currency={store.currency} />
+      <ManualOrderModal open={manualOpen} onClose={() => setManualOpen(false)} onCreated={() => { setManualOpen(false); reload(); }} subdomain={subdomain} currency={store.currency} productPlaceholder={examples.productAr} />
     </div>
   );
 }
@@ -267,12 +269,14 @@ function ManualOrderModal({
   onCreated,
   subdomain,
   currency,
+  productPlaceholder,
 }: {
   open: boolean;
   onClose: () => void;
   onCreated: () => void;
   subdomain: string;
   currency: string;
+  productPlaceholder: string;
 }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -353,7 +357,7 @@ function ManualOrderModal({
           <Input value={form.address} onChange={(e) => set("address", e.target.value)} />
         </Field>
         <Field label="ملخص المنتجات" className="sm:col-span-2">
-          <Input value={form.items_summary} onChange={(e) => set("items_summary", e.target.value)} placeholder="قميص ×1 + حزام ×2" />
+          <Input value={form.items_summary} onChange={(e) => set("items_summary", e.target.value)} placeholder={`${productPlaceholder} ×1`} />
         </Field>
         <Field label={`المبلغ (${currency})`} hint="المبلغ الإجمالي كما تم الاتفاق عليه، وليس محسوباً من أسعار المنتجات.">
           <Input type="number" min={0} value={form.amount_egp} onChange={(e) => set("amount_egp", e.target.value)} dir="ltr" />

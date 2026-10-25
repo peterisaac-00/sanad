@@ -26,6 +26,7 @@ import {
 import { MultiImageUploader } from "../../components/ImageUploader";
 import { useDashboard } from "../DashboardShell";
 import { ActivePill, TableShell, Td, Th } from "../common";
+import { getBusinessExamples } from "../businessExamples";
 
 interface VariantDraft {
   id?: string;
@@ -101,6 +102,7 @@ function num(value: string): number {
 
 export function ProductsPage() {
   const { subdomain, store } = useDashboard();
+  const examples = getBusinessExamples(store?.businessType);
   const toast = useToast();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -284,6 +286,7 @@ export function ProductsPage() {
         product={editing}
         subdomain={subdomain}
         currency={store.currency}
+        examples={examples}
         onClose={() => setEditorOpen(false)}
         onSaved={() => { setEditorOpen(false); reload(); }}
       />
@@ -305,6 +308,7 @@ function ProductEditor({
   product,
   subdomain,
   currency,
+  examples,
   onClose,
   onSaved,
 }: {
@@ -312,6 +316,7 @@ function ProductEditor({
   product: any | null;
   subdomain: string;
   currency: string;
+  examples: ReturnType<typeof getBusinessExamples>;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -502,7 +507,7 @@ function ProductEditor({
       {tab === "basic" ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="SKU" required hint="معرّف فريد داخل متجرك، يُستخدم في الطلبات والتقارير.">
-            <Input value={draft.sku} onChange={(e) => set("sku", e.target.value)} dir="ltr" placeholder="TSHIRT-BLK-L" />
+            <Input value={draft.sku} onChange={(e) => set("sku", e.target.value)} dir="ltr" placeholder={examples.sku} />
           </Field>
           <Field label="الفئة">
             <Select value={draft.categoryId} onChange={(e) => set("categoryId", e.target.value)}>
@@ -513,10 +518,10 @@ function ProductEditor({
             </Select>
           </Field>
           <Field label="الاسم بالعربية" required>
-            <Input value={draft.nameAr} onChange={(e) => set("nameAr", e.target.value)} placeholder="قميص قطني أسود" />
+            <Input value={draft.nameAr} onChange={(e) => set("nameAr", e.target.value)} placeholder={examples.productAr} />
           </Field>
           <Field label="الاسم بالإنجليزية">
-            <Input value={draft.nameEn} onChange={(e) => set("nameEn", e.target.value)} dir="ltr" placeholder="Black Cotton T-Shirt" />
+            <Input value={draft.nameEn} onChange={(e) => set("nameEn", e.target.value)} dir="ltr" placeholder={examples.productEn} />
           </Field>
           <Field label={`سعر البيع (${currency})`} required>
             <Input type="number" min={0} step="0.01" value={draft.basePrice} onChange={(e) => set("basePrice", e.target.value)} dir="ltr" />
@@ -547,7 +552,7 @@ function ProductEditor({
             <Switch checked={draft.isFeatured} onChange={(v) => set("isFeatured", v)} label="منتج مميز" description="يظهر في قسم المنتجات المميزة بالصفحة الرئيسية للمتجر." />
           </div>
           <Field label="وصف قصير بالعربية" className="sm:col-span-2">
-            <Textarea value={draft.shortDescriptionAr} onChange={(e) => set("shortDescriptionAr", e.target.value)} className="min-h-20" placeholder="سطر أو سطران يظهران قرب الاسم." />
+            <Textarea value={draft.shortDescriptionAr} onChange={(e) => set("shortDescriptionAr", e.target.value)} className="min-h-20" placeholder={`${examples.featuresAr} — سطر أو سطران يظهران قرب الاسم.`} />
           </Field>
           <Field label="الوصف الكامل بالعربية" className="sm:col-span-2">
             <Textarea value={draft.descriptionAr} onChange={(e) => set("descriptionAr", e.target.value)} className="min-h-32" />
@@ -766,4 +771,3 @@ function ProductEditor({
     </Modal>
   );
 }
-

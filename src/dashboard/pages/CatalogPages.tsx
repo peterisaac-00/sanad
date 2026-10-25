@@ -25,11 +25,13 @@ import {
 } from "../../components/ui";
 import { useDashboard } from "../DashboardShell";
 import { Stars, TableShell, Td, Th } from "../common";
+import { getBusinessExamples } from "../businessExamples";
 
 /* ------------------------------ categories ------------------------------ */
 
 export function CategoriesPage() {
-  const { subdomain } = useDashboard();
+  const { subdomain, store } = useDashboard();
+  const examples = getBusinessExamples(store?.businessType);
   const toast = useToast();
   const [search, setSearch] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
@@ -152,7 +154,7 @@ export function CategoriesPage() {
         )}
       </Card>
 
-      <CategoryEditor open={editorOpen} category={editing} subdomain={subdomain} onClose={() => setEditorOpen(false)} onSaved={() => { setEditorOpen(false); reload(); }} />
+      <CategoryEditor open={editorOpen} category={editing} subdomain={subdomain} categoryPlaceholder={examples.categoryAr} onClose={() => setEditorOpen(false)} onSaved={() => { setEditorOpen(false); reload(); }} />
 
       <ConfirmDialog
         open={Boolean(deleting)}
@@ -166,7 +168,7 @@ export function CategoriesPage() {
   );
 }
 
-function CategoryEditor({ open, category, subdomain, onClose, onSaved }: { open: boolean; category: any | null; subdomain: string; onClose: () => void; onSaved: () => void }) {
+function CategoryEditor({ open, category, subdomain, categoryPlaceholder, onClose, onSaved }: { open: boolean; category: any | null; subdomain: string; categoryPlaceholder: string; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ nameAr: "", nameEn: "", description: "", imageUrl: "", isActive: true });
@@ -216,7 +218,7 @@ function CategoryEditor({ open, category, subdomain, onClose, onSaved }: { open:
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="الاسم بالعربية" required>
-          <Input value={form.nameAr} onChange={(e) => setForm({ ...form, nameAr: e.target.value })} placeholder="ملابس رجالية" />
+          <Input value={form.nameAr} onChange={(e) => setForm({ ...form, nameAr: e.target.value })} placeholder={categoryPlaceholder} />
         </Field>
         <Field label="الاسم بالإنجليزية">
           <Input value={form.nameEn} onChange={(e) => setForm({ ...form, nameEn: e.target.value })} dir="ltr" />

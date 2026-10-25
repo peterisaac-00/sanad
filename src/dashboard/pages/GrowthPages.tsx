@@ -33,6 +33,7 @@ import {
 } from "../../components/ui";
 import { useDashboard } from "../DashboardShell";
 import { ActivePill, dateInputToIso, isoToDateInput, TableShell, Td, Th } from "../common";
+import { getBusinessExamples } from "../businessExamples";
 
 /* --------------------------- abandoned carts --------------------------- */
 
@@ -294,7 +295,8 @@ const emptyUpsell: UpsellDraft = {
 };
 
 export function UpsellsPage() {
-  const { subdomain } = useDashboard();
+  const { subdomain, store } = useDashboard();
+  const examples = getBusinessExamples(store?.businessType);
   const toast = useToast();
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
@@ -407,7 +409,7 @@ export function UpsellsPage() {
         ) : upsells.length === 0 ? (
           <EmptyState
             title="لا توجد عروض إضافية"
-            description="مثال: عند إضافة حقيبة للسلة اعرض محفظة بخصم 15%. العروض تظهر داخل صفحة المتجر."
+            description={`مثال: ${examples.relatedAr} بخصم 15%. العروض تظهر داخل صفحة المتجر.`}
             icon={<TrendingUp className="h-5 w-5" />}
             action={<Button onClick={() => openEditor(null)}><Plus className="h-4 w-4" /> إنشاء أول عرض</Button>}
           />
@@ -479,8 +481,8 @@ export function UpsellsPage() {
         }
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="اسم العرض" className="sm:col-span-2" hint="للتنظيم الداخلي فقط، مثال: اعرض المحفظة مع الحقيبة">
-            <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="عرض الحقيبة والمحفظة" />
+          <Field label="اسم العرض" className="sm:col-span-2" hint={`للتنظيم الداخلي فقط، مثال: ${examples.relatedAr}`}>
+            <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder={examples.relatedAr} />
           </Field>
           <Field label="المنتج المعروض" required hint="المنتج الذي سيظهر كعرض بخصم">
             <Select value={draft.offerProductId} onChange={(e) => setDraft({ ...draft, offerProductId: e.target.value })}>
