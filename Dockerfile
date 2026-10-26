@@ -36,7 +36,8 @@ COPY --from=build /app/dist-server ./dist-server
 COPY --from=build /app/node_modules/argon2 ./node_modules/argon2
 COPY --from=build /app/node_modules/pg ./node_modules/pg
 COPY --from=build /app/node_modules/@prisma/adapter-pg ./node_modules/@prisma/adapter-pg
-RUN chown -R sanad:sanad /app
+# Named volume mount point must be writable by the non-root runtime user.
+RUN mkdir -p /app/data/uploads && chown -R sanad:sanad /app
 USER sanad
 EXPOSE 5000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \

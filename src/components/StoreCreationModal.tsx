@@ -3,6 +3,7 @@ import { Language } from '../data/translations';
 import { COUNTRIES_DATA } from '../data/countries';
 import { PRICING_MODEL } from '../data/pricing';
 import { api } from '../lib/api';
+import { safeError } from '../lib/format';
 import {
   X,
   Store,
@@ -64,8 +65,9 @@ export const StoreCreationModal: React.FC<StoreCreationModalProps> = ({
         setIsSuccess(true);
       } catch (err: any) {
         setSaveError(
-          err?.message ||
-            (currentLang === 'ar' ? 'تعذر إنشاء المتجر. حاول مرة أخرى.' : 'Could not create the store. Try again.')
+          currentLang === 'ar'
+            ? safeError(err)
+            : (err?.message || 'Could not create the store. Try again.')
         );
       } finally {
         setIsSaving(false);

@@ -1,6 +1,5 @@
 import "dotenv/config";
 import express from "express";
-import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import path from "node:path";
@@ -25,6 +24,7 @@ import {
   requireMerchantSession,
   requireStoreOwnership,
   attachAuth,
+  corsOriginGuard,
   csrfOriginCheck,
   authLimiter,
   emailLimiter,
@@ -87,10 +87,10 @@ import { adminRouter } from "./routes/admin.js";
 import { teamAuthRouter } from "./routes/teamAuth.js";
 import { supportRouter } from "./routes/support.js";
 import { assertOwnerMayEditStore } from "./services/storePolicy.js";
-import { escapeHtmlAttribute, isPlatformHost, normalizeHost, resolveCustomDomainHost, serializeForHtml } from "./services/domains.js";
+import { escapeHtmlAttribute, isPlatformHost, normalizeHost, resolveStorefrontHost, serializeForHtml, storefrontOrigin } from "./services/domains.js";
 import { isPublished, publishingSnapshot } from "./services/publishing.js";
 import { teamMemberJson } from "./services/team.js";
-import { ensurePlatformAdmin } from "./services/platformAdmin.js";
+import { ensureBootstrapAdmin } from "./services/platformAdmin.js";
 import { marketingSitemap, resolveStoreForRequest, storefrontSeo, storeSitemap } from "./services/seo.js";
 
 export const app = express();
@@ -99,20 +99,10 @@ app.set("trust proxy", env.trustProxy);
 app.disable("x-powered-by");
 
 app.use(helmet());
-app.use(
-  "/api",
-  cors({
-    origin: (origin, cb) => {
-      if (!origin) return cb(null, true);
-      if (env.corsOrigins.includes(origin.replace(/\/$/, ""))) return cb(null, true);
-      return cb(new Error("CORS origin not allowed"));
-    },
-    credentials: true,
-  })
-);
+app.use("/api", asyncHandler(corsOriginGuard));
 app.use(cookieParser());
 app.use(httpLogger);
-app.use(csrfOriginCheck);
+app.use(asyncHandler(csrfOriginCheck));
 
 // Media uploads are base64 JSON and need a larger parser than normal API
 // requests. Mount them before the global parser so the limit applies only here.
@@ -238,23 +228,23 @@ app.get("/sitemap.xml", asyncHandler(async (req, res) => {
 app.get("/robots.txt", asyncHandler(async (req, res) => {
   const store = await resolveStoreForRequest(req);
   if (store) {
-    const sitemap = `${store.customDomain ? `https://${store.customDomain}` : `${env.appUrl}/store/${encodeURIComponent(store.subdomain)}`}/sitemap.xml`;
+    const sitemap = `${storefrontOrigin(store)}/sitemap.xml`;
     return res.type("text/plain").send(isPublished(store) ? `User-agent: *\nAllow: /\nDisallow: /cart\nDisallow: /checkout\nDisallow: /track\nSitemap: ${sitemap}\n` : "User-agent: *\nDisallow: /\n");
   }
   return res.type("text/plain").send(`User-agent: *\nAllow: /\nDisallow: /dashboard\nDisallow: /admin\nSitemap: ${env.appUrl}/sitemap.xml\n`);
 }));
 
-// ---- public host metadata (used by the SPA on custom domains) ----
+// ---- public host metadata (used by the SPA on storefront hosts) ----
 app.get(
   "/api/site",
   asyncHandler(async (req, res) => {
     const host = normalizeHost(req.headers.host);
-    const custom = !isPlatformHost(host);
-    const resolved = custom ? await resolveCustomDomainHost(host) : null;
+    const platform = isPlatformHost(host);
+    const resolved = platform ? null : await resolveStorefrontHost(host);
     res.json({
       host,
-      mode: custom ? "custom_domain" : "platform",
-      custom_domain: custom,
+      mode: platform ? "platform" : resolved?.mode ?? "unknown",
+      custom_domain: resolved?.mode === "custom_domain",
       store: resolved
         ? {
             id: resolved.storeId,
@@ -1046,10 +1036,11 @@ if (fs.existsSync(distDir)) {
 
   app.use(express.static(distDir, { index: false }));
 
-  // Resolve the raw Host header before the SPA is served. Verified custom
-  // domains receive the store boot metadata in a <meta> tag (not an inline
-  // script, which the CSP would block). Unknown custom hosts never receive the
-  // platform SPA, so host-header poisoning cannot open a random store.
+  // Resolve the raw Host header before the SPA is served. Platform subdomains
+  // (`test.soqeg.com`) and verified custom domains receive store boot metadata
+  // in a <meta> tag (not an inline script, which the CSP would block). Unknown
+  // storefront hosts never receive the platform SPA, so host-header poisoning
+  // cannot open a random store.
   app.get(/^(?!\/api\/).*/, asyncHandler(async (req, res) => {
     const host = normalizeHost(req.headers.host);
     const wantsHtml = Boolean(req.accepts("html")) && !path.extname(req.path);
@@ -1076,7 +1067,7 @@ if (fs.existsSync(distDir)) {
       return;
     }
 
-    const resolved = await resolveCustomDomainHost(host);
+    const resolved = await resolveStorefrontHost(host);
     if (!resolved) {
       res.status(404).type("html").send(
         "<!doctype html><html lang=\"ar\" dir=\"rtl\"><meta charset=\"utf-8\"><title>المتجر غير متاح</title>" +
@@ -1089,8 +1080,8 @@ if (fs.existsSync(distDir)) {
 
     const boot = {
       host,
-      mode: "custom_domain" as const,
-      custom_domain: true,
+      mode: resolved.mode,
+      custom_domain: resolved.mode === "custom_domain",
       canonical_url: resolved.canonicalUrl,
       tls_status: resolved.tlsStatus,
       store: {
@@ -1138,13 +1129,14 @@ async function waitForDatabase(attempts = 30, delayMs = 1000): Promise<void> {
 async function boot() {
   await waitForDatabase();
   if (env.adminBootstrap) {
-    const { admin, created } = await ensurePlatformAdmin({
-      ...env.adminBootstrap,
-      role: "super_admin",
-    });
-    if (created) {
-      logger.info({ adminId: admin.id, email: admin.email }, "[sanad-backend] created bootstrap platform administrator");
-    } else {
+    const { admin, created, forced, skipped } = await ensureBootstrapAdmin(env.adminBootstrap);
+    if (created && admin) {
+      logger.info({ adminId: admin.id, email: admin.email }, "[sanad-backend] created bootstrap platform administrator; credential replacement is required");
+    } else if (forced && admin) {
+      logger.info({ adminId: admin.id, email: admin.email }, "[sanad-backend] bootstrap platform administrator must replace its setup credentials");
+    } else if (skipped) {
+      logger.info("[sanad-backend] bootstrap skipped because a platform administrator already exists");
+    } else if (admin) {
       logger.info(
         { adminId: admin.id, email: admin.email },
         "[sanad-backend] bootstrap platform administrator already exists; password and role unchanged (remove ADMIN_BOOTSTRAP_PASSWORD)"

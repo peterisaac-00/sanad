@@ -85,7 +85,7 @@ Seeded demo login (dev only): `merchant@saraya.sanad.app` + `DEMO_MERCHANT_PASSW
 | `NODE_ENV` | no | `development` | `development` / `test` / `production` |
 | `DATABASE_URL` | **yes** | — | `postgresql://…`; boot fails without it |
 | `SESSION_SECRET` | prod: **yes** | insecure dev default | 32+ chars in production; rotation logs everyone out |
-| `ADMIN_BOOTSTRAP_EMAIL` / `ADMIN_BOOTSTRAP_PASSWORD` | pair | — | creates the first `super_admin` at boot; 12+ char password; idempotent, never resets an existing admin |
+| `ADMIN_BOOTSTRAP_EMAIL` / `ADMIN_BOOTSTRAP_PASSWORD` | pair | — | creates the first `super_admin` at boot; 12+ char password; forces a new email/password on first sign-in; never recreates an existing administrator |
 | `ADMIN_BOOTSTRAP_NAME` | no | `Platform Admin` | display name for the bootstrapped first admin |
 | `CORS_ORIGIN` | no | `http://localhost:3000` | comma-separated, no wildcards |
 | `TRUST_PROXY` | no | `false` | `false`, a trusted hop count (`1`), or proxy IP/CIDR list; `true` is rejected |
@@ -130,7 +130,8 @@ Seeded demo login (dev only): `merchant@saraya.sanad.app` + `DEMO_MERCHANT_PASSW
 | `npm start` | run production bundle (`dist-server/server.cjs`, no devDeps) |
 | `npm run lint` | `tsc --noEmit` |
 | `npm test` | Vitest integration suite (needs Postgres) |
-| `npm run db:migrate` / `db:migrate:dev` / `db:seed` / `db:reset` | deploy migrations / dev migrate / demo seed / dev-only reset (refuses production) |
+| `npm run db:migrate` / `db:migrate:dev` / `db:seed` / `db:reset` | deploy migrations / dev migrate / demo seed / dev-only reset (refuses production, remote hosts and the maintenance DB; requires `CONFIRM_DB_RESET=yes`) |
+| `npm run db:backup` / `db:restore` | create a database + uploads backup / restore it (`RESTORE_DATABASE_URL` and `CONFIRM_RESTORE=yes` required) |
 
 ## API reference
 
@@ -199,7 +200,7 @@ explicitly allowlisted and rate-limited.
 
 | Area | Paths |
 |------|-------|
-| Auth | `POST /api/admin/auth/login`, `/logout`, `GET /api/admin/auth/me`, `/2fa/setup`, `/2fa/enable`, `/2fa/disable`, `/password`, `/sessions/revoke-others` |
+| Auth | `POST /api/admin/auth/login`, `/logout`, `/credentials`, `GET /api/admin/auth/me`, `/2fa/setup`, `/2fa/enable`, `/2fa/disable`, `/password`, `/sessions/revoke-others` |
 | Back-office | `GET /api/admin/overview`, `/stores`, `/merchants`, `/subscription-payments`, `/wallet/transactions`, `/support-tickets`, `/reports`, `/domains`, `/audit`, `/feature-flags`, `/admins`, `/leads` |
 | Writes | Store approval/suspension/settings, domain/TLS review, subscription and wallet approvals, support replies, feature flags, administrator management — each requires a named admin permission and is audited |
 

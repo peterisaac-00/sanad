@@ -43,13 +43,29 @@ function safeDecode(value: string): string {
   }
 }
 
+/**
+ * Vite serves the SPA directly in development, so the Express boot <meta> tag
+ * is not present. `<subdomain>.localhost` is enough to preview the same host
+ * shape used by `<subdomain>.soqeg.com` in production.
+ */
+function devHostSubdomain(): string | null {
+  const host = window.location.hostname.toLowerCase();
+  if (!host.endsWith(".localhost")) return null;
+  const label = host.slice(0, -".localhost".length);
+  return label && !label.includes(".") ? label : null;
+}
+
 function RoutedApp() {
   const path = usePath();
   const site = useMemo(readSiteBoot, []);
-  const customSubdomain = site?.custom_domain && site.store?.subdomain ? site.store.subdomain : null;
+  const hostedSubdomain =
+    site?.store?.subdomain &&
+    (site.mode === "custom_domain" || site.mode === "platform_subdomain")
+      ? site.store.subdomain
+      : devHostSubdomain();
 
-  if (customSubdomain) {
-    return <StorefrontApp key={`custom:${customSubdomain}`} subdomain={customSubdomain} base="" />;
+  if (hostedSubdomain) {
+    return <StorefrontApp key={`host:${hostedSubdomain}`} subdomain={hostedSubdomain} base="" />;
   }
 
   const storeMatch = path.match(/^\/store\/([^/]+)(?:\/|$)/);

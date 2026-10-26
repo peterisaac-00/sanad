@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Bell,
   Building2,
@@ -6,10 +6,8 @@ import {
   Globe,
   Globe2,
   KeyRound,
-  MailCheck,
   RefreshCw,
   Rocket,
-  ScrollText,
   Shield,
   ShieldCheck,
   ShieldOff,
@@ -21,7 +19,6 @@ import {
 import { api, mediaUrl, type StorePermission } from "../../lib/api";
 import { COUNTRIES_DATA } from "../../data/countries";
 import { CURRENCIES, dateTime, number, safeError } from "../../lib/format";
-import { Link } from "../../lib/router";
 import { useAsync } from "../../lib/useAsync";
 import {
   Alert,
@@ -52,7 +49,6 @@ const TABS = [
   { key: "domains", label: "النطاقات المخصصة", icon: Globe },
   { key: "team", label: "الفريق", icon: Users },
   { key: "security", label: "الأمان والحساب", icon: Shield },
-  { key: "audit", label: "سجل النشاط", icon: ScrollText },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -63,7 +59,6 @@ const TAB_ACCESS: Record<TabKey, StorePermission | "owner" | "read"> = {
   domains: "domain.manage",
   team: "team.manage",
   security: "owner",
-  audit: "audit.read",
 };
 
 const PUBLISH_STATUS: Record<string, { label: string; tone: string }> = {
@@ -91,38 +86,8 @@ const TIME_ZONES = [
 const ROLES: Record<string, string> = { admin: "مدير عام", manager: "مدير", staff: "موظف", viewer: "مشاهدة فقط" };
 const TEAM_STATUS: Record<string, string> = { invited: "مدعو", active: "نشط", suspended: "موقوف" };
 
-const INTEGRATION_LABELS: Record<string, string> = {
-  ai: "المساعد الذكي",
-  payments: "الدفع الإلكتروني",
-  whatsapp: "واتساب",
-  shipping: "الشحن",
-  storage: "تخزين الوسائط",
-};
-
-const SUCCESS_TONE = "bg-success-soft text-success border-success-line";
-const INFO_TONE = "bg-info-soft text-info border-info-line";
-const NEUTRAL_TONE = "bg-surface text-subtle border-line";
-
-function integrationBadge(key: string, value: any): { text: string; tone: string } {
-  if (key === "storage") return { text: "تخزين محلي", tone: NEUTRAL_TONE };
-  if (key === "shipping") return { text: "شحن يدوي", tone: INFO_TONE };
-  if (key === "payments") {
-    return value?.selectable
-      ? { text: "مهيأ", tone: SUCCESS_TONE }
-      : { text: "غير متاح", tone: NEUTRAL_TONE };
-  }
-  if (key === "whatsapp") {
-    if (!value?.autoSendConfigured) return { text: "روابط يدوية", tone: INFO_TONE };
-    if (!value?.autoSendAvailable) return { text: "قالب مطلوب", tone: INFO_TONE };
-    return { text: "إرسال تلقائي", tone: SUCCESS_TONE };
-  }
-  return value?.configured
-    ? { text: "مهيأ", tone: SUCCESS_TONE }
-    : { text: "غير مهيأ", tone: NEUTRAL_TONE };
-}
-
 export function SettingsPage() {
-  const { subdomain } = useDashboard();
+  const { subdomain, storefrontLabel } = useDashboard();
   const { refresh, can, isOwner } = useSession();
   const toast = useToast();
   const [tab, setTab] = useState<TabKey>("general");
@@ -184,6 +149,7 @@ export function SettingsPage() {
   /* ---- general form ---- */
   const [form, setForm] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const saveInFlight = useRef(false);
 
   useEffect(() => {
     if (!data?.store || form) return;
@@ -199,13 +165,14 @@ export function SettingsPage() {
       seoDescription: s.seoDescription ?? "",
       whatsapp: s.whatsapp ?? "",
       codEnabled: Boolean(s.codEnabled),
-      onlinePaymentEnabled: Boolean(s.onlinePaymentEnabled && Boolean(data?.online_payments_available ?? data?.integrations?.payments?.selectable)),
+      onlinePaymentEnabled: Boolean(s.onlinePaymentEnabled && Boolean(data?.online_payments_available)),
       primaryLanguage: s.primaryLanguage === "en" ? "en" : "ar",
       timeZone: s.timeZone ?? "Africa/Cairo",
     });
   }, [data, form]);
 
   const saveGeneral = async () => {
+    if (saveInFlight.current) return;
     if (!form) return;
     if (!canWriteSettings) {
       toast.error("دورك الحالي لا يسمح بتعديل إعدادات المتجر.");
@@ -215,6 +182,7 @@ export function SettingsPage() {
       toast.error("اسم المتجر قصير جداً.");
       return;
     }
+    saveInFlight.current = true;
     setSaving(true);
     try {
       await api.settings.update(subdomain, {
@@ -234,6 +202,7 @@ export function SettingsPage() {
     } catch (err: any) {
       toast.error(safeError(err));
     } finally {
+      saveInFlight.current = false;
       setSaving(false);
     }
   };
@@ -298,6 +267,7 @@ export function SettingsPage() {
   };
 
   const verifyDomain = async (domain: any) => {
+    if (verifyingId) return;
     setVerifyingId(domain.id);
     try {
       const result = await api.settings.verifyDomain(subdomain, domain.id);
@@ -312,6 +282,7 @@ export function SettingsPage() {
   };
 
   const rotateDomainChallenge = async (domain: any) => {
+    if (rotatingId) return;
     setRotatingId(domain.id);
     try {
       const result = await api.settings.rotateDomainChallenge(subdomain, domain.id);
@@ -331,6 +302,8 @@ export function SettingsPage() {
   const [teamBusy, setTeamBusy] = useState(false);
   const [deletingMember, setDeletingMember] = useState<any | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [memberBusyId, setMemberBusyId] = useState<string | null>(null);
+  const [domainDeleteBusy, setDomainDeleteBusy] = useState(false);
   const [teamInvite, setTeamInvite] = useState<{
     url: string;
     email: string;
@@ -370,6 +343,8 @@ export function SettingsPage() {
   };
 
   const updateMember = async (member: any, body: Record<string, unknown>) => {
+    if (memberBusyId) return;
+    setMemberBusyId(member.id);
     try {
       const result = await api.settings.updateMember(subdomain, member.id, body);
       if (result.invite_url) {
@@ -385,6 +360,8 @@ export function SettingsPage() {
       reload();
     } catch (err: any) {
       toast.error(safeError(err));
+    } finally {
+      setMemberBusyId(null);
     }
   };
 
@@ -419,7 +396,6 @@ export function SettingsPage() {
 
   /* ---- two-factor authentication ---- */
   const twoFactorEnabled = Boolean(data?.merchant?.two_factor_enabled);
-  const emailVerified = Boolean(data?.merchant?.email_verified);
   const [twoFactorStart, setTwoFactorStart] = useState(false);
   const [twoFactorPassword, setTwoFactorPassword] = useState("");
   const [twoFactorSetup, setTwoFactorSetup] = useState<{ secret: string; otpauth_url: string } | null>(null);
@@ -494,11 +470,9 @@ export function SettingsPage() {
     }
   };
 
-  /* ---- sessions & email verification ---- */
+  /* ---- sessions ---- */
   const [revokeOpen, setRevokeOpen] = useState(false);
   const [revokeBusy, setRevokeBusy] = useState(false);
-  const [verificationBusy, setVerificationBusy] = useState(false);
-  const [debugVerifyToken, setDebugVerifyToken] = useState("");
 
   const revokeOtherSessions = async () => {
     setRevokeBusy(true);
@@ -510,30 +484,6 @@ export function SettingsPage() {
       toast.error(safeError(err));
     } finally {
       setRevokeBusy(false);
-    }
-  };
-
-  const resendVerification = async () => {
-    const email = data?.merchant?.email;
-    if (!email) return;
-    setVerificationBusy(true);
-    try {
-      const result = await api.resendVerification(email);
-      if (result.already_verified) {
-        toast.success("بريدك مؤكد بالفعل.");
-      } else if (result.sent) {
-        toast.success("تم إرسال رابط التحقق إلى بريدك.");
-      } else if (!result.email_configured) {
-        toast.error("إرسال البريد غير مهيأ على الخادم، لذا لم يُرسل رابط فعلي.");
-      } else {
-        toast.error("تعذر إرسال البريد حالياً. حاول لاحقاً.");
-      }
-      setDebugVerifyToken(result.debug_token || "");
-      if (result.already_verified) reload();
-    } catch (err: any) {
-      toast.error(safeError(err));
-    } finally {
-      setVerificationBusy(false);
     }
   };
 
@@ -554,8 +504,7 @@ export function SettingsPage() {
     }
   };
 
-  const integrations = data?.integrations ?? {};
-  const onlinePaymentsAvailable = Boolean(data?.online_payments_available ?? integrations.payments?.selectable);
+  const onlinePaymentsAvailable = Boolean(data?.online_payments_available);
 
   return (
     <div className="space-y-5">
@@ -662,7 +611,12 @@ export function SettingsPage() {
               {data?.store?.status === "rejected" || data?.store?.status === "suspended" ? (
                 <div className="mt-3">
                   <Alert tone="error" title="الاعتماد يمنع النشر">
-                    لا يمكن نشر متجر مرفوض أو موقوف. تواصل مع إدارة سند لحل الحالة أولاً.
+                    <div className="space-y-1.5">
+                      {data.store.statusReason ? (
+                        <p className="font-semibold">ملاحظة الإدارة: {data.store.statusReason}</p>
+                      ) : null}
+                      <p>لا يمكن نشر متجر مرفوض أو موقوف. تواصل مع إدارة سند لحل الحالة أولاً.</p>
+                    </div>
                   </Alert>
                 </div>
               ) : null}
@@ -681,7 +635,7 @@ export function SettingsPage() {
                   <Input value={form.storeName} disabled />
                 </Field>
                 <Field label="رابط المتجر" hint="النطاق الفرعي لا يتغير من هنا للحفاظ على الروابط المنشورة.">
-                  <Input value={`/store/${subdomain}`} disabled dir="ltr" className="font-mono" />
+                  <Input value={storefrontLabel} disabled dir="ltr" className="font-mono" />
                 </Field>
                 <Field label="وصف المتجر" hint="يُعدَّل عبر إدارة سند فقط." className="sm:col-span-2">
                   <Textarea rows={3} value={form.description} disabled />
@@ -794,29 +748,6 @@ export function SettingsPage() {
                 <div className="flex justify-between"><span>الطلبات</span><span className="font-semibold text-ink">{number(data?.usage?.orders ?? 0)}</span></div>
                 <div className="flex justify-between"><span>العملاء</span><span className="font-semibold text-ink">{number(data?.usage?.customers ?? 0)}</span></div>
                 <div className="flex justify-between"><span>أعضاء الفريق</span><span className="font-semibold text-ink">{number((data?.team ?? []).length)}</span></div>
-              </div>
-            </Card>
-
-            <Card className="p-4">
-              <div className="mb-3 text-xs font-bold text-ink">حالة التكاملات</div>
-              <div className="space-y-2 text-[11px]">
-                {Object.entries(integrations).map(([key, value]: [string, any]) => {
-                  const badge = integrationBadge(key, value);
-                  return (
-                    <div key={key} className="rounded-brand-sm border border-line bg-surface px-2.5 py-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-subtle">{INTEGRATION_LABELS[key] ?? key}</span>
-                        <Badge tone={badge.tone}>{badge.text}</Badge>
-                      </div>
-                      {value?.reason ? (
-                        <p className="mt-1 text-[10px] leading-5 text-subtle">{value.reason}</p>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="mt-3 text-[10px] leading-5 text-subtle">
-                التكاملات غير المهيأة تعمل بوضع يدوي بشفافية، ولن ندّعي إرسالاً أو ربطاً لم يحدث فعلاً.
               </div>
             </Card>
 
@@ -1017,6 +948,7 @@ export function SettingsPage() {
                         <Select
                           value={member.role}
                           onChange={(e) => updateMember(member, { role: e.target.value })}
+                          disabled={memberBusyId === member.id}
                           className="h-8 w-32 text-[11px]"
                           aria-label="الدور"
                         >
@@ -1027,6 +959,7 @@ export function SettingsPage() {
                         <Select
                           value={member.status}
                           onChange={(e) => updateMember(member, { status: e.target.value })}
+                          disabled={memberBusyId === member.id}
                           className="h-8 w-28 text-[11px]"
                           aria-label="الحالة"
                         >
@@ -1167,48 +1100,17 @@ export function SettingsPage() {
 
           <Card className="p-4 lg:col-span-2">
             <div className="mb-3 flex items-center gap-1.5 text-xs font-bold text-ink">
-              <ShieldCheck className="h-3.5 w-3.5 text-brand" /> الجلسات والبريد
+              <ShieldCheck className="h-3.5 w-3.5 text-brand" /> الجلسات
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-brand border border-line bg-surface p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-ink">
-                    <MailCheck className="h-3.5 w-3.5 text-subtle" /> البريد الإلكتروني
-                  </div>
-                  <Badge tone={emailVerified ? "bg-success-soft text-success border-success-line" : "bg-warning-soft text-warning border-warning-line"}>
-                    {emailVerified ? "مؤكد" : "بانتظار التأكيد"}
-                  </Badge>
-                </div>
-                <div className="mt-2 text-[11px] text-subtle" dir="ltr">{data?.merchant?.email || "—"}</div>
-                {!emailVerified ? (
-                  <div className="mt-3 space-y-2">
-                    <Button variant="outline" size="sm" loading={verificationBusy} onClick={resendVerification}>
-                      إعادة إرسال رابط التحقق
-                    </Button>
-                    {debugVerifyToken ? (
-                      <div className="text-[10px] leading-5 text-warning">
-                        بيئة تطوير فقط —{" "}
-                        <Link href={`/auth/verify-email?token=${encodeURIComponent(debugVerifyToken)}`} className="underline">
-                          افتح رابط التحقق
-                        </Link>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : (
-                  <div className="mt-2 text-[10px] leading-5 text-subtle">تم تأكيد ملكية هذا البريد.</div>
-                )}
+            <div className="rounded-brand border border-line bg-surface p-3">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-ink">
+                <Shield className="h-3.5 w-3.5 text-subtle" /> الجلسات النشطة
               </div>
-
-              <div className="rounded-brand border border-line bg-surface p-3">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-ink">
-                  <Shield className="h-3.5 w-3.5 text-subtle" /> الجلسات النشطة
-                </div>
-                <p className="mt-2 text-[10px] leading-5 text-subtle">
-                  إنهاء كل الجلسات الأخرى يحمي حسابك إذا استخدمت جهازاً مشتركاً أو شككت في تسريب كلمة المرور. تبقى جلستك الحالية نشطة.
-                </p>
-                <div className="mt-3">
-                  <Button variant="outline" size="sm" onClick={() => setRevokeOpen(true)}>إنهاء الجلسات الأخرى</Button>
-                </div>
+              <p className="mt-2 text-[10px] leading-5 text-subtle">
+                إنهاء كل الجلسات الأخرى يحمي حسابك إذا استخدمت جهازاً مشتركاً أو شككت في تسريب كلمة المرور. تبقى جلستك الحالية نشطة.
+              </p>
+              <div className="mt-3">
+                <Button variant="outline" size="sm" onClick={() => setRevokeOpen(true)}>إنهاء الجلسات الأخرى</Button>
               </div>
             </div>
           </Card>
@@ -1226,12 +1128,7 @@ export function SettingsPage() {
             </div>
           </Card>
         </div>
-      ) : (
-        <Card className="overflow-hidden">
-          <div className="border-b border-line px-4 py-3 text-xs font-bold text-ink">آخر أنشطة المتجر (سجل تدقيق)</div>
-          <AuditLogs subdomain={subdomain} />
-        </Card>
-      )}
+      ) : null}
 
       {/* publish / unpublish */}
       <Modal
@@ -1392,15 +1289,17 @@ export function SettingsPage() {
         title="حذف النطاق"
         description={deletingDomain ? `سيتم فصل النطاق ${deletingDomain.domain}.` : undefined}
         confirmLabel="فصل النطاق"
-        loading={false}
+        loading={domainDeleteBusy}
         onConfirm={async () => {
-          if (!deletingDomain) return;
+          if (!deletingDomain || domainDeleteBusy) return;
+          setDomainDeleteBusy(true);
           try {
             await api.settings.removeDomain(subdomain, deletingDomain.id);
             toast.success("تم فصل النطاق.");
           } catch (err: any) {
             toast.error(safeError(err));
           } finally {
+            setDomainDeleteBusy(false);
             setDeletingDomain(null);
             reload();
           }
@@ -1431,52 +1330,5 @@ export function SettingsPage() {
         onClose={() => setDeletingMember(null)}
       />
     </div>
-  );
-}
-
-function AuditLogs({ subdomain }: { subdomain: string }) {
-  const { data, loading, error, reload } = useAsync(() => api.settings.auditLogs(subdomain, 60), [subdomain]);
-  const logs = data?.logs ?? [];
-
-  if (loading && !data) {
-    return <div className="space-y-2 p-4">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10" />)}</div>;
-  }
-  if (error && !data) {
-    return <div className="p-4"><Alert tone="error" title="تعذر تحميل سجل التدقيق">تعذر جلب النشاط الآن. حاول مرة أخرى.<Button size="sm" variant="outline" className="ms-3" onClick={() => void reload()}>إعادة المحاولة</Button></Alert></div>;
-  }
-  if (logs.length === 0) {
-    return <EmptyState title="لا يوجد نشاط مسجّل" description="ستظهر هنا كل العمليات المهمة على المتجر مثل تعديل المنتجات والطلبات والإعدادات." icon={<ScrollText className="h-5 w-5" />} />;
-  }
-  return (
-    <TableShell minWidth={720}>
-      <thead>
-        <tr className="border-b border-line">
-          <Th>التاريخ</Th>
-          <Th>العملية</Th>
-          <Th>الكيان</Th>
-          <Th>بواسطة</Th>
-        </tr>
-      </thead>
-      <tbody>
-        {logs.map((log: any) => (
-          <tr key={log.id} className="border-b border-line">
-            <Td><span className="text-[11px] text-subtle">{dateTime(log.createdAt)}</span></Td>
-            <Td><Badge tone="bg-surface text-ink-soft border-line">{log.action}</Badge></Td>
-            <Td><span className="font-mono text-[10px] text-subtle" dir="ltr">{log.entity || "—"}</span></Td>
-            <Td>
-              <div className="text-[11px] text-ink">
-                {log.actor?.name || log.merchant?.name || log.merchant?.email || "—"}
-              </div>
-              <div className="font-mono text-[10px] text-subtle" dir="ltr">
-                {log.actor?.email || log.merchant?.email || ""}
-              </div>
-              <div className="mt-0.5 text-[10px] text-subtle">
-                {log.actorType === "team_member" ? "عضو فريق" : log.actorType === "platform_admin" ? "إدارة سند" : "مالك المتجر"}
-              </div>
-            </Td>
-          </tr>
-        ))}
-      </tbody>
-    </TableShell>
   );
 }

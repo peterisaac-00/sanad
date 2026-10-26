@@ -22,10 +22,85 @@ import { paymentService, whatsappLink } from "../services/integrations.js";
 import { createTrackingToken, trackingUrl, verifyTrackingToken } from "../services/tracking.js";
 import { normalizePhone } from "../identity.js";
 import { maskPhone } from "../privacy.js";
-import { env } from "../env.js";
 import { isPublished } from "../services/publishing.js";
+import { storefrontOrigin } from "../services/domains.js";
 
 export const storefrontRouter = Router();
+
+/**
+ * Public checkout must never serialize the Prisma row directly. The row
+ * contains internal ids (store/customer/idempotency), customer contact and
+ * address details, staff notes, source flags and stock-restoration state.
+ * Return an explicit allowlist that only contains what the confirmation page
+ * needs.
+ */
+function publicCheckoutOrder(order: {
+  orderNumber: number;
+  status: string;
+  paymentStatus: string;
+  amountText: string;
+  amountEgp: number;
+  subtotal: number;
+  discount: number;
+  shippingFee: number;
+  couponCode: string;
+  paymentMethod: string;
+  customerName: string;
+  createdAt: Date;
+  items: Array<{
+    sku: string;
+    name: string;
+    qty: number;
+    unitPriceEgp: number;
+    imageUrl: string;
+    variantLabel: string;
+  }>;
+}) {
+  return {
+    orderNumber: order.orderNumber,
+    status: order.status,
+    paymentStatus: order.paymentStatus,
+    amountText: order.amountText,
+    amountEgp: order.amountEgp,
+    subtotal: order.subtotal,
+    discount: order.discount,
+    shippingFee: order.shippingFee,
+    couponCode: order.couponCode,
+    paymentMethod: order.paymentMethod,
+    customerName: order.customerName,
+    createdAt: order.createdAt,
+    items: order.items.map((item) => ({
+      sku: item.sku,
+      name: item.name,
+      qty: item.qty,
+      unitPriceEgp: item.unitPriceEgp,
+      imageUrl: item.imageUrl,
+      variantLabel: item.variantLabel,
+    })),
+  };
+}
+
+function publicShippingQuote(quote: {
+  zoneName: string;
+  fee: number;
+  codFee: number;
+  total: number;
+  estimatedDaysMin: number;
+  estimatedDaysMax: number;
+  carrier: string;
+  freeShippingApplied: boolean;
+}) {
+  return {
+    zoneName: quote.zoneName,
+    fee: quote.fee,
+    codFee: quote.codFee,
+    total: quote.total,
+    estimatedDaysMin: quote.estimatedDaysMin,
+    estimatedDaysMax: quote.estimatedDaysMax,
+    carrier: quote.carrier,
+    freeShippingApplied: quote.freeShippingApplied,
+  };
+}
 
 const productListQuery = z.strictObject({
   page: z.coerce.number().int().min(1).default(1),
@@ -180,9 +255,7 @@ function storefrontSettings(store: {
   supportEmail: string;
   returnPolicy: string;
 }) {
-  const canonicalUrl = store.customDomain
-    ? `https://${store.customDomain}`
-    : `${env.appUrl}/store/${encodeURIComponent(store.subdomain)}`;
+  const canonicalUrl = storefrontOrigin(store);
   return {
     id: store.id,
     store_name: store.storeName,
@@ -760,9 +833,12 @@ storefrontRouter.post(
       body: req.body,
       idempotencyKey: rawKey || undefined,
     });
+    if (!result.order) {
+      throw new ApiError(500, "CHECKOUT_ORDER_MISSING", "The order could not be loaded after creation.");
+    }
     res.status(201).json({
-      order: result.order,
-      shipping: result.shipping,
+      order: publicCheckoutOrder(result.order),
+      shipping: publicShippingQuote(result.shipping),
       whatsapp_url: result.whatsapp_url,
       tracking_token: result.tracking_token,
       tracking_url: result.tracking_url,

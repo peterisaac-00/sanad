@@ -39,7 +39,7 @@ reportsRouter.get(
     const [orders, products, customers, carts, coupons, affiliates, expenses] = await prisma.$transaction([
       prisma.order.findMany({
         where: { storeId, createdAt: range },
-        include: { items: true },
+        include: { items: true, refunds: { where: { status: "processed" }, select: { amount: true } } },
         orderBy: { createdAt: "asc" },
       }),
       prisma.product.count({ where: { storeId } }),
@@ -69,36 +69,56 @@ reportsRouter.get(
     ]);
 
     const valid = orders.filter((o) => !EXCLUDED_REVENUE_STATUSES.includes(o.status as (typeof EXCLUDED_REVENUE_STATUSES)[number]));
-    const revenue = valid.reduce((s, o) => s + o.amountEgp, 0);
-    const buckets = new Map<string, { revenue: number; orders: number; discounts: number }>();
+    const refundedAmount = (order: { amountEgp: number; refunds: Array<{ amount: number }> }) =>
+      Math.min(order.amountEgp, order.refunds.reduce((sum, refund) => sum + refund.amount, 0));
+    const grossRevenue = valid.reduce((s, o) => s + o.amountEgp, 0);
+    const refunds = valid.reduce((s, o) => s + refundedAmount(o), 0);
+    const revenue = Math.round((grossRevenue - refunds) * 100) / 100;
+    const buckets = new Map<string, { grossRevenue: number; refunds: number; revenue: number; orders: number; discounts: number }>();
     for (const order of orders) {
       const key = bucketKey(order.createdAt, groupBy);
-      const entry = buckets.get(key) ?? { revenue: 0, orders: 0, discounts: 0 };
+      const entry = buckets.get(key) ?? { grossRevenue: 0, refunds: 0, revenue: 0, orders: 0, discounts: 0 };
       entry.orders += 1;
       if (!EXCLUDED_REVENUE_STATUSES.includes(order.status as (typeof EXCLUDED_REVENUE_STATUSES)[number])) {
-        entry.revenue += order.amountEgp;
+        const refunded = refundedAmount(order);
+        entry.grossRevenue += order.amountEgp;
+        entry.refunds += refunded;
+        entry.revenue += order.amountEgp - refunded;
         entry.discounts += order.discount;
       }
       buckets.set(key, entry);
     }
-    const productMap = new Map<string, { name: string; qty: number; revenue: number }>();
+    const productMap = new Map<string, { name: string; qty: number; grossRevenue: number; revenue: number }>();
     for (const order of valid) {
+      // Attribute the order's processed refund to its products proportionally.
+      // This keeps top-product revenue consistent with the net total instead of
+      // silently reporting pre-refund merchandise revenue.
+      const refundRatio = order.amountEgp > 0 ? Math.min(1, refundedAmount(order) / order.amountEgp) : 0;
       for (const item of order.items) {
         const key = item.productId ?? item.sku;
-        const row = productMap.get(key) ?? { name: item.name || item.sku, qty: 0, revenue: 0 };
+        const row = productMap.get(key) ?? { name: item.name || item.sku, qty: 0, grossRevenue: 0, revenue: 0 };
         row.qty += item.qty;
-        row.revenue += item.qty * item.unitPriceEgp;
+        const gross = item.qty * item.unitPriceEgp;
+        row.grossRevenue += gross;
+        row.revenue += gross * (1 - refundRatio);
         productMap.set(key, row);
       }
     }
-    const topProducts = [...productMap.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+    const topProducts = [...productMap.values()]
+      .map((row) => ({
+        ...row,
+        grossRevenue: Math.round(row.grossRevenue * 100) / 100,
+        revenue: Math.round(row.revenue * 100) / 100,
+      }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
     const customerMap = new Map<string, { name: string; phone: string; orders: number; revenue: number }>();
     for (const order of valid) {
       const key = order.customerPhone || order.customerName;
       if (!key) continue;
       const row = customerMap.get(key) ?? { name: order.customerName, phone: order.customerPhone, orders: 0, revenue: 0 };
       row.orders += 1;
-      row.revenue += order.amountEgp;
+      row.revenue += order.amountEgp - refundedAmount(order);
       customerMap.set(key, row);
     }
     const topCustomers = [...customerMap.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 10);
@@ -113,6 +133,8 @@ reportsRouter.get(
       totals: {
         orders: orders.length,
         validOrders: valid.length,
+        grossRevenue: Math.round(grossRevenue * 100) / 100,
+        refunds: Math.round(refunds * 100) / 100,
         revenue,
         averageOrderValue: valid.length ? Math.round(revenue / valid.length) : 0,
         discounts: valid.reduce((s, o) => s + o.discount, 0),
@@ -126,14 +148,14 @@ reportsRouter.get(
         couponDiscounts: coupons.reduce((s, c) => s + c.discount, 0),
         affiliateCommission: affiliates.reduce((s, a) => s + a.commissionAmount, 0),
         completedExpenses: expenses._sum.amount ?? 0,
-        estimatedNet: Math.round(revenue - (expenses._sum.amount ?? 0)),
+        estimatedNet: Math.round((revenue - (expenses._sum.amount ?? 0)) * 100) / 100,
       },
       series: [...buckets.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([period, value]) => ({ period, ...value })),
       orders_by_status: statuses,
       orders_by_payment_status: payments,
       top_products: topProducts,
       top_customers: topCustomers,
-      note: "صافي الربح تقديري: الإيرادات ناقص المصروفات المسجلة في المحفظة فقط. لا تشمل تكلفة البضاعة إلا إذا سجلتها.",
+      note: "الإيرادات صافية بعد المبالغ المستردة المعالجة. صافي الربح تقديري: الإيرادات ناقص المصروفات المسجلة في المحفظة فقط. لا تشمل تكلفة البضاعة إلا إذا سجلتها.",
     });
   })
 );

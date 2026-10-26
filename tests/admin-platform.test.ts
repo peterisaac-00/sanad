@@ -135,7 +135,16 @@ describe("store approval lifecycle", () => {
     expect(row.status).toBe("rejected");
     expect(row.publishStatus).toBe("draft");
     expect(row.publishReason).toContain("رفض");
+    expect(row.statusReason).toBe("الهوية غير مكتملة");
     await request(app).get(publicBase).expect(404);
+
+    // The rejection must reach the merchant dashboard as an unread bell
+    // notification, with the admin note preserved in the body.
+    const inbox = await merchant.agent.get(`/api/stores/${merchant.subdomain}/notifications`).expect(200);
+    expect(inbox.body.unread).toBeGreaterThan(0);
+    const rejection = inbox.body.notifications.find((item: any) => item.type === "approval");
+    expect(rejection?.title).toBe("طلب فتح المتجر يحتاج تعديلاً");
+    expect(rejection?.body).toBe("الهوية غير مكتملة");
 
     await admin.agent
       .post(`/api/admin/stores/${merchant.store.id}/approve`)

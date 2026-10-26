@@ -29,7 +29,7 @@ import { StatusBadge, TableShell, Td, Th } from "../common";
 const enc = encodeURIComponent;
 
 export function CustomersPage() {
-  const { subdomain, store } = useDashboard();
+  const { subdomain, store, storefrontUrl } = useDashboard();
   const toast = useToast();
   const query = useQuery();
   const [page, setPage] = useState(1);
@@ -106,7 +106,7 @@ export function CustomersPage() {
             title="لا يوجد عملاء بعد"
             description="أول طلب من متجرك يُنشئ ملف العميل تلقائياً مع بياناته وعناوينه."
             icon={<Users className="h-5 w-5" />}
-            action={<Link href={`/store/${subdomain}`} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-brand">فتح المتجر ←</Link>}
+            action={<Link href={storefrontUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-brand">فتح المتجر ←</Link>}
           />
         ) : (
           <>

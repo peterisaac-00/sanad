@@ -3,13 +3,32 @@ import { prisma, newId } from "../db.js";
 import { ApiError } from "../errors.js";
 import { allocateOrderNumber } from "./orders.js";
 import { paymentService, whatsappLink } from "./integrations.js";
-import { canonicalAddressKey, customerIdentity, normalizePhone } from "../identity.js";
+import { canonicalAddressKey, normalizePhone } from "../identity.js";
 import { createTrackingToken, trackingUrl } from "./tracking.js";
 
 export interface CheckoutItemInput {
   sku?: string;
   variantId?: string;
+  /** Accepted as an alias for older storefront clients; normalized below. */
+  variant_id?: string;
   qty: number;
+}
+
+export interface CheckoutRequestBody {
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string;
+  address: string;
+  city: string;
+  governorate: string;
+  payment_method: string;
+  courier: string;
+  coupon_code: string;
+  shipping_zone_id: string;
+  affiliate_code: string;
+  cart_token: string;
+  notes: string;
+  items: CheckoutItemInput[];
 }
 
 export interface ResolvedLine {
@@ -87,6 +106,7 @@ export async function resolveCheckoutLines(input: {
     prisma.product.findMany({
       where: {
         storeId: input.storeId,
+        status: "active",
         ...(skus.length ? { sku: { in: skus } } : { id: "__none__" }),
       },
       include: { images: { orderBy: { sortOrder: "asc" }, take: 1 }, variants: true },
@@ -94,6 +114,7 @@ export async function resolveCheckoutLines(input: {
     prisma.productVariant.findMany({
       where: {
         storeId: input.storeId,
+        product: { status: "active" },
         ...(variantIds.length ? { id: { in: variantIds } } : { id: "__none__" }),
       },
       include: { product: { include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } } } },
@@ -114,7 +135,9 @@ export async function resolveCheckoutLines(input: {
   for (const item of items) {
     if (item.variantId) {
       const variant = byVariant.get(item.variantId)!;
-      if (!variant.isActive) throw new ApiError(400, "UNKNOWN_SKU", `Unknown product(s): ${item.variantId}.`);
+      if (!variant.isActive || variant.product.status !== "active") {
+        throw new ApiError(400, "UNKNOWN_SKU", `Unknown product(s): ${item.variantId}.`);
+      }
       if (variant.stock < item.qty) short.push(variant.sku);
       const unit =
         variant.price > 0
@@ -282,6 +305,17 @@ export async function quoteShipping(
   }
   if (!zone) zone = zones.find((z) => z.isFallback);
   if (!zone) {
+    // A store that has configured shipping must never silently fall back to
+    // zero fees because an address did not match a zone. Stores with no zones
+    // at all retain the explicit free-shipping baseline (documented in the
+    // launch policy); configuring a zero-fee fallback zone is preferred.
+    if (zones.length > 0) {
+      throw new ApiError(
+        409,
+        "SHIPPING_ZONE_UNAVAILABLE",
+        "لا توجد منطقة شحن مطابقة لهذا العنوان. اختر محافظة أخرى أو تواصل مع المتجر."
+      );
+    }
     return {
       zoneId: null,
       zoneName: "",
@@ -352,6 +386,87 @@ function shippingFromStoredOrder(order: {
   };
 }
 
+function normalizeCheckoutItems(items: CheckoutItemInput[]): CheckoutItemInput[] {
+  return mergeItems(
+    items.map((item) => ({
+      ...item,
+      variantId: item.variantId ?? item.variant_id,
+    }))
+  );
+}
+
+/**
+ * An idempotency key identifies one immutable request. Returning the first
+ * order for a different cart would let a client accidentally attach a new
+ * checkout to an old order (or hide a modified cart). Compare the fields that
+ * can change the order before replaying.
+ */
+function checkoutRequestMatches(
+  existing: {
+    customerName: string;
+    customerPhone: string;
+    customerEmail: string;
+    address: string;
+    city: string;
+    governorate: string;
+    paymentMethod: string;
+    couponCode: string;
+    shippingZoneId: string | null;
+    notes: string;
+    items: Array<{ sku: string; variantId: string | null; qty: number }>;
+  },
+  body: CheckoutRequestBody,
+  items: CheckoutItemInput[]
+): boolean {
+  const requested = new Map(
+    items.map((item) => [item.variantId ? `v:${item.variantId}` : `s:${item.sku}`, item.qty])
+  );
+  if (existing.items.length !== requested.size) return false;
+  for (const item of existing.items) {
+    const key = item.variantId ? `v:${item.variantId}` : `s:${item.sku}`;
+    if (requested.get(key) !== item.qty) return false;
+  }
+
+  return (
+    existing.customerName === body.customer_name.trim() &&
+    existing.customerPhone === normalizePhone(body.customer_phone) &&
+    existing.customerEmail === body.customer_email.trim().toLowerCase() &&
+    existing.address === body.address.trim() &&
+    existing.city === body.city.trim() &&
+    existing.governorate === body.governorate.trim() &&
+    existing.paymentMethod === body.payment_method.trim() &&
+    existing.couponCode === body.coupon_code.trim().toUpperCase() &&
+    (!body.shipping_zone_id || existing.shippingZoneId === body.shipping_zone_id) &&
+    existing.notes === body.notes.trim()
+  );
+}
+
+function assertIdempotencyMatch(
+  existing: {
+    customerName: string;
+    customerPhone: string;
+    customerEmail: string;
+    address: string;
+    city: string;
+    governorate: string;
+    paymentMethod: string;
+    couponCode: string;
+    shippingZoneId: string | null;
+    notes: string;
+    items: Array<{ sku: string; variantId: string | null; qty: number }>;
+  },
+  body: CheckoutRequestBody,
+  items: CheckoutItemInput[]
+): void {
+  if (!checkoutRequestMatches(existing, body, items)) {
+    throw new ApiError(
+      409,
+      "IDEMPOTENCY_KEY_REUSED",
+      "This idempotency key was already used for a different checkout. Start a new checkout."
+    );
+  }
+}
+
 export async function createCheckout(input: {
   storeId: string;
   store: {
@@ -362,35 +477,23 @@ export async function createCheckout(input: {
     whatsapp: string;
   };
   idempotencyKey?: string;
-  body: {
-    customer_name: string;
-    customer_phone: string;
-    customer_email: string;
-    address: string;
-    city: string;
-    governorate: string;
-    payment_method: string;
-    courier: string;
-    coupon_code: string;
-    shipping_zone_id: string;
-    affiliate_code: string;
-    cart_token: string;
-    notes: string;
-    items: CheckoutItemInput[];
-  };
+  body: CheckoutRequestBody;
 }) {
   const body = input.body;
   const idempotencyKey = input.idempotencyKey?.trim() || undefined;
+  const checkoutItems = normalizeCheckoutItems(body.items);
 
   // A client that retries after a timeout must receive the original order
   // rather than a duplicate. The unique index is the final race guard; this
-  // fast path avoids re-resolving stock for the common retry case.
+  // fast path avoids re-resolving stock for the common retry case. The replay
+  // is accepted only when it describes the same immutable checkout request.
   if (idempotencyKey) {
     const existing = await prisma.order.findFirst({
       where: { storeId: input.storeId, idempotencyKey },
       include: { items: true, payments: true },
     });
     if (existing) {
+      assertIdempotencyMatch(existing, body, checkoutItems);
       return {
         order: existing,
         shipping: shippingFromStoredOrder(existing),
@@ -400,7 +503,7 @@ export async function createCheckout(input: {
     }
   }
 
-  const lines = await resolveCheckoutLines({ storeId: input.storeId, currency: input.store.currency, items: body.items });
+  const lines = await resolveCheckoutLines({ storeId: input.storeId, currency: input.store.currency, items: checkoutItems });
   const subtotal = Math.round(lines.reduce((s, l) => s + l.qty * l.unitPrice, 0) * 100) / 100;
 
   const productIds = [...new Set(lines.map((l) => l.productId))];
@@ -425,16 +528,20 @@ export async function createCheckout(input: {
 
   const phone = normalizePhone(body.customer_phone);
   const email = body.customer_email.trim().toLowerCase();
-  const identity = customerIdentity({ phone, email });
   const orderNumber = await allocateOrderNumber(input.storeId);
   let shippingForResponse: ShippingQuote | null = null;
 
   let order;
   try {
     order = await prisma.$transaction(async (tx) => {
-      // Serialise concurrent checkout attempts for the same shopper so
-      // customer rows and per-customer coupon limits cannot race.
-      if (identity) await advisoryLock(tx, `customer:${input.storeId}:${identity}`);
+      // Serialise concurrent checkout attempts that share either identifier.
+      // Taking both locks in sorted order avoids deadlocks when two requests
+      // carry the same phone and email in opposite field order.
+      const identityLocks = [
+        phone ? `customer:${input.storeId}:phone:${phone}` : "",
+        email ? `customer:${input.storeId}:email:${email}` : "",
+      ].filter(Boolean).sort();
+      for (const lock of identityLocks) await advisoryLock(tx, lock);
 
       let coupon: CouponResult | null = null;
       if (body.coupon_code) {
@@ -474,33 +581,45 @@ export async function createCheckout(input: {
         },
         tx
       );
-      shippingForResponse = shipping;
+      // A free-shipping coupon must be reflected in the public shipping quote,
+      // not only in the persisted order total.
+      shippingForResponse = coupon?.freeShipping
+        ? { ...shipping, fee: 0, codFee: 0, total: 0, freeShippingApplied: true }
+        : shipping;
       const shippingFee = coupon?.freeShipping ? 0 : shipping.fee;
       const codFee = coupon?.freeShipping ? 0 : shipping.codFee;
       const total = Math.round((subtotal - (coupon?.discount ?? 0) + shippingFee + codFee) * 100) / 100;
 
       let customerId: string | null = null;
       if (phone || email) {
-        const identityFilters: Prisma.CustomerWhereInput[] = [];
-        if (phone) identityFilters.push({ phone });
-        if (email) identityFilters.push({ email });
-        const existing = await tx.customer.findFirst({
-          where: { storeId: input.storeId, OR: identityFilters },
-        });
+        // Identity policy: phone is the primary key, email is secondary.
+        // If the two identifiers resolve to different existing customers we
+        // never merge those rows. We attach the order to the phone match and
+        // leave the other customer's email untouched. This deliberately avoids
+        // combining two people merely because a shared/late email was entered.
+        const phoneMatch = phone
+          ? await tx.customer.findFirst({ where: { storeId: input.storeId, phone } })
+          : null;
+        const emailMatch = email
+          ? await tx.customer.findFirst({ where: { storeId: input.storeId, email } })
+          : null;
+        const existing = phoneMatch ?? emailMatch;
+        const emailOwnedByAnother = Boolean(emailMatch && emailMatch.id !== existing?.id);
+        const phoneOwnedByAnother = Boolean(phoneMatch && phoneMatch.id !== existing?.id);
         const customer = existing
           ? await tx.customer.update({
               where: { id: existing.id },
               data: {
-                name: body.customer_name || existing.name,
-                ...(email && !existing.email ? { email } : {}),
-                ...(phone && !existing.phone ? { phone } : {}),
+                name: body.customer_name.trim() || existing.name,
+                ...(email && !existing.email && !emailOwnedByAnother ? { email } : {}),
+                ...(phone && !existing.phone && !phoneOwnedByAnother ? { phone } : {}),
               },
             })
           : await tx.customer.create({
               data: {
                 id: newId("cus_"),
                 storeId: input.storeId,
-                name: body.customer_name,
+                name: body.customer_name.trim(),
                 phone,
                 email,
               },
@@ -677,6 +796,7 @@ export async function createCheckout(input: {
         include: { items: true, payments: true },
       });
       if (existing) {
+        assertIdempotencyMatch(existing, body, checkoutItems);
         return {
           order: existing,
           shipping: shippingFromStoredOrder(existing),

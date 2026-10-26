@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Image as ImageIcon, Package, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { api, mediaUrl } from "../../lib/api";
 import { date, money, number, safeError } from "../../lib/format";
@@ -101,7 +101,7 @@ function num(value: string): number {
 }
 
 export function ProductsPage() {
-  const { subdomain, store } = useDashboard();
+  const { subdomain, store, storefrontUrl } = useDashboard();
   const examples = getBusinessExamples(store?.businessType);
   const toast = useToast();
   const [page, setPage] = useState(1);
@@ -323,6 +323,7 @@ function ProductEditor({
   const toast = useToast();
   const [tab, setTab] = useState<"basic" | "images" | "variants" | "seo">("basic");
   const [busy, setBusy] = useState(false);
+  const saveInFlight = useRef(false);
   const [draft, setDraft] = useState<ProductDraft>(emptyDraft);
   const [images, setImages] = useState<string[]>([]);
   const [options, setOptions] = useState<OptionDraft[]>([]);
@@ -441,6 +442,7 @@ function ProductEditor({
   };
 
   const save = async () => {
+    if (saveInFlight.current) return;
     if (!draft.sku.trim()) {
       setTab("basic");
       toast.error("SKU مطلوب لكل منتج.");
@@ -458,6 +460,7 @@ function ProductEditor({
       return;
     }
     setBusy(true);
+    saveInFlight.current = true;
     try {
       if (product) await api.products.update(subdomain, product.id, buildBody());
       else await api.products.create(subdomain, buildBody() as any);
@@ -467,6 +470,7 @@ function ProductEditor({
       const details = Array.isArray(err?.details) ? err.details.map((d: any) => d.path).filter(Boolean).join("، ") : "";
       toast.error(details ? `${safeError(err)} (${details})` : safeError(err));
     } finally {
+      saveInFlight.current = false;
       setBusy(false);
     }
   };
@@ -761,7 +765,7 @@ function ProductEditor({
           </Field>
           {product ? (
             <div className="sm:col-span-2">
-              <Link href={`/store/${subdomain}/products/${product.slug}`} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-brand">
+              <Link href={`${storefrontUrl}/products/${encodeURIComponent(product.slug)}`} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-brand">
                 عرض المنتج في المتجر ←
               </Link>
             </div>

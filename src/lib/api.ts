@@ -46,7 +46,16 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (res.status === 204) return {} as T;
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw parseError(res.status, data);
+  if (!res.ok) {
+    const error = parseError(res.status, data);
+    // UNAUTHENTICATED means the session expired. A 401 with
+    // INVALID_CREDENTIALS is a failed login or a wrong current-password check,
+    // so it must not clear an otherwise valid session.
+    if (res.status === 401 && error.code === "UNAUTHENTICATED" && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("sanad:unauthorized", { detail: { path, code: error.code } }));
+    }
+    throw error;
+  }
   return data as T;
 }
 
@@ -96,7 +105,7 @@ export interface SessionPayload {
 
 export interface SitePayload {
   host: string;
-  mode: "platform" | "custom_domain";
+  mode: "platform" | "platform_subdomain" | "custom_domain" | "unknown";
   custom_domain: boolean;
   canonical_url: string;
   store: {
@@ -116,6 +125,7 @@ export interface AdminPayload {
   name: string;
   role: "super_admin" | "operations" | "finance" | "support" | "readonly";
   permissions: string[];
+  must_change_credentials?: boolean;
   two_factor_enabled?: boolean;
   last_login_at?: string | null;
 }
@@ -789,6 +799,11 @@ export const api = {
           method: "POST",
           body: JSON.stringify({ currentPassword, newPassword }),
         }),
+      setInitialCredentials: (email: string, currentPassword: string, newPassword: string) =>
+        req<{ admin: AdminPayload; scope: "platform"; revoked_sessions: number }>("/api/admin/auth/credentials", {
+          method: "POST",
+          body: JSON.stringify({ email, currentPassword, newPassword }),
+        }),
       revokeOtherSessions: () =>
         req<{ ok: boolean; revoked: number }>("/api/admin/auth/sessions/revoke-others", { method: "POST" }),
       twoFactor: {
@@ -858,13 +873,6 @@ export const api = {
         method: "POST",
         body: JSON.stringify(body),
       }),
-    supportTickets: (opts?: { status?: string }) =>
-      req<{ tickets: any[] }>(`/api/admin/support-tickets${qs(opts ?? {})}`),
-    updateSupportTicket: (id: string, body: Record<string, unknown>) =>
-      req<{ ticket: any }>(`/api/admin/support-tickets/${enc(id)}`, {
-        method: "PATCH",
-        body: JSON.stringify(body),
-      }),
     reports: (opts?: { from?: string; to?: string }) =>
       req<any>(`/api/admin/reports${qs(opts ?? {})}`),
     domains: () => req<{ domains: any[] }>("/api/admin/domains"),
@@ -891,7 +899,6 @@ export const api = {
       req<{ admin: any }>("/api/admin/admins", { method: "POST", body: JSON.stringify(body) }),
     updateAdmin: (id: string, body: { role?: string; status?: string }) =>
       req<{ admin: any }>(`/api/admin/admins/${enc(id)}`, { method: "PATCH", body: JSON.stringify(body) }),
-    leads: () => req<{ leads: any[] }>("/api/admin/leads"),
   },
 
   myLeads: () => req<{ leads: any[] }>("/api/leads"),

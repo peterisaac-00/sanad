@@ -15,7 +15,7 @@ import {
   Truck,
 } from "lucide-react";
 import { api, mediaUrl } from "../lib/api";
-import { money } from "../lib/format";
+import { money, safeError } from "../lib/format";
 import { Link, navigate, useQuery } from "../lib/router";
 import { useAsync } from "../lib/useAsync";
 import { cn, useToast } from "../components/ui";
@@ -189,6 +189,7 @@ export function StorefrontProductsPage({ categorySlug }: { categorySlug?: string
         <ProductGridSkeleton count={8} />
       ) : result.error ? (
         <ErrorBlock
+          error={result.error}
           message="تعذر تحميل المنتجات. تحقق من اتصالك أو حاول لاحقاً."
           onRetry={result.reload}
         />
@@ -467,7 +468,7 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
       setReviewNote(response?.note || "تم استلام تقييمك وسيظهر بعد مراجعة المتجر.");
       setReviewContent("");
     } catch (err: any) {
-      toast.error(err?.message || "تعذر إرسال التقييم.");
+      toast.error(safeError(err) || "تعذر إرسال التقييم.");
     } finally {
       setReviewBusy(false);
     }
@@ -479,6 +480,7 @@ export function StorefrontProductPage({ slug }: { slug: string }) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-16">
         <ErrorBlock
+          error={result.error}
           message={notFound ? "هذا المنتج غير موجود أو لم يعد منشوراً في المتجر." : "تعذر تحميل المنتج. حاول مرة أخرى."}
           onRetry={notFound ? undefined : result.reload}
         />

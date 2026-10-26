@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
-import { app, registerMerchant, truncateAll, closeDb } from "./helpers.js";
+import { app, registerMerchant, truncateAll, closeDb, orderIdByNumber } from "./helpers.js";
 
 beforeEach(truncateAll);
 afterAll(closeDb);
 
 describe("order customer contact fields", () => {
-  it("checkout persists phone + address and returns them", async () => {
+  it("checkout persists phone + address without exposing them in the public response", async () => {
     const { agent, subdomain } = await registerMerchant("ct");
     await agent
       .post(`/api/stores/${subdomain}/products`)
@@ -22,11 +22,13 @@ describe("order customer contact fields", () => {
         items: [{ sku: "CT-1", qty: 1 }],
       })
       .expect(201);
-    expect(res.body.order.customerPhone).toBe("01012345678");
-    expect(res.body.order.address).toBe("12 Nile St, Apt 4, Cairo");
+    expect(res.body.order.customerPhone).toBeUndefined();
+    expect(res.body.order.address).toBeUndefined();
 
-    const got = await agent.get(`/api/stores/${subdomain}/orders/${res.body.order.id}`).expect(200);
+    const orderId = await orderIdByNumber(subdomain, res.body.order.orderNumber);
+    const got = await agent.get(`/api/stores/${subdomain}/orders/${orderId}`).expect(200);
     expect(got.body.order.customerPhone).toBe("01012345678");
+    expect(got.body.order.address).toBe("12 Nile St, Apt 4, Cairo");
   });
 
   it("manual orders accept phone + address; overlong values are 400", async () => {

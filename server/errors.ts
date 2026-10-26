@@ -53,6 +53,23 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     return;
   }
 
+  // body-parser errors are client errors, not server failures. Map them to the
+  // standard API envelope so clients can correct the request instead of seeing
+  // an opaque 500.
+  const bodyParserType = (err as { type?: unknown } | null)?.type;
+  if (bodyParserType === "entity.parse.failed" || (err instanceof SyntaxError && "body" in err)) {
+    res.status(400).json({
+      error: { code: "INVALID_JSON", message: "Request body is not valid JSON." },
+    } satisfies ApiErrorBody);
+    return;
+  }
+  if (bodyParserType === "entity.too.large") {
+    res.status(413).json({
+      error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large." },
+    } satisfies ApiErrorBody);
+    return;
+  }
+
   // Unexpected failure: log with request context, never leak internals to clients.
   // CORS rejections get a proper 403 JSON shape instead of a 500.
   if (err instanceof Error && /cors/i.test(err.message)) {

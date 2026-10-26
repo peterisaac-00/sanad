@@ -1,5 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Copy, Info, Loader2, Search, X } from "lucide-react";
+import { presentApiError } from "../lib/format";
+import { navigate } from "../lib/router";
 
 export function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(" ");
@@ -202,6 +204,57 @@ export function Alert({
   );
 }
 
+export function ErrorState({
+  error,
+  onRetry,
+  className,
+}: {
+  error: unknown;
+  onRetry?: () => void;
+  className?: string;
+}) {
+  const presented = presentApiError(error);
+  const action = () => {
+    if (presented.action === "login") navigate("/login");
+    else if (presented.action === "back") window.history.back();
+    else if (presented.action === "contact") navigate("/dashboard/settings");
+    else if (presented.action === "check" && !onRetry) window.location.reload();
+    else if (onRetry) onRetry();
+  };
+  const showAction =
+    presented.action === "login" ||
+    presented.action === "back" ||
+    presented.action === "contact" ||
+    presented.action === "check" ||
+    Boolean(onRetry);
+  const actionLabel =
+    presented.action === "login"
+      ? "تسجيل الدخول"
+      : presented.action === "back"
+        ? "رجوع"
+        : presented.action === "contact"
+          ? "تواصل مع الدعم"
+          : presented.action === "check"
+            ? "تحديث الصفحة"
+            : "إعادة المحاولة";
+  return (
+    <div className={cn("surface-card flex flex-col items-center gap-3 px-6 py-12 text-center", className)}>
+      <div className="flex h-12 w-12 items-center justify-center rounded-brand border border-danger-line bg-danger-soft text-danger">
+        <AlertTriangle className="h-5 w-5" />
+      </div>
+      <div>
+        <div className="font-heading text-base font-bold text-ink">{presented.title}</div>
+        <p className="mx-auto mt-1 max-w-md text-xs leading-6 text-subtle">{presented.message}</p>
+      </div>
+      {showAction ? (
+        <Button variant="outline" size="sm" onClick={action}>
+          {actionLabel}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 export function Spinner({ label = "جارٍ التحميل…" }: { label?: string }) {
   return (
     <div className="flex items-center justify-center gap-2 py-16 text-sm text-subtle">
@@ -248,6 +301,7 @@ export function Modal({
   children,
   footer,
   size = "md",
+  dismissible = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -256,10 +310,20 @@ export function Modal({
   children: React.ReactNode;
   footer?: React.ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
+  dismissible?: boolean;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
+  // Callbacks and flags are read through refs so the focus trap only re-runs
+  // when the modal actually opens. Depending on `onClose` directly was a bug:
+  // callers pass inline arrows, so every keystroke in a modal input produced a
+  // new callback identity, tore down the effect, and moved focus back to the
+  // first focusable element — making text impossible to type.
+  const onCloseRef = useRef(onClose);
+  const dismissibleRef = useRef(dismissible);
+  onCloseRef.current = onClose;
+  dismissibleRef.current = dismissible;
 
   useEffect(() => {
     if (!open) return;
@@ -267,11 +331,17 @@ export function Modal({
     const focusable = () => Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(
       'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
     ) ?? []).filter((element) => element.getAttribute("aria-hidden") !== "true");
-    window.requestAnimationFrame(() => (focusable()[0] ?? dialogRef.current)?.focus());
+    window.requestAnimationFrame(() => {
+      // Never steal focus if the user already clicked into the dialog before
+      // the first animation frame ran.
+      if (dialogRef.current?.contains(document.activeElement)) return;
+      (focusable()[0] ?? dialogRef.current)?.focus();
+    });
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (!dismissibleRef.current) return;
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== "Tab") return;
@@ -299,12 +369,15 @@ export function Modal({
       document.body.style.overflow = previous;
       if (restoreFocusRef.current?.isConnected) restoreFocusRef.current.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   const sizes = { sm: "max-w-md", md: "max-w-2xl", lg: "max-w-4xl", xl: "max-w-6xl" };
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-overlay p-3 backdrop-blur-sm sm:p-6" onMouseDown={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-overlay p-3 backdrop-blur-sm sm:p-6"
+      onMouseDown={dismissible ? onClose : undefined}
+    >
       <div
         ref={dialogRef}
         role="dialog"
@@ -319,14 +392,16 @@ export function Modal({
             <h2 id={titleId} className="font-heading text-lg font-bold text-ink">{title}</h2>
             {description ? <p className="mt-0.5 text-xs text-subtle">{description}</p> : null}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-brand-sm p-1.5 text-subtle transition hover:bg-surface hover:text-ink"
-            aria-label="إغلاق"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          {dismissible ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-brand-sm p-1.5 text-subtle transition hover:bg-surface hover:text-ink"
+              aria-label="إغلاق"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          ) : null}
         </div>
         <div className="max-h-[70vh] overflow-y-auto px-5 py-5">{children}</div>
         {footer ? <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line bg-surface px-5 py-4">{footer}</div> : null}

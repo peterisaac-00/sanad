@@ -16,12 +16,17 @@ process.env.LOG_LEVEL ??= "error";
 // (beforeEach truncation handles isolation within a file.)
 const worker = process.env.VITEST_WORKER_ID ?? "0";
 const dbName = `sanad_test_w${worker}`;
-const base =
-  process.env.TEST_DATABASE_URL?.replace(/\/[^/]*$/, `/${dbName}`) ||
-  `postgresql://sanad:sanad@localhost:5432/${dbName}`;
+if (!/^sanad_test_/.test(dbName)) throw new Error(`Unsafe test database name: ${dbName}`);
+const testBase =
+  process.env.TEST_DATABASE_URL || "postgresql://sanad:sanad@localhost:5432/sanad_test";
+const target = new URL(testBase);
+target.pathname = `/${dbName}`;
+const base = target.toString();
 process.env.DATABASE_URL = base;
 
-const admin = new pg.Client({ connectionString: "postgresql://sanad:sanad@localhost:5432/postgres" });
+const adminTarget = new URL(testBase);
+adminTarget.pathname = "/postgres";
+const admin = new pg.Client({ connectionString: adminTarget.toString() });
 await admin.connect();
 await admin.query("SELECT 1 FROM pg_database WHERE datname = $1", [dbName]).then(async (r) => {
   if (r.rowCount === 0) {

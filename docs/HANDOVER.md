@@ -61,17 +61,24 @@ $env:ADMIN_BOOTSTRAP_NAME = "Owner"   # optional
 docker compose up --build -d
 ```
 
-At boot the server creates a `super_admin` only when no administrator with that
-email exists. The operation is idempotent: restarting never resets an existing
-password, name, role, or MFA state. Remove `ADMIN_BOOTSTRAP_PASSWORD` (and the
-email/name) from the environment after the first successful sign-in and restart;
-the account persists in PostgreSQL.
+At boot the server creates a `super_admin` only when no administrator exists. If
+the configured bootstrap email still exists, that account is marked for a
+mandatory credential replacement. The operation is idempotent: restarting never
+resets an existing password, name, role, or MFA state, and it never recreates the
+bootstrap identity after its email has been replaced.
 
-Open `/admin`, sign in with the bootstrap credentials, and enable TOTP under
-**Security** immediately. Admin sessions use a separate `sanad_admin_session`
-cookie (`__Host-sanad_admin_session` in production) with an 8-hour TTL; a
-merchant cookie cannot open the admin console and an admin cookie cannot open
-the merchant dashboard.
+Open `/admin` and sign in with the bootstrap credentials. A blocking dialog asks
+for the administrator's own email and password; saving it updates the same
+`PlatformAdmin` row, clears the temporary flag, and revokes other admin sessions.
+The rest of the admin API stays blocked with `403 ADMIN_CREDENTIAL_CHANGE_REQUIRED`
+until that step is complete. Use the new email/password for every later sign-in.
+
+After the first successful replacement, remove `ADMIN_BOOTSTRAP_PASSWORD` (and
+the email/name) from the environment and restart; the account persists in
+PostgreSQL. Then enable TOTP under **Security**. Admin sessions use a separate
+`sanad_admin_session` cookie (`__Host-sanad_admin_session` in production) with an
+8-hour TTL; a merchant cookie cannot open the admin console and an admin cookie
+cannot open the merchant dashboard.
 
 Administrator roles and write access:
 
@@ -188,6 +195,7 @@ shows a configuration error instead of pretending the operation happened.
 | App exits: `ADMIN_BOOTSTRAP_EMAIL and ADMIN_BOOTSTRAP_PASSWORD must be set together` | only one bootstrap value is present | set both, or remove both after the first admin exists |
 | App exits: `ADMIN_BOOTSTRAP_PASSWORD must be at least 12 characters` | bootstrap password too short | use 12+ characters, then remove the variable after first sign-in |
 | `/admin` says the password is wrong after a restart | bootstrap never resets existing admins | sign in with the current password; reset it from **Security** while signed in |
+| Admin API returns `403 ADMIN_CREDENTIAL_CHANGE_REQUIRED` | the initial credentials have not been replaced | sign in at `/admin` and complete the blocking email/password dialog |
 | Merchant/team account gets `403 ADMIN_ACCESS_DENIED` at `/admin` | expected trust boundary | use a `PlatformAdmin` account or bootstrap the first one |
 | `401 UNAUTHENTICATED` in console | cookie blocked | serve frontend+API same-origin; check `CORS_ORIGIN` |
 | `403 CSRF_BLOCKED` on mutations | cross-site POST | call API from an allowed origin only |

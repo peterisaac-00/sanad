@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
 import { env } from "../env.js";
 import { safeEqualString } from "../crypto.js";
+import { platformStoreOrigin } from "./domains.js";
 
 /**
  * Stateless signed tracking tokens.
@@ -59,5 +60,5 @@ export function verifyTrackingToken(
 }
 
 export function trackingUrl(input: { subdomain: string; orderNumber: number; token: string }): string {
-  return `${env.appUrl}/store/${encodeURIComponent(input.subdomain)}/order/${input.orderNumber}?token=${encodeURIComponent(input.token)}`;
+  return `${platformStoreOrigin(input.subdomain)}/order/${input.orderNumber}?token=${encodeURIComponent(input.token)}`;
 }

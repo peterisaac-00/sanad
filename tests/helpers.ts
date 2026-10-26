@@ -10,6 +10,18 @@ export function uid(prefix: string): string {
   return `${prefix}${randomUUID().slice(0, 8)}`;
 }
 
+/** Resolve the internal order id after a public checkout response (which omits it by design). */
+export async function orderIdByNumber(subdomain: string, orderNumber: number): Promise<string> {
+  const store = await prisma.store.findUnique({ where: { subdomain }, select: { id: true } });
+  if (!store) throw new Error(`Store not found: ${subdomain}`);
+  const order = await prisma.order.findUnique({
+    where: { storeId_orderNumber: { storeId: store.id, orderNumber } },
+    select: { id: true },
+  });
+  if (!order) throw new Error(`Order not found: ${subdomain}/${orderNumber}`);
+  return order.id;
+}
+
 /** Wipe all data (FK-safe order). Call in beforeEach for isolation. */
 export async function truncateAll(): Promise<void> {
   // rate_limit_buckets has no foreign key to stores/merchants, so CASCADE

@@ -24,6 +24,7 @@ import { integrationStatus, paymentService } from "../services/integrations.js";
 import { assertOwnerMayEditStore } from "../services/storePolicy.js";
 import { createTeamInvite, rotateTeamInvite, teamMemberJson } from "../services/team.js";
 import { sendTeamInviteEmail } from "../services/email.js";
+import { storefrontOrigin } from "../services/domains.js";
 import { env } from "../env.js";
 import {
   PUBLISH_REASONS,
@@ -137,7 +138,7 @@ settingsRouter.get(
       usage: { products: productCount, orders: orderCount, customers: customerCount },
       permissions: req.auth!.permissions,
       principal_type: req.auth!.principalType,
-      public_url: `/store/${req.ownedStore!.subdomain}`,
+      public_url: storefrontOrigin(req.ownedStore!),
     });
   })
 );

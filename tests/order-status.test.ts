@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
-import { app, prisma, registerMerchant, truncateAll, closeDb } from "./helpers.js";
+import { app, prisma, registerMerchant, truncateAll, closeDb, orderIdByNumber } from "./helpers.js";
 
 beforeEach(truncateAll);
 afterAll(closeDb);
@@ -15,7 +15,11 @@ async function setupStore(tag: string, stock = 10) {
     .post(`/api/stores/${m.subdomain}/checkout`)
     .send({ customer_name: "Buyer", items: [{ sku: "ST-1", qty: 3 }] })
     .expect(201);
-  return { ...m, productId: prod.body.product.id as string, orderId: co.body.order.id as string };
+  return {
+    ...m,
+    productId: prod.body.product.id as string,
+    orderId: await orderIdByNumber(m.subdomain, co.body.order.orderNumber),
+  };
 }
 
 async function stockOf(agent: ReturnType<typeof request.agent>, subdomain: string, productId: string) {

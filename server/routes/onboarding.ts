@@ -10,6 +10,7 @@ import { auditActor, ensureStoreDefaults, writeAudit } from "../services/account
 import { env } from "../env.js";
 import { paymentService } from "../services/integrations.js";
 import { onboardingIdentityTouched, OWNER_IDENTITY_LOCKED_MESSAGE } from "../services/storePolicy.js";
+import { storefrontOrigin } from "../services/domains.js";
 import {
   isPublished,
   publishStateAfterOnboarding,
@@ -74,7 +75,7 @@ onboardingRouter.get(
         onlinePaymentEnabled: store.onlinePaymentEnabled && paymentService.configured,
         providerConfigured: paymentService.configured,
       },
-      public_url: `/store/${store.subdomain}`,
+      public_url: storefrontOrigin(store),
       integrations: {
         app_url: env.appUrl,
         storage_driver: env.storageDriver,
@@ -199,7 +200,7 @@ onboardingRouter.patch(
       ip: req.ip,
     });
     const branding = await prisma.storeBranding.findUnique({ where: { storeId: updated.id } });
-    res.json({ store: updated, branding, progress: progressOf(updated), public_url: `/store/${updated.subdomain}` });
+    res.json({ store: updated, branding, progress: progressOf(updated), public_url: storefrontOrigin(updated) });
   })
 );
 
@@ -252,7 +253,7 @@ onboardingRouter.post(
       store: updated,
       branding,
       approval_required: updated.status !== "active",
-      public_url: `/store/${updated.subdomain}`,
+      public_url: storefrontOrigin(updated),
       dashboard_url: "/dashboard",
     });
   })

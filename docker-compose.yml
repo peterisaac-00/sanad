@@ -52,6 +52,10 @@ services:
       ADMIN_BOOTSTRAP_EMAIL: ${ADMIN_BOOTSTRAP_EMAIL:-}
       ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:-}
       ADMIN_BOOTSTRAP_NAME: ${ADMIN_BOOTSTRAP_NAME:-}
+      STORAGE_DIR: /app/data/uploads
+    volumes:
+      - sanad-uploads:/app/data/uploads
 
 volumes:
   sanad-pgdata:
+  sanad-uploads:

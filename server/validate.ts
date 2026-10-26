@@ -32,6 +32,10 @@ const registerSubdomainField = subdomainField
   .refine((v) => !v.startsWith("-") && !v.endsWith("-"), { message: "subdomain cannot start or end with a hyphen" });
 
 const passwordField = z.string().min(8, { message: "password must be at least 8 characters" }).max(128);
+const adminPasswordField = z
+  .string()
+  .min(12, { message: "administrator password must be at least 12 characters" })
+  .max(128);
 
 export const SUPPORTED_STORE_CURRENCIES = ["EGP"] as const;
 const storeCurrencyField = z.literal("EGP", { message: "Only EGP is supported for store pricing." });
@@ -768,7 +772,26 @@ export const adminLoginSchema = z.strictObject({
   recovery_code: z.string().trim().max(64).optional(),
 });
 
-export const adminPasswordSchema = changePasswordSchema;
+export const adminPasswordSchema = z
+  .strictObject({
+    currentPassword: z.string().min(1, { message: "currentPassword is required" }).max(128),
+    newPassword: adminPasswordField,
+  })
+  .refine((v) => v.currentPassword !== v.newPassword, {
+    message: "newPassword must be different from currentPassword",
+    path: ["newPassword"],
+  });
+
+export const adminInitialCredentialsSchema = z
+  .strictObject({
+    email: emailField,
+    currentPassword: z.string().min(1, { message: "currentPassword is required" }).max(128),
+    newPassword: adminPasswordField,
+  })
+  .refine((v) => v.currentPassword !== v.newPassword, {
+    message: "newPassword must be different from currentPassword",
+    path: ["newPassword"],
+  });
 
 export const adminTwoFactorSetupSchema = twoFactorSetupSchema;
 export const adminTwoFactorCodeSchema = twoFactorCodeSchema;

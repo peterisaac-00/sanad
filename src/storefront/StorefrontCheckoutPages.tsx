@@ -333,6 +333,7 @@ export function StorefrontCheckoutPage() {
   const [payment, setPayment] = useState(payments.cod_enabled ? "COD" : payments.online_enabled ? "ONLINE" : "");
   const [errors, setErrors] = useState<Partial<Record<keyof CheckoutForm, string>>>({});
   const [submitting, setSubmitting] = useState(false);
+  const submitInFlight = useRef(false);
   const [submitError, setSubmitError] = useState("");
   const [quote, setQuote] = useState<any>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
@@ -426,8 +427,10 @@ export function StorefrontCheckoutPage() {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (submitInFlight.current) return;
     setSubmitError("");
     if (!validate()) return;
+    submitInFlight.current = true;
     setSubmitting(true);
     try {
       trackCart({ name: form.customer_name, phone: form.customer_phone, email: form.customer_email, force: true });
@@ -461,6 +464,7 @@ export function StorefrontCheckoutPage() {
     } catch (err: any) {
       setSubmitError(checkoutErrorMessage(err));
     } finally {
+      submitInFlight.current = false;
       setSubmitting(false);
     }
   };

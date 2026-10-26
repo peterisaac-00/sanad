@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
+import { Prisma, type PlatformAdmin } from "@prisma/client";
 import { prisma, newId, nowIso } from "../db.js";
 import { ApiError, asyncHandler } from "../errors.js";
 import {
+  adminInitialCredentialsSchema,
   adminLoginSchema,
   adminPasswordSchema,
   adminTwoFactorCodeSchema,
@@ -35,6 +36,7 @@ import {
   writeAudit,
 } from "../services/account.js";
 import { storeMedia } from "../services/media.js";
+import { storefrontOrigin } from "../services/domains.js";
 import {
   hashPasswordArgon2,
   verifyMerchantPassword,
@@ -86,7 +88,7 @@ const mediaBodySchema = z.strictObject({
 
 const adminCreateSchema = z.strictObject({
   email: z.string().trim().toLowerCase().email().max(254),
-  password: z.string().min(10).max(128),
+  password: z.string().min(12).max(128),
   name: z.string().trim().max(160).default(""),
   role: z.enum(ADMIN_ROLES).default("readonly"),
 });
@@ -133,6 +135,7 @@ function storeRow(store: any) {
     storeName: store.storeName,
     subdomain: store.subdomain,
     customDomain: store.customDomain,
+    public_url: storefrontOrigin(store),
     description: store.description,
     status: store.status,
     statusReason: store.statusReason,
@@ -304,6 +307,13 @@ adminRouter.post(
       req.body.currentPassword
     );
     if (!ok) throw new ApiError(401, "INVALID_CREDENTIALS", "Current password is incorrect.");
+    const reused = await verifyMerchantPassword(
+      { password_hash: admin.passwordHash, password_salt: admin.passwordSalt, password_algo: admin.passwordAlgo },
+      req.body.newPassword
+    );
+    if (reused.ok) {
+      throw new ApiError(400, "ADMIN_PASSWORD_REUSE", "Choose a password that is different from the current password.");
+    }
     await prisma.platformAdmin.update({
       where: { id: admin.id },
       data: {
@@ -323,6 +333,82 @@ adminRouter.post(
       ip: req.ip,
     });
     res.json({ ok: true, revoked_sessions: revoked });
+  })
+);
+
+adminRouter.post(
+  "/auth/credentials",
+  asyncHandler(requirePlatformAdmin),
+  validateBody(adminInitialCredentialsSchema),
+  asyncHandler(async (req, res) => {
+    const admin = await prisma.platformAdmin.findUnique({ where: { id: req.adminAuth!.adminId } });
+    if (!admin) throw new ApiError(401, "ADMIN_UNAUTHENTICATED", "Platform administrator authentication required.");
+    if (!admin.mustChangeCredentials) {
+      throw new ApiError(409, "ADMIN_CREDENTIALS_ALREADY_SET", "The initial credentials were already replaced.");
+    }
+
+    const passwordCheck = await verifyMerchantPassword(
+      { password_hash: admin.passwordHash, password_salt: admin.passwordSalt, password_algo: admin.passwordAlgo },
+      req.body.currentPassword
+    );
+    if (!passwordCheck.ok) {
+      throw new ApiError(401, "INVALID_CREDENTIALS", "Current password is incorrect.");
+    }
+    const reused = await verifyMerchantPassword(
+      { password_hash: admin.passwordHash, password_salt: admin.passwordSalt, password_algo: admin.passwordAlgo },
+      req.body.newPassword
+    );
+    if (reused.ok) {
+      throw new ApiError(400, "ADMIN_PASSWORD_REUSE", "Choose a password that is different from the setup password.");
+    }
+
+    const email = req.body.email as string;
+    if (email === admin.email) {
+      throw new ApiError(400, "ADMIN_EMAIL_UNCHANGED", "Choose a new email address for the administrator account.");
+    }
+    const passwordHash = await hashPasswordArgon2(req.body.newPassword);
+
+    let updated: PlatformAdmin;
+    try {
+      updated = await prisma.$transaction(async (tx) => {
+        const fresh = await tx.platformAdmin.findUnique({ where: { id: admin.id } });
+        if (!fresh) throw new ApiError(401, "ADMIN_UNAUTHENTICATED", "Platform administrator authentication required.");
+        if (!fresh.mustChangeCredentials) {
+          throw new ApiError(409, "ADMIN_CREDENTIALS_ALREADY_SET", "The initial credentials were already replaced.");
+        }
+        const duplicate = await tx.platformAdmin.findUnique({ where: { email } });
+        if (duplicate && duplicate.id !== fresh.id) {
+          throw new ApiError(409, "ADMIN_EMAIL_TAKEN", "This email is already used by another administrator.");
+        }
+        return tx.platformAdmin.update({
+          where: { id: fresh.id },
+          data: {
+            email,
+            passwordHash,
+            passwordSalt: null,
+            passwordAlgo: "argon2id",
+            mustChangeCredentials: false,
+          },
+        });
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        throw new ApiError(409, "ADMIN_EMAIL_TAKEN", "This email is already used by another administrator.");
+      }
+      throw error;
+    }
+
+    const current = req.cookies?.[adminSessionCookieName()];
+    const revoked = await revokeOtherAdminSessions(updated.id, typeof current === "string" ? current : undefined);
+    await writeAudit({
+      ...adminAuditActor(updated.id),
+      action: "admin.initial_credentials_changed",
+      entity: "platform_admin",
+      entityId: updated.id,
+      metadata: { previous_email: admin.email, new_email: updated.email, revoked_sessions: revoked },
+      ip: req.ip,
+    });
+    res.json({ admin: serializeAdmin(updated), scope: "platform", revoked_sessions: revoked });
   })
 );
 
@@ -460,6 +546,19 @@ adminRouter.post(
 // Every route below requires a platform-admin session. Permission middleware
 // runs per route; the API is the enforcement point, not the admin UI.
 adminRouter.use(asyncHandler(requirePlatformAdmin));
+adminRouter.use((req, _res, next) => {
+  if (req.adminAuth?.mustChangeCredentials) {
+    next(
+      new ApiError(
+        403,
+        "ADMIN_CREDENTIAL_CHANGE_REQUIRED",
+        "Replace the initial administrator email and password before using the console."
+      )
+    );
+    return;
+  }
+  next();
+});
 
 // ---------------------------------------------------------------------------
 // Overview
@@ -640,8 +739,12 @@ adminRouter.get(
       store: storeRow(store),
       branding: store.branding,
       owner: ownerOf(store),
-      domains: store.domains,
-      public_url: store.customDomain ? `https://${store.customDomain}` : `/store/${store.subdomain}`,
+      domains: store.domains.map((domain) => {
+        const safe = { ...domain };
+        delete (safe as { verificationToken?: string }).verificationToken;
+        return safe;
+      }),
+      public_url: storeRow(store).public_url,
     });
   })
 );
@@ -986,6 +1089,17 @@ adminRouter.post(
     if (!["monthly", "annual"].includes(payment.plan)) {
       throw new ApiError(400, "INVALID_SUBSCRIPTION_PLAN", "The payment has an unsupported plan.");
     }
+    if (payment.currency !== SUBSCRIPTION_CURRENCY) {
+      throw new ApiError(400, "INVALID_SUBSCRIPTION_CURRENCY", "The payment currency is not supported.");
+    }
+    const expectedAmount = SUBSCRIPTION_PRICES[payment.plan as keyof typeof SUBSCRIPTION_PRICES];
+    if (Math.abs(payment.amount - expectedAmount) > 0.009) {
+      throw new ApiError(
+        400,
+        "INVALID_SUBSCRIPTION_AMOUNT",
+        `The payment amount does not match the ${payment.plan} plan price.`
+      );
+    }
 
     const reviewedAt = new Date();
     let updatedStore = payment.store;
@@ -1284,11 +1398,21 @@ adminRouter.get(
 adminRouter.get(
   "/domains",
   requireAdminPermission("domains.read"),
-  asyncHandler(async (_req, res) => {
-    const domains = await prisma.storeDomain.findMany({
+  asyncHandler(async (req, res) => {
+    const rows = await prisma.storeDomain.findMany({
       orderBy: { createdAt: "desc" },
       take: 500,
       include: { store: { select: { id: true, storeName: true, subdomain: true, status: true, publishStatus: true } } },
+    });
+    // Domain challenges prove DNS control. Read-only administrators may see
+    // domain state but must not receive the value that can be used to forge
+    // verification. Writers keep the token for the existing review workflow.
+    const canSeeChallenge = req.adminAuth?.permissions.includes("domains.write") ?? false;
+    const domains = rows.map((row) => {
+      if (canSeeChallenge) return row;
+      const safe = { ...row };
+      delete (safe as { verificationToken?: string }).verificationToken;
+      return safe;
     });
     res.json({ domains });
   })

@@ -196,9 +196,8 @@ function safeErrorLegacy(err: any): string {
 
 export function safeError(err: any): string {
   const message = typeof err?.message === "string" ? err.message : "";
-  if ([401, 403, 404, 409, 429].includes(Number(err?.status)) || Number(err?.status) >= 500 || !Number(err?.status) && err?.code === "NETWORK_ERROR") {
-    return presentApiError(err).message;
-  }
+  // Known domain errors carry more useful guidance than the generic status
+  // taxonomy (e.g. a login 401 is bad credentials, not an expired session).
   if (err?.code === "INVALID_CREDENTIALS") return "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
   if (err?.code === "EMAIL_TAKEN") return "هذا البريد الإلكتروني مسجل بالفعل. جرّب تسجيل الدخول.";
   if (err?.code === "SUBDOMAIN_TAKEN") return "رابط المتجر محجوز. اختر رابطاً آخر.";
@@ -211,5 +210,8 @@ export function safeError(err: any): string {
   if (err?.code === "TEAM_INVITE_PENDING") return "لم تُقبل دعوتك بعد. افتح رابط الدعوة وأكمل إنشاء كلمة المرور أولاً.";
   if (err?.code === "TEAM_MEMBER_SUSPENDED") return "حسابك في فريق المتجر موقوف. تواصل مع مالك المتجر.";
   if (err?.code === "TEAM_MEMBER_EXISTS") return "هذا البريد عضو في الفريق بالفعل.";
+  if ([401, 403, 404, 409, 429].includes(Number(err?.status)) || Number(err?.status) >= 500 || !Number(err?.status) && err?.code === "NETWORK_ERROR") {
+    return presentApiError(err).message;
+  }
   return message || "حدث خطأ غير متوقع. حاول مرة أخرى.";
 }

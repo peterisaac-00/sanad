@@ -275,6 +275,7 @@ model PlatformAdmin {
   passwordAlgo           String    @default("argon2id") @map("password_algo")
   role                   String    @default("readonly")
   status                 String    @default("active")
+  mustChangeCredentials  Boolean   @default(false) @map("must_change_credentials")
   twoFactorSecret        String?   @map("two_factor_secret")
   twoFactorEnabled       Boolean   @default(false) @map("two_factor_enabled")
   twoFactorRecoveryCodes Json      @default("[]") @map("two_factor_recovery_codes")
