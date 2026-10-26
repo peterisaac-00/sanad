@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Download,
@@ -18,6 +18,7 @@ import {
   Button,
   Card,
   EmptyState,
+  ErrorState,
   Field,
   Input,
   Modal,
@@ -63,7 +64,7 @@ function orderEventLabel(event: any): string {
 /* ------------------------------- list ------------------------------- */
 
 export function OrdersPage() {
-  const { subdomain, store } = useDashboard();
+  const { subdomain, store, storefrontUrl } = useDashboard();
   const examples = getBusinessExamples(store?.businessType);
   const toast = useToast();
   const [page, setPage] = useState(1);
@@ -76,6 +77,8 @@ export function OrdersPage() {
   const [bulkStatus, setBulkStatus] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
+  const exportInFlight = useRef(false);
 
   const { data, loading, error, reload } = useAsync(
     () =>
@@ -119,6 +122,9 @@ export function OrdersPage() {
   };
 
   const exportCsv = async () => {
+    if (exportInFlight.current) return;
+    exportInFlight.current = true;
+    setExportBusy(true);
     try {
       const params = new URLSearchParams();
       if (status) params.set("status", status);
@@ -132,6 +138,9 @@ export function OrdersPage() {
       await api.downloadCsv(`/api/stores/${enc(subdomain)}/orders/export${query ? `?${query}` : ""}`, "orders.csv");
     } catch (err: any) {
       toast.error(safeError(err));
+    } finally {
+      exportInFlight.current = false;
+      setExportBusy(false);
     }
   };
 
@@ -143,7 +152,7 @@ export function OrdersPage() {
         description="كل طلب هنا أُنشئ فعلاً من متجرك. غيّر الحالة أو حالة الدفع فوراً، والعدادات محسوبة من قاعدة البيانات."
         actions={
           <>
-            <Button variant="outline" onClick={exportCsv}>
+            <Button variant="outline" loading={exportBusy} onClick={exportCsv}>
               <Download className="h-4 w-4" /> تصدير CSV
             </Button>
             <Button onClick={() => setManualOpen(true)}>
@@ -216,7 +225,7 @@ export function OrdersPage() {
             title="لا توجد طلبات مطابقة"
             description="جرّب تغيير الفلاتر، أو شارك رابط متجرك ليبدأ أول طلب حقيقي في الوصول."
             icon={<Package className="h-5 w-5" />}
-            action={<Link href={`/store/${subdomain}`} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-brand">فتح المتجر ←</Link>}
+            action={<Link href={storefrontUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-brand">فتح المتجر ←</Link>}
           />
         ) : (
           <>
@@ -415,6 +424,11 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
   const [nextStatus, setNextStatus] = useState("");
   const [nextPayment, setNextPayment] = useState("");
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const [noteBusy, setNoteBusy] = useState(false);
+  const noteBusyRef = useRef(false);
+  const [refundBusyId, setRefundBusyId] = useState<string | null>(null);
+  const refundBusyRef = useRef(false);
   const [note, setNote] = useState("");
   const [internalNote, setInternalNote] = useState(true);
   const [refundOpen, setRefundOpen] = useState(false);
@@ -440,11 +454,13 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
     return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-96" /></div>;
   }
   if (error || !order) {
-    return <Alert tone="error" title="تعذر تحميل الطلب">{safeError(error) || "الطلب غير موجود."}</Alert>;
+    return <ErrorState error={error ?? { status: 404 }} onRetry={reload} />;
   }
 
   const applyStatus = async () => {
     if (!nextStatus) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     try {
       await api.orders.setStatus(subdomain, order.id, nextStatus);
@@ -454,12 +470,15 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
     } catch (err: any) {
       toast.error(safeError(err));
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
 
   const applyPayment = async () => {
     if (nextPayment === order.paymentStatus) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     try {
       await api.orders.setPaymentStatus(subdomain, order.id, nextPayment);
@@ -468,12 +487,15 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
     } catch (err: any) {
       toast.error(safeError(err));
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
 
   const addNote = async () => {
-    if (!note.trim()) return;
+    if (!note.trim() || noteBusyRef.current) return;
+    noteBusyRef.current = true;
+    setNoteBusy(true);
     try {
       await api.orders.addNote(subdomain, order.id, note.trim(), internalNote);
       setNote("");
@@ -481,6 +503,9 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
       reload();
     } catch (err: any) {
       toast.error(safeError(err));
+    } finally {
+      noteBusyRef.current = false;
+      setNoteBusy(false);
     }
   };
 
@@ -492,6 +517,8 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
       toast.error("أدخل مبلغاً صحيحاً.");
       return;
     }
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     try {
       await api.orders.requestRefund(subdomain, order.id, amount, refundReason);
@@ -503,17 +530,24 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
     } catch (err: any) {
       toast.error(safeError(err));
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
 
   const finaliseRefund = async (refundId: string, status: "processed" | "cancelled") => {
+    if (refundBusyRef.current) return;
+    refundBusyRef.current = true;
+    setRefundBusyId(refundId);
     try {
       await api.orders.processRefund(subdomain, order.id, refundId, status);
       toast.success(status === "processed" ? "تم تنفيذ الاسترداد." : "تم إلغاء طلب الاسترداد.");
       reload();
     } catch (err: any) {
       toast.error(safeError(err));
+    } finally {
+      refundBusyRef.current = false;
+      setRefundBusyId(null);
     }
   };
 
@@ -589,6 +623,8 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
                   <button
                     key={value}
                     onClick={async () => {
+                      if (busyRef.current) return;
+                      busyRef.current = true;
                       setBusy(true);
                       try {
                         await api.orders.setStatus(subdomain, order.id, value);
@@ -597,6 +633,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
                       } catch (err: any) {
                         toast.error(safeError(err));
                       } finally {
+                        busyRef.current = false;
                         setBusy(false);
                       }
                     }}
@@ -701,8 +738,8 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
                     {refund.reason ? <div className="mt-1 text-[10px] text-subtle">{refund.reason}</div> : null}
                     {refund.status === "pending" ? (
                       <div className="mt-2 flex gap-2">
-                        <Button size="sm" variant="success" onClick={() => finaliseRefund(refund.id, "processed")}>تنفيذ</Button>
-                        <Button size="sm" variant="ghost" onClick={() => finaliseRefund(refund.id, "cancelled")}>إلغاء الطلب</Button>
+                        <Button size="sm" variant="success" loading={refundBusyId === refund.id} disabled={Boolean(refundBusyId) && refundBusyId !== refund.id} onClick={() => finaliseRefund(refund.id, "processed")}>تنفيذ</Button>
+                        <Button size="sm" variant="ghost" loading={refundBusyId === refund.id} disabled={Boolean(refundBusyId) && refundBusyId !== refund.id} onClick={() => finaliseRefund(refund.id, "cancelled")}>إلغاء الطلب</Button>
                       </div>
                     ) : null}
                   </div>
@@ -742,7 +779,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
               <input type="checkbox" checked={internalNote} onChange={(e) => setInternalNote(e.target.checked)} />
               داخلية فقط (لا تظهر للعميل)
             </label>
-            <Button size="sm" className="mt-3" disabled={!note.trim()} onClick={addNote}>إضافة للملاحظات</Button>
+            <Button size="sm" className="mt-3" loading={noteBusy} disabled={!note.trim()} onClick={addNote}>إضافة للملاحظات</Button>
             {order.internalNotes ? (
               <div className="mt-3 space-y-1 rounded-brand border border-line bg-surface p-3 text-[10px] leading-6 text-subtle">
                 {order.internalNotes.split("\n").filter(Boolean).map((line: string, index: number) => <div key={index}>• {line}</div>)}

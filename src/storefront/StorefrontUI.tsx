@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { mediaUrl } from "../lib/api";
-import { money } from "../lib/format";
+import { money, presentApiError, safeError } from "../lib/format";
 import { Link } from "../lib/router";
 import { cn } from "../components/ui";
 import { useStorefront } from "./StorefrontContext";
@@ -399,15 +399,18 @@ export function LoadingBlock({ label = "جارٍ التحميل…" }: { label?:
   );
 }
 
-export function ErrorBlock({ message, onRetry }: { message: string; onRetry?: () => void }) {
+export function ErrorBlock({ message, error, onRetry }: { message?: string; error?: unknown; onRetry?: () => void }) {
   const { theme } = useStorefront();
+  const presented = error ? presentApiError(error) : null;
+  const title = presented?.title ?? "تعذر إكمال الطلب";
+  const body = message ?? presented?.message ?? "حاول مرة أخرى.";
   return (
     <div className={cn("mx-auto max-w-lg rounded-brand border p-6 text-center", theme.panel)}>
       <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-brand bg-danger-soft text-danger">
         <X className="h-5 w-5" />
       </div>
-      <div className={cn("font-semibold", theme.heading)}>تعذر إكمال الطلب</div>
-      <p className={cn("mt-1 text-xs leading-6", theme.muted)}>{message}</p>
+      <div className={cn("font-semibold", theme.heading)}>{title}</div>
+      <p className={cn("mt-1 text-xs leading-6", theme.muted)}>{body}</p>
       {onRetry ? (
         <button
           type="button"
@@ -441,7 +444,7 @@ export function CouponBox({ compact = false }: { compact?: boolean }) {
     try {
       await applyCoupon(code);
     } catch (err: any) {
-      setError(err?.message || "تعذر تطبيق كود الخصم.");
+      setError(safeError(err) || "تعذر تطبيق كود الخصم.");
     } finally {
       setBusy(false);
     }

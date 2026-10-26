@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
-import { app, registerMerchant, truncateAll, closeDb } from "./helpers.js";
+import { app, prisma, registerMerchant, truncateAll, closeDb } from "./helpers.js";
 
 beforeEach(truncateAll);
 afterAll(closeDb);
@@ -30,7 +30,13 @@ describe("order numbering per store", () => {
     // per-store sequences: both first orders are number 4825 with distinct ids
     expect(manual.body.order.orderNumber).toBe(4825);
     expect(co.body.order.orderNumber).toBe(4825);
-    expect(manual.body.order.id).not.toBe(co.body.order.id);
+    expect(co.body.order.id).toBeUndefined();
+    const webOrder = await prisma.order.findFirst({
+      where: { store: { subdomain: b.subdomain }, orderNumber: 4825 },
+      select: { id: true },
+    });
+    expect(webOrder?.id).toBeTruthy();
+    expect(manual.body.order.id).not.toBe(webOrder?.id);
   });
 
   it("8 concurrent checkouts on one store -> all 201, unique sequential numbers", async () => {

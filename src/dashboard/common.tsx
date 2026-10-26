@@ -31,7 +31,7 @@ export function Th({ children, className, dir }: { children?: React.ReactNode; c
 }
 
 export function Td({ children, className, dir }: { children?: React.ReactNode; className?: string; dir?: "ltr" | "rtl" }) {
-  return <td dir={dir} className={cn("px-4 py-3 align-middle text-ink-soft", className)}>{children}</td>;
+  return <td dir={dir} className={cn("break-words px-4 py-3 align-middle text-ink-soft [overflow-wrap:anywhere]", className)}>{children}</td>;
 }
 
 export function ActivePill({ active }: { active: boolean }) {

@@ -1,16 +1,21 @@
+import { isIP } from "node:net";
 import { prisma } from "../db.js";
 import { env } from "../env.js";
 
 /**
- * Custom-domain routing is deliberately conservative:
+ * Storefront host routing is deliberately conservative:
  *
- * - Only an exact, verified `StoreDomain` row may select a store. A Host value
- *   that merely looks like a domain never falls back to another store.
+ * - `<subdomain>.<PLATFORM_DOMAIN>` selects exactly one store by its
+ *   registered subdomain. The platform root (`soqeg.com`, `www.soqeg.com`)
+ *   remains the marketing/dashboard surface.
+ * - Only an exact, verified `StoreDomain` row may select a store for a
+ *   merchant-owned custom domain. A Host value that merely looks like a
+ *   domain never falls back to another store.
  * - Only the raw `Host` header is trusted. `X-Forwarded-Host` is ignored
  *   because an application behind a proxy cannot distinguish a real proxy
  *   rewrite from a client-supplied header unless the whole chain is trusted.
- * - A verified domain opens the storefront only while the store is approved
- *   (status=active) and published (publishStatus=published).
+ * - A verified custom domain opens the storefront only while the store is
+ *   approved (status=active) and published (publishStatus=published).
  */
 
 export const HOST_PATTERN =
@@ -31,12 +36,53 @@ export function isValidHost(host: string): boolean {
   return host.length >= 4 && host.length <= 253 && HOST_PATTERN.test(host);
 }
 
+/** Normalize an Origin/Referer value to its canonical scheme://host[:port]. */
+export function normalizeOrigin(raw: string | null | undefined): string | null {
+  const value = String(raw ?? "").trim();
+  if (!value || value === "null") return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Trust an Origin only when it is one of the configured platform origins or a
+ * verified custom domain attached to an active, published store. This is used
+ * by both the CORS gate and the CSRF check so the two boundaries cannot drift.
+ */
+export async function isTrustedStorefrontOrigin(raw: string | null | undefined): Promise<boolean> {
+  const normalized = normalizeOrigin(raw);
+  if (!normalized) return false;
+  if (env.corsOrigins.includes(normalized)) return true;
+
+  const url = new URL(normalized);
+  if (!isValidHost(url.hostname.toLowerCase())) return false;
+  // Storefront hosts are terminated over HTTPS in production. Local/test
+  // environments may use http so the origin policy remains testable.
+  if (env.isProduction && url.protocol !== "https:") return false;
+
+  const resolved = await resolveStorefrontHost(url.hostname);
+  return Boolean(
+    resolved &&
+      resolved.status === "active" &&
+      resolved.publishStatus === "published"
+  );
+}
+
 export function platformHostnames(): Set<string> {
   const hosts = new Set<string>(["localhost", "127.0.0.1", "::1"]);
   try {
     hosts.add(new URL(env.appUrl).hostname.toLowerCase());
   } catch {
     // env.appUrl is validated at boot; this is only defensive.
+  }
+  if (env.platformDomain) {
+    hosts.add(env.platformDomain);
+    hosts.add(`www.${env.platformDomain}`);
   }
   for (const origin of env.corsOrigins) {
     try {
@@ -56,6 +102,50 @@ export function isPlatformHost(host: string): boolean {
   return host === "0.0.0.0" || host === "[::1]";
 }
 
+/**
+ * Extract the store handle from a host like `test.soqeg.com`. Only a single
+ * label directly under PLATFORM_DOMAIN is accepted. `www` and the platform
+ * root are not store handles.
+ */
+export function platformSubdomainLabel(rawHost: string): string | null {
+  const host = normalizeHost(rawHost);
+  const base = env.platformDomain;
+  if (!host || !base || host === base || host === `www.${base}`) return null;
+  if (!host.endsWith(`.${base}`)) return null;
+  const label = host.slice(0, -(base.length + 1));
+  if (!label || label.includes(".") || label === "www") return null;
+  // Mirrors the merchant subdomain contract: 3-40 lowercase/digit/hyphen
+  // characters, never starting or ending with a hyphen.
+  if (!/^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])?$/.test(label)) return null;
+  return label;
+}
+
+/** Public origin for a platform-hosted store, e.g. https://test.soqeg.com. */
+export function platformStoreOrigin(subdomain: string): string {
+  const url = new URL(env.appUrl);
+  // An IP-only deployment cannot use wildcard DNS. Fall back to the path URL
+  // instead of generating an invalid `store.203.0.113.10` host.
+  if (isIP(env.platformDomain) !== 0) {
+    return `${env.appUrl}/store/${encodeURIComponent(subdomain)}`;
+  }
+  url.hostname = `${subdomain}.${env.platformDomain}`;
+  url.pathname = "";
+  url.search = "";
+  url.hash = "";
+  return url.origin;
+}
+
+/** The public storefront URL, preferring a verified custom domain. */
+export function storefrontOrigin(store: {
+  subdomain: string;
+  customDomain?: string | null;
+}): string {
+  if (store.customDomain) return `https://${store.customDomain}`;
+  return platformStoreOrigin(store.subdomain);
+}
+
+export type StorefrontHostMode = "platform_subdomain" | "custom_domain";
+
 export interface HostStore {
   storeId: string;
   subdomain: string;
@@ -65,15 +155,44 @@ export interface HostStore {
   domain: string;
   tlsStatus: string;
   canonicalUrl: string;
+  mode: StorefrontHostMode;
 }
 
 /**
- * Resolve a host to a published store. Returns null for platform hosts,
- * unknown hosts, unverified domains and stores that are not publicly open.
+ * Resolve a storefront host. Platform subdomains resolve a store even while it
+ * is pending (so the merchant can preview the coming-soon page); custom
+ * domains require a verified domain on an active, published store.
  */
-export async function resolveCustomDomainHost(rawHost: string | null | undefined): Promise<HostStore | null> {
+export async function resolveStorefrontHost(rawHost: string | null | undefined): Promise<HostStore | null> {
   const host = normalizeHost(rawHost);
   if (!host || isPlatformHost(host) || !isValidHost(host)) return null;
+
+  const platformSubdomain = platformSubdomainLabel(host);
+  if (platformSubdomain) {
+    const store = await prisma.store.findUnique({
+      where: { subdomain: platformSubdomain },
+      select: {
+        id: true,
+        subdomain: true,
+        storeName: true,
+        status: true,
+        publishStatus: true,
+      },
+    });
+    if (!store) return null;
+    return {
+      storeId: store.id,
+      subdomain: store.subdomain,
+      storeName: store.storeName,
+      status: store.status,
+      publishStatus: store.publishStatus,
+      domain: host,
+      tlsStatus: env.appUrl.startsWith("https://") ? "active" : "pending",
+      canonicalUrl: platformStoreOrigin(store.subdomain),
+      mode: "platform_subdomain",
+    };
+  }
+
   const row = await prisma.storeDomain.findUnique({
     where: { domain: host },
     include: {
@@ -99,7 +218,14 @@ export async function resolveCustomDomainHost(rawHost: string | null | undefined
     domain: row.domain,
     tlsStatus: row.tlsStatus,
     canonicalUrl: `https://${row.domain}`,
+    mode: "custom_domain",
   };
+}
+
+/** Backwards-compatible custom-domain-only resolver. */
+export async function resolveCustomDomainHost(rawHost: string | null | undefined): Promise<HostStore | null> {
+  const resolved = await resolveStorefrontHost(rawHost);
+  return resolved?.mode === "custom_domain" ? resolved : null;
 }
 
 /** The canonical public URL for a store, preferring a verified custom domain. */
@@ -115,7 +241,7 @@ export async function canonicalUrlForStore(store: {
   });
   if (verified) return `https://${verified.domain}`;
   if (store.customDomain) return `https://${store.customDomain}`;
-  return `${env.appUrl}/store/${encodeURIComponent(store.subdomain)}`;
+  return platformStoreOrigin(store.subdomain);
 }
 
 /** Escape a JSON value for safe inline injection into an HTML document. */

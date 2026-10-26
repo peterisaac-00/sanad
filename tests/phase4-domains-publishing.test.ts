@@ -35,12 +35,12 @@ describe("custom domain host resolution", () => {
 
     const created = await first.agent
       .post(`${base}/domains`)
-      .send({ domain: "shop.example.com" })
+      .send({ domain: "shop.custom.example.com" })
       .expect(201);
-    expect(created.body.domain).toMatchObject({ domain: "shop.example.com", status: "pending", tls_status: "pending" });
+    expect(created.body.domain).toMatchObject({ domain: "shop.custom.example.com", status: "pending", tls_status: "pending" });
     expect(created.body.challenge).toEqual({
       type: "TXT",
-      name: "_sanad-verification.shop.example.com",
+      name: "_sanad-verification.shop.custom.example.com",
       value: expect.stringContaining("sanad-verify="),
     });
 
@@ -51,12 +51,12 @@ describe("custom domain host resolution", () => {
     // An unverified domain never resolves to a store.
     const pendingSite = await request(app)
       .get("/api/site")
-      .set("Host", "shop.example.com")
+      .set("Host", "shop.custom.example.com")
       .expect(200);
-    expect(pendingSite.body).toMatchObject({ host: "shop.example.com", mode: "custom_domain", store: null });
+    expect(pendingSite.body).toMatchObject({ host: "shop.custom.example.com", mode: "unknown", custom_domain: false, store: null });
 
     const adminDomains = await admin.agent.get("/api/admin/domains").expect(200);
-    const row = adminDomains.body.domains.find((entry: any) => entry.domain === "shop.example.com");
+    const row = adminDomains.body.domains.find((entry: any) => entry.domain === "shop.custom.example.com");
     expect(row.verificationToken).toContain("sanad-verify=");
 
     // Admin verification binds the exact domain to this store.
@@ -65,29 +65,29 @@ describe("custom domain host resolution", () => {
       .send({ verified: true })
       .expect(200);
     const stored = await prisma.store.findUniqueOrThrow({ where: { id: first.store.id } });
-    expect(stored.customDomain).toBe("shop.example.com");
+    expect(stored.customDomain).toBe("shop.custom.example.com");
 
-    const resolved = await resolveCustomDomainHost("shop.example.com");
-    expect(resolved).toMatchObject({ storeId: first.store.id, domain: "shop.example.com", tlsStatus: "pending" });
+    const resolved = await resolveCustomDomainHost("shop.custom.example.com");
+    expect(resolved).toMatchObject({ storeId: first.store.id, domain: "shop.custom.example.com", tlsStatus: "pending" });
 
     const site = await request(app)
       .get("/api/site")
-      .set("Host", "shop.example.com:443")
+      .set("Host", "shop.custom.example.com:443")
       .expect(200);
     expect(site.body.mode).toBe("custom_domain");
     expect(site.body.custom_domain).toBe(true);
     expect(site.body.store).toMatchObject({
       id: first.store.id,
       subdomain: first.subdomain,
-      canonical_url: "https://shop.example.com",
+      canonical_url: "https://shop.custom.example.com",
       tls_status: "pending",
     });
-    expect(site.body.canonical_url).toBe("https://shop.example.com");
+    expect(site.body.canonical_url).toBe("https://shop.custom.example.com");
 
     // The public payload uses the custom domain as canonical, not the subdomain.
     const storefront = await request(app).get(`/api/storefront/${first.subdomain}`).expect(200);
-    expect(storefront.body.store.canonical_url).toBe("https://shop.example.com");
-    expect(storefront.body.store.custom_domain).toBe("shop.example.com");
+    expect(storefront.body.store.canonical_url).toBe("https://shop.custom.example.com");
+    expect(storefront.body.store.custom_domain).toBe("shop.custom.example.com");
 
     // TLS is recorded by the platform, never fabricated by verification.
     await admin.agent
@@ -96,7 +96,7 @@ describe("custom domain host resolution", () => {
       .expect(200);
     const secured = await request(app)
       .get("/api/site")
-      .set("Host", "shop.example.com")
+      .set("Host", "shop.custom.example.com")
       .expect(200);
     expect(secured.body.store.tls_status).toBe("active");
     expect(secured.body.store.id).toBe(first.store.id);
@@ -105,7 +105,7 @@ describe("custom domain host resolution", () => {
     const forwarded = await request(app)
       .get("/api/site")
       .set("Host", "localhost")
-      .set("X-Forwarded-Host", "shop.example.com")
+      .set("X-Forwarded-Host", "shop.custom.example.com")
       .expect(200);
     expect(forwarded.body).toMatchObject({ mode: "platform", custom_domain: false, store: null });
 
@@ -122,14 +122,14 @@ describe("custom domain host resolution", () => {
       .expect(200);
     const closed = await request(app)
       .get("/api/site")
-      .set("Host", "shop.example.com")
+      .set("Host", "shop.custom.example.com")
       .expect(200);
     expect(closed.body.store).toBeNull();
 
     // A second store cannot claim the same domain.
     await second.agent
       .post(`/api/stores/${second.subdomain}/domains`)
-      .send({ domain: "shop.example.com" })
+      .send({ domain: "shop.custom.example.com" })
       .expect(409);
     expect(second.store.id).not.toBe(first.store.id);
   });

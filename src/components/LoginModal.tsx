@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Language } from '../data/translations';
 import { X, LogIn, Lock, Mail, ShieldCheck } from 'lucide-react';
 import { api } from '../lib/api';
+import { safeError } from '../lib/format';
 
 interface LoginModalProps {
   currentLang: Language;
@@ -37,7 +38,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     } catch (err: any) {
       setError(
         currentLang === 'ar'
-          ? 'تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور، أو أنشئ حساب تاجر جديداً.'
+          ? safeError(err)
           : (err?.message || 'Login failed. Check your email and password.')
       );
     } finally {

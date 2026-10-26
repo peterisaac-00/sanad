@@ -43,6 +43,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     void refresh();
   }, [refresh]);
 
+  // Any authenticated request that returns 401 clears local session state so
+  // guards redirect to sign-in instead of leaving a stale dashboard visible.
+  useEffect(() => {
+    const onUnauthorized = () => {
+      setSessionState(null);
+      setLoading(false);
+    };
+    window.addEventListener("sanad:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("sanad:unauthorized", onUnauthorized);
+  }, []);
+
   const setSession = useCallback((value: SessionPayload | null) => {
     setSessionState(value);
     setLoading(false);

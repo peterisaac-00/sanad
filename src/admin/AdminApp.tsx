@@ -1,12 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   BarChart3,
   CreditCard,
-  FileText,
   Flag,
   Globe2,
-  Headphones,
   LayoutDashboard,
   Loader2,
   LogOut,
@@ -23,7 +21,7 @@ import {
 } from "lucide-react";
 import { api, ApiRequestError, type AdminPayload } from "../lib/api";
 import { navigate, usePath } from "../lib/router";
-import { Alert, Badge, Button, Card, Field, Input, Spinner, cn, useToast } from "../components/ui";
+import { Alert, Badge, Button, Card, Field, Input, Modal, Spinner, cn, useToast } from "../components/ui";
 import { BrandLogo } from "../components/Brand";
 import {
   OverviewPanel,
@@ -31,7 +29,6 @@ import {
   MerchantsPanel,
   SubscriptionsPanel,
   WalletPanel,
-  SupportPanel,
 } from "./AdminCommerce";
 import {
   ReportsPanel,
@@ -39,7 +36,6 @@ import {
   AuditPanel,
   FlagsPanel,
   AdminsPanel,
-  LeadsPanel,
   SecurityPanel,
 } from "./AdminOps";
 import { ADMIN_ROLE_LABELS, PermissionNote, type AdminPermission } from "./shared";
@@ -50,13 +46,11 @@ type AdminTab =
   | "merchants"
   | "subscriptions"
   | "wallet"
-  | "support"
   | "reports"
   | "domains"
   | "audit"
   | "flags"
   | "admins"
-  | "leads"
   | "security";
 
 interface TabDefinition {
@@ -74,13 +68,11 @@ const TABS: TabDefinition[] = [
   { key: "merchants", href: "/admin/merchants", label: "التجار", icon: Users, permission: "merchants.read", group: "المراقبة" },
   { key: "subscriptions", href: "/admin/subscriptions", label: "الاشتراكات", icon: CreditCard, permission: "subscriptions.read", group: "التشغيل" },
   { key: "wallet", href: "/admin/wallet", label: "طلبات الإيداع", icon: Wallet, permission: "wallet.read", group: "التشغيل" },
-  { key: "support", href: "/admin/support", label: "الدعم", icon: Headphones, permission: "support.read", group: "التشغيل" },
   { key: "reports", href: "/admin/reports", label: "التقارير", icon: BarChart3, permission: "reports.read", group: "التشغيل" },
   { key: "domains", href: "/admin/domains", label: "النطاقات و TLS", icon: Globe2, permission: "domains.read", group: "التشغيل" },
   { key: "audit", href: "/admin/audit", label: "سجل التدقيق", icon: Shield, permission: "audit.read", group: "الحوكمة" },
   { key: "flags", href: "/admin/flags", label: "مفاتيح الميزات", icon: Flag, permission: "flags.read", group: "الحوكمة" },
   { key: "admins", href: "/admin/admins", label: "حسابات الإدارة", icon: UserCog, permission: "admins.manage", group: "الحوكمة" },
-  { key: "leads", href: "/admin/leads", label: "طلبات المنصة", icon: FileText, permission: "stores.read", group: "الحوكمة" },
   { key: "security", href: "/admin/security", label: "أمان حسابي", icon: ShieldCheck, group: "الحكومة" },
 ];
 
@@ -110,6 +102,10 @@ const ADMIN_ERRORS: Record<string, string> = {
   ADMIN_INVALID_TWO_FACTOR: "رمز المصادقة غير صحيح أو مستخدم سابقاً.",
   ADMIN_FORBIDDEN: "دورك الحالي لا يسمح بهذا الإجراء.",
   ADMIN_SELF_EDIT: "لا يمكنك تعديل دورك أو تعطيل حسابك الحالي.",
+  ADMIN_CREDENTIAL_CHANGE_REQUIRED: "يجب استبدال بيانات الدخول المؤقتة أولاً.",
+  ADMIN_CREDENTIALS_ALREADY_SET: "تم استبدال بيانات الدخول المؤقتة بالفعل.",
+  ADMIN_EMAIL_TAKEN: "هذا البريد الإلكتروني مستخدم لحساب إداري آخر.",
+  ADMIN_EMAIL_UNCHANGED: "اختر بريداً إلكترونياً جديداً مختلفاً عن البريد المؤقت.",
 };
 
 function adminError(error: unknown): string {
@@ -182,6 +178,16 @@ export function AdminApp() {
     return <AdminDenied onUseAdminLogin={() => setAuth({ status: "signed_out", admin: null })} />;
   }
 
+  if (auth.admin.must_change_credentials) {
+    return (
+      <AdminCredentialSetup
+        admin={auth.admin}
+        onSaved={(admin) => setAuth({ status: "ready", admin })}
+        onLogout={logout}
+      />
+    );
+  }
+
   const admin = auth.admin;
   const can = (permission: AdminPermission) => admin.permissions.includes(permission);
   const visibleTabs = TABS.filter((tab) => !tab.permission || can(tab.permission));
@@ -232,8 +238,6 @@ export function AdminApp() {
         return <SubscriptionsPanel can={can} />;
       case "wallet":
         return <WalletPanel can={can} />;
-      case "support":
-        return <SupportPanel can={can} />;
       case "reports":
         return <ReportsPanel can={can} />;
       case "domains":
@@ -244,8 +248,6 @@ export function AdminApp() {
         return <FlagsPanel can={can} />;
       case "admins":
         return <AdminsPanel can={can} admin={admin} />;
-      case "leads":
-        return <LeadsPanel can={can} />;
       case "security":
         return <SecurityPanel can={can} admin={admin} onAdminUpdated={loadAdmin} />;
       default:
@@ -559,6 +561,144 @@ function AdminLogin({ onSignedIn }: { onSignedIn: (admin: AdminPayload) => void 
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Forced first-admin credential replacement                           */
+/* ------------------------------------------------------------------ */
+
+function AdminCredentialSetup({
+  admin,
+  onSaved,
+  onLogout,
+}: {
+  admin: AdminPayload;
+  onSaved: (admin: AdminPayload) => void;
+  onLogout: () => void;
+}) {
+  const toast = useToast();
+  const [email, setEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const keepOpen = useCallback(() => undefined, []);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (busy) return;
+    const nextEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) {
+      setError("أدخل بريداً إلكترونياً صحيحاً.");
+      return;
+    }
+    if (nextEmail === admin.email.toLowerCase()) {
+      setError("اختر بريداً إلكترونياً جديداً مختلفاً عن البريد المؤقت.");
+      return;
+    }
+    if (!currentPassword) {
+      setError("أدخل كلمة المرور المؤقتة الحالية.");
+      return;
+    }
+    if (password.length < 12) {
+      setError("كلمة المرور الجديدة يجب أن تكون 12 حرفاً على الأقل.");
+      return;
+    }
+    if (password === currentPassword) {
+      setError("اختر كلمة مرور مختلفة عن كلمة المرور المؤقتة.");
+      return;
+    }
+    if (password !== confirm) {
+      setError("كلمتا المرور غير متطابقتين.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api.admin.auth.setInitialCredentials(nextEmail, currentPassword, password);
+      toast.success("تم حفظ بيانات الدخول الجديدة. استخدمها من الآن فصاعداً.");
+      onSaved(result.admin);
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.status === 401) {
+        onLogout();
+        return;
+      }
+      setError(adminError(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div dir="rtl" data-theme="light" className="min-h-screen bg-secondary font-arabic text-ink">
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <BrandLogo dark size="lg" tagline="مركز إدارة منصة سند" />
+      </div>
+      <Modal
+        open
+        onClose={keepOpen}
+        dismissible={false}
+        size="sm"
+        title="استبدل بيانات الدخول المؤقتة"
+        description="تم الدخول ببيانات إعداد مؤقتة. حدد بريداً إلكترونياً وكلمة مرور خاصين بك قبل استخدام لوحة الإدارة. بعد الحفظ لن تعمل بيانات الدخول المؤقتة."
+        footer={
+          <>
+            <Button variant="ghost" onClick={onLogout} disabled={busy}>تسجيل الخروج</Button>
+            <Button type="submit" form="admin-initial-credentials" loading={busy}>حفظ ومتابعة</Button>
+          </>
+        }
+      >
+        <form id="admin-initial-credentials" onSubmit={submit} className="space-y-4">
+          {error ? <Alert tone="error" title="تعذر حفظ بيانات الدخول">{error}</Alert> : null}
+          <div className="rounded-brand border border-warning-line bg-warning-soft px-3 py-2.5 text-[11px] leading-6 text-warning">
+            لا تشارك بيانات الدخول المؤقتة، ولا تتابع قبل استبدالها.
+          </div>
+          <Field label="البريد الإلكتروني الجديد" required>
+            <Input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              dir="ltr"
+              autoComplete="email"
+              autoFocus
+              disabled={busy}
+            />
+          </Field>
+          <Field label="كلمة المرور المؤقتة الحالية" required>
+            <Input
+              type="password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              dir="ltr"
+              autoComplete="current-password"
+              disabled={busy}
+            />
+          </Field>
+          <Field label="كلمة المرور الجديدة" required hint="12 حرفاً على الأقل.">
+            <Input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              dir="ltr"
+              autoComplete="new-password"
+              disabled={busy}
+            />
+          </Field>
+          <Field label="تأكيد كلمة المرور" required>
+            <Input
+              type="password"
+              value={confirm}
+              onChange={(event) => setConfirm(event.target.value)}
+              dir="ltr"
+              autoComplete="new-password"
+              disabled={busy}
+            />
+          </Field>
+        </form>
+      </Modal>
     </div>
   );
 }

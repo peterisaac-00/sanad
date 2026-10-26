@@ -9,11 +9,9 @@ import {
   CreditCard,
   ExternalLink,
   Globe2,
-  Headphones,
   ImagePlus,
   LayoutDashboard,
   Loader2,
-  MessageSquare,
   Palette,
   RefreshCw,
   Settings2,
@@ -53,9 +51,7 @@ import {
   PAYMENT_STATUS,
   PLAN_LABEL,
   PLAN_PERIOD,
-  PRIORITY,
   StoreTable,
-  TICKET_STATUS,
   WALLET_STATUS,
   VisitsChart,
   ownerName,
@@ -82,7 +78,7 @@ export function OverviewPanel({ can }: AdminPanelProps) {
       <PageHeader
         eyebrow="إدارة منصة سند"
         title="مركز تحكم المنصة"
-        description="حالة المتاجر والنشر والاشتراكات والمحفظة والدعم في مكان واحد. كل رقم هنا مقروء من قاعدة البيانات لحظة التحميل."
+        description="حالة المتاجر والنشر والاشتراكات والمحفظة في مكان واحد. كل رقم هنا مقروء من قاعدة البيانات لحظة التحميل."
         actions={
           <Button variant="outline" onClick={reload} loading={loading}>
             <RefreshCw className="h-4 w-4" /> تحديث
@@ -133,13 +129,6 @@ export function OverviewPanel({ can }: AdminPanelProps) {
               hint={`${money(summary.pendingWalletAmount ?? 0, "EGP")} بانتظار الاعتماد`}
               icon={<Wallet className="h-5 w-5" />}
               accent="warning"
-            />
-            <StatCard
-              label="تذاكر دعم مفتوحة"
-              value={number(summary.openSupportTickets ?? 0)}
-              hint="مفتوحة أو قيد المعالجة"
-              icon={<Headphones className="h-5 w-5" />}
-              accent={Number(summary.openSupportTickets ?? 0) > 0 ? "warning" : "success"}
             />
             <StatCard
               label="اشتراكات معتمدة هذا الشهر"
@@ -218,7 +207,6 @@ export function OverviewPanel({ can }: AdminPanelProps) {
               { href: "/admin/stores", label: "المتاجر والنشر", description: "اعتماد، إيقاف، ونشر", icon: StoreIcon, show: can("stores.read") },
               { href: "/admin/subscriptions", label: "دفعات الاشتراك", description: "مراجعة واعتماد", icon: CreditCard, show: can("subscriptions.read") },
               { href: "/admin/wallet", label: "إيداعات المحفظة", description: "اعتماد أو رفض", icon: Wallet, show: can("wallet.read") },
-              { href: "/admin/support", label: "مركز الدعم", description: "تذاكر التجار", icon: Headphones, show: can("support.read") },
             ].filter((entry) => entry.show).map((entry) => {
               const Icon = entry.icon;
               return (
@@ -1107,154 +1095,6 @@ export function WalletPanel({ can }: AdminPanelProps) {
             <Field label="ملاحظة المراجعة" hint="تظهر للتاجر وتُحفظ في سجل التدقيق.">
               <Textarea rows={3} value={note} onChange={(event) => setNote(event.target.value)} placeholder="رقم العملية البنكية أو سبب الرفض…" />
             </Field>
-          </div>
-        ) : null}
-      </Modal>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Support                                                             */
-/* ------------------------------------------------------------------ */
-
-export function SupportPanel({ can }: AdminPanelProps) {
-  const toast = useToast();
-  const { data, loading, error, reload } = useAsync(() => api.admin.supportTickets(), []);
-  const [status, setStatus] = useState("all");
-  const [editing, setEditing] = useState<any | null>(null);
-  const [draft, setDraft] = useState({ status: "open", priority: "normal", resolution: "", assignToMe: false });
-  const [busy, setBusy] = useState(false);
-
-  const tickets = data?.tickets ?? [];
-  const filtered = status === "all" ? tickets : tickets.filter((ticket: any) => ticket.status === status);
-
-  const open = (ticket: any) => {
-    setEditing(ticket);
-    setDraft({
-      status: ticket.status ?? "open",
-      priority: ticket.priority ?? "normal",
-      resolution: ticket.resolution ?? "",
-      assignToMe: false,
-    });
-  };
-
-  const save = async () => {
-    if (!editing) return;
-    setBusy(true);
-    try {
-      await api.admin.updateSupportTicket(editing.id, {
-        status: draft.status,
-        priority: draft.priority,
-        resolution: draft.resolution.trim(),
-        assignToMe: draft.assignToMe,
-      });
-      toast.success("تم تحديث تذكرة الدعم.");
-      setEditing(null);
-      reload();
-    } catch (err: any) {
-      toast.error(safeError(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="space-y-5">
-      <PageHeader
-        eyebrow="الدعم"
-        title="تذاكر التجار"
-        description="تذاكر يفتحها التجار من لوحة التحكم. كل تغيير في الحالة أو الأولوية يُسجَّل في سجل التدقيق."
-        actions={<Button variant="outline" onClick={reload} loading={loading}><RefreshCw className="h-4 w-4" /> تحديث</Button>}
-      />
-      {error ? <Alert tone="error" title="تعذر تحميل تذاكر الدعم">{safeError(error)}</Alert> : null}
-      <Card className="p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Select value={status} onChange={(event) => setStatus(event.target.value)} className="w-full sm:w-48">
-            <option value="all">كل التذاكر</option>
-            <option value="open">مفتوحة</option>
-            <option value="in_progress">قيد المعالجة</option>
-            <option value="resolved">تم الحل</option>
-            <option value="closed">مغلقة</option>
-          </Select>
-          <div className="ms-auto text-[11px] text-subtle">{number(filtered.length)} من {number(tickets.length)} تذكرة</div>
-        </div>
-      </Card>
-      <Card className="overflow-hidden">
-        {loading && !data ? (
-          <div className="space-y-2 p-4">{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-16" />)}</div>
-        ) : filtered.length === 0 ? (
-          <EmptyState title="لا توجد تذاكر" description="ستظهر هنا تذاكر الدعم التي يفتحها التجار." icon={<MessageSquare className="h-5 w-5" />} />
-        ) : (
-          <TableShell minWidth={1000}>
-            <thead>
-              <tr className="border-b border-line bg-surface/60">
-                <Th>التذكرة</Th><Th>المتجر</Th><Th>الأولوية</Th><Th>الحالة</Th><Th>أُنشئت</Th><Th>الإجراء</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((ticket: any) => {
-                const statusMeta = TICKET_STATUS[ticket.status] ?? { label: ticket.status, tone: "bg-surface text-ink-soft border-line" };
-                const priorityMeta = PRIORITY[ticket.priority] ?? { label: ticket.priority, tone: "bg-surface text-ink-soft border-line" };
-                return (
-                  <tr key={ticket.id} className="border-b border-line align-top hover:bg-surface/50">
-                    <Td>
-                      <div className="max-w-[260px] text-xs font-bold text-ink">{ticket.subject}</div>
-                      <div className="mt-0.5 line-clamp-2 max-w-[320px] text-[10px] leading-4 text-subtle">{ticket.message}</div>
-                      <div className="mt-1 text-[10px] text-subtle">{ticket.category || "عام"}</div>
-                    </Td>
-                    <Td>
-                      <div className="text-[11px] font-semibold text-ink">{ticket.store?.storeName}</div>
-                      <div className="font-mono text-[10px] text-subtle" dir="ltr">/store/{ticket.store?.subdomain}</div>
-                    </Td>
-                    <Td><Badge tone={priorityMeta.tone}>{priorityMeta.label}</Badge></Td>
-                    <Td><Badge tone={statusMeta.tone}>{statusMeta.label}</Badge></Td>
-                    <Td><span className="text-[11px] text-subtle">{dateTime(ticket.createdAt)}</span></Td>
-                    <Td>
-                      <Button size="sm" variant="outline" onClick={() => open(ticket)} disabled={!can("support.write")}>فتح</Button>
-                    </Td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </TableShell>
-        )}
-      </Card>
-
-      <Modal
-        open={Boolean(editing)}
-        onClose={() => (busy ? undefined : setEditing(null))}
-        title="تحديث تذكرة الدعم"
-        description={editing?.subject}
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setEditing(null)} disabled={busy}>إلغاء</Button>
-            <Button loading={busy} onClick={save} disabled={!can("support.write")}>حفظ التحديث</Button>
-          </>
-        }
-      >
-        {editing ? (
-          <div className="space-y-4">
-            <div className="rounded-brand border border-line bg-surface p-3 text-[11px] leading-6 text-ink-soft whitespace-pre-wrap">{editing.message}</div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="الحالة">
-                <Select value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value })}>
-                  {Object.entries(TICKET_STATUS).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}
-                </Select>
-              </Field>
-              <Field label="الأولوية">
-                <Select value={draft.priority} onChange={(event) => setDraft({ ...draft, priority: event.target.value })}>
-                  {Object.entries(PRIORITY).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}
-                </Select>
-              </Field>
-            </div>
-            <Field label="الحل / الرد الداخلي">
-              <Textarea rows={4} value={draft.resolution} onChange={(event) => setDraft({ ...draft, resolution: event.target.value })} />
-            </Field>
-            <label className="flex items-center gap-2 text-[11px] text-ink-soft">
-              <input type="checkbox" checked={draft.assignToMe} onChange={(event) => setDraft({ ...draft, assignToMe: event.target.checked })} />
-              إسناد التذكرة إليّ
-            </label>
           </div>
         ) : null}
       </Modal>

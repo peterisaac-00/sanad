@@ -32,6 +32,7 @@ import {
   X,
 } from "lucide-react";
 import { api, mediaUrl, type StorePermission } from "../lib/api";
+import { storefrontLabel as publicStorefrontLabel, storefrontUrl as publicStorefrontUrl } from "../lib/urls";
 import { safeError, timeAgo } from "../lib/format";
 import { Link, navigate, usePath } from "../lib/router";
 import { useSession } from "../lib/session";
@@ -46,6 +47,8 @@ export interface DashboardContextValue {
   store: any;
   subdomain: string;
   section: string;
+  storefrontUrl: string;
+  storefrontLabel: string;
 }
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
@@ -165,6 +168,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unread, setUnread] = useState(0);
   const revalidated = useRef(false);
+  const lastApprovalNotificationId = useRef("");
 
   const store = session?.store;
   const subdomain = store?.subdomain ?? "";
@@ -176,10 +180,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     session?.merchant?.email ||
     "";
   const accountEmail = teamMember?.email || session?.merchant?.email || "";
-  const storefrontUrl = store?.customDomain ? `https://${store.customDomain}` : `/store/${subdomain}`;
-  const storefrontLabel = store?.customDomain || `/store/${subdomain}`;
+  const storefrontUrl = publicStorefrontUrl(store) || "/";
+  const storefrontLabel = publicStorefrontLabel(store) || storefrontUrl;
   const publishing = session?.publishing ?? null;
-  const publishStatus: string = publishing?.status ?? store?.publishStatus ?? "draft";
+  const publishStatus: string = publishing?.publish_status ?? store?.publishStatus ?? "draft";
   const publishReason: string = publishing?.publish_reason || store?.publishReason || "";
   const publishLabel = PUBLISH_STATUS_LABELS[publishStatus] ?? publishStatus;
   const canManagePublishing = can("settings.write");
@@ -218,6 +222,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       const result = await api.dashboard.notifications(subdomain);
       setNotifications(result.notifications);
       setUnread(result.unread);
+      // A new approval notification means the store status may have changed
+      // (rejected, approved, or suspended). Pull a fresh session so the header
+      // banner reflects it without requiring a page reload.
+      const latestApproval = result.notifications.find((item: any) => item.type === "approval");
+      if (latestApproval && latestApproval.id !== lastApprovalNotificationId.current) {
+        lastApprovalNotificationId.current = latestApproval.id;
+        void refresh();
+      }
     } catch {
       // A failed notification poll must not interrupt the page the merchant is
       // working on; the bell simply stays at its last known state.
@@ -227,8 +239,20 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!subdomain) return;
     void loadNotifications();
-    const timer = window.setInterval(() => void loadNotifications(), 60_000);
-    return () => window.clearInterval(timer);
+    // Admin reviews happen outside this tab, so do not wait a full minute for
+    // the bell to catch up. Poll less aggressively in the background and check
+    // immediately whenever the merchant returns to the dashboard.
+    const timer = window.setInterval(() => void loadNotifications(), 20_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void loadNotifications();
+    };
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [subdomain]);
 
   // A pending store may be approved from another browser by the platform
@@ -364,7 +388,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const storeInitial = (store.storeName ?? "س").trim().charAt(0);
 
   return (
-    <DashboardContext.Provider value={{ store, subdomain, section }}>
+    <DashboardContext.Provider value={{ store, subdomain, section, storefrontUrl, storefrontLabel }}>
       <div dir="rtl" data-theme={theme} className="min-h-screen bg-canvas font-arabic text-ink">
         {/* Desktop right sidebar (RTL start edge). */}
         <aside className="fixed inset-y-0 start-0 z-40 hidden w-[272px] border-e border-line bg-card lg:flex lg:flex-col">
@@ -466,7 +490,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
               <div className="relative">
                 <button
-                  onClick={() => { setNotificationsOpen((v) => !v); setProfileOpen(false); }}
+                  onClick={() => {
+                    if (!notificationsOpen) void loadNotifications();
+                    setNotificationsOpen((v) => !v);
+                    setProfileOpen(false);
+                  }}
                   className="relative rounded-brand border border-line bg-card p-2 text-subtle transition hover:bg-surface hover:text-ink"
                   aria-label="الإشعارات"
                 >

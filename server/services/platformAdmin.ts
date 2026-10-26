@@ -193,6 +193,7 @@ export function serializeAdmin(admin: {
   email: string;
   name: string;
   role: string;
+  mustChangeCredentials: boolean;
   twoFactorEnabled: boolean;
   lastLoginAt: Date | null;
 }) {
@@ -201,6 +202,7 @@ export function serializeAdmin(admin: {
     email: admin.email,
     name: admin.name,
     role: admin.role,
+    must_change_credentials: admin.mustChangeCredentials,
     two_factor_enabled: admin.twoFactorEnabled,
     permissions: adminPermissions(admin.role),
     last_login_at: admin.lastLoginAt,
@@ -219,6 +221,7 @@ export async function ensurePlatformAdmin(input: {
   password: string;
   name?: string;
   role?: AdminRole;
+  mustChangeCredentials?: boolean;
 }): Promise<{ admin: PlatformAdmin; created: boolean }> {
   const email = input.email.trim().toLowerCase();
   const existing = await prisma.platformAdmin.findUnique({ where: { email } });
@@ -235,6 +238,7 @@ export async function ensurePlatformAdmin(input: {
         passwordAlgo: "argon2id",
         role: input.role ?? "readonly",
         status: "active",
+        mustChangeCredentials: Boolean(input.mustChangeCredentials),
       },
     });
     return { admin, created: true };
@@ -247,4 +251,39 @@ export async function ensurePlatformAdmin(input: {
     }
     throw error;
   }
+}
+
+/**
+ * Boot-time provisioning for the first administrator. If the bootstrap email
+ * still exists, force a credential change so a shared setup password cannot
+ * remain in use. If it was already replaced, never recreate it: the presence
+ * of any platform admin means bootstrap has been consumed.
+ */
+export async function ensureBootstrapAdmin(input: {
+  email: string;
+  password: string;
+  name?: string;
+}): Promise<{ admin: PlatformAdmin | null; created: boolean; forced: boolean; skipped: boolean }> {
+  const email = input.email.trim().toLowerCase();
+  const existing = await prisma.platformAdmin.findUnique({ where: { email } });
+  if (existing) {
+    if (existing.mustChangeCredentials) {
+      return { admin: existing, created: false, forced: false, skipped: false };
+    }
+    const admin = await prisma.platformAdmin.update({
+      where: { id: existing.id },
+      data: { mustChangeCredentials: true },
+    });
+    return { admin, created: false, forced: true, skipped: false };
+  }
+
+  const adminCount = await prisma.platformAdmin.count();
+  if (adminCount > 0) return { admin: null, created: false, forced: false, skipped: true };
+
+  const result = await ensurePlatformAdmin({
+    ...input,
+    role: "super_admin",
+    mustChangeCredentials: true,
+  });
+  return { ...result, forced: false, skipped: false };
 }

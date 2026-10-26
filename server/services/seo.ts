@@ -2,21 +2,21 @@ import type { Request } from "express";
 import { prisma } from "../db.js";
 import { env } from "../env.js";
 import { isPublished } from "./publishing.js";
-import { isPlatformHost, normalizeHost, resolveCustomDomainHost } from "./domains.js";
+import { isPlatformHost, normalizeHost, resolveStorefrontHost, storefrontOrigin } from "./domains.js";
 
 function xml(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
 
 export function absoluteStoreUrl(store: { subdomain: string; customDomain: string | null }, path = "") {
-  const origin = store.customDomain ? `https://${store.customDomain}` : `${env.appUrl}/store/${encodeURIComponent(store.subdomain)}`;
+  const origin = storefrontOrigin(store);
   return `${origin}${path && path !== "/" ? (path.startsWith("/") ? path : `/${path}`) : ""}`;
 }
 
 export async function resolveStoreForRequest(req: Request) {
   const host = normalizeHost(req.headers.host);
   if (!isPlatformHost(host)) {
-    const resolved = await resolveCustomDomainHost(host);
+    const resolved = await resolveStorefrontHost(host);
     return resolved ? prisma.store.findUnique({ where: { id: resolved.storeId } }) : null;
   }
   const match = req.path.match(/^\/store\/([^/]+)/);
@@ -27,7 +27,11 @@ export async function resolveStoreForRequest(req: Request) {
 }
 
 export async function storefrontSeo(req: Request, store: any) {
-  const path = req.path;
+  // Host-based storefronts (platform subdomains and custom domains) live at
+  // the root. The legacy `/store/:subdomain` path remains supported on the
+  // platform host.
+  const hostBased = !isPlatformHost(normalizeHost(req.headers.host));
+  const path = hostBased ? req.path : req.path.replace(/^\/store\/[^/]+/, "") || "/";
   const published = isPublished(store);
   const baseTitle = store.seoTitle || store.storeName;
   const baseDescription = store.seoDescription || store.description || `تسوّق من متجر ${store.storeName}.`;
@@ -38,9 +42,9 @@ export async function storefrontSeo(req: Request, store: any) {
   let noindex = !published;
 
   if (published) {
-    const productMatch = path.match(/^\/store\/[^/]+\/products\/([^/]+)/);
-    const blogMatch = path.match(/^\/store\/[^/]+\/blog\/([^/]+)/);
-    const pageMatch = path.match(/^\/store\/[^/]+\/pages\/([^/]+)/);
+    const productMatch = path.match(/^\/products\/([^/]+)/);
+    const blogMatch = path.match(/^\/blog\/([^/]+)/);
+    const pageMatch = path.match(/^\/pages\/([^/]+)/);
     if (productMatch) {
       const slug = decodeURIComponent(productMatch[1]);
       const product = await prisma.product.findFirst({ where: { storeId: store.id, slug, status: "active" }, include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } } });
@@ -63,7 +67,7 @@ export async function storefrontSeo(req: Request, store: any) {
     if (query.has("search") || query.has("minPrice") || query.has("maxPrice") || query.has("featured")) noindex = true;
   }
 
-  const canonicalPath = path.replace(/^\/store\/[^/]+/, "").replace(/\/$/, "") || "/";
+  const canonicalPath = path.replace(/\/$/, "") || "/";
   const canonical = absoluteStoreUrl(store, canonicalPath === "/" ? "" : canonicalPath);
   const jsonLd = {
     "@context": "https://schema.org",

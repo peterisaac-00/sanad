@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { ImagePlus, Loader2, Trash2, UploadCloud } from "lucide-react";
 import { api, mediaUrl } from "../lib/api";
+import { safeError } from "../lib/format";
 import { cn } from "./ui";
 
 function readAsBase64(file: File): Promise<string> {
@@ -52,7 +53,7 @@ export function ImageUploader({
       const result = await api.media.upload({ fileName: file.name, mimeType: file.type, dataBase64 });
       onChange(result.media.url);
     } catch (err: any) {
-      setError(err?.message || "تعذر رفع الصورة.");
+      setError(safeError(err) || "تعذر رفع الصورة.");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -155,7 +156,7 @@ export function MultiImageUploader({
       }
       onChange(next);
     } catch (err: any) {
-      setError(err?.message || "تعذر رفع الصور.");
+      setError(safeError(err) || "تعذر رفع الصور.");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";

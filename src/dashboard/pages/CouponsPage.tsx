@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { BadgePercent, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { api } from "../../lib/api";
 import { date, money, number, safeError } from "../../lib/format";
@@ -70,6 +70,8 @@ export function CouponsPage() {
   const [deleting, setDeleting] = useState<any | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [saving, setSaving] = useState(false);
+  const saveInFlight = useRef(false);
+  const [toggleBusyId, setToggleBusyId] = useState<string | null>(null);
   const [draft, setDraft] = useState<CouponDraft>(emptyCoupon);
 
   const { data, loading, error, reload } = useAsync(() => api.coupons.list(subdomain), [subdomain]);
@@ -112,6 +114,7 @@ export function CouponsPage() {
   };
 
   const save = async () => {
+    if (saveInFlight.current) return;
     if (draft.code.trim().length < 2) {
       toast.error("أدخل كوداً من حرفين على الأقل.");
       return;
@@ -135,6 +138,7 @@ export function CouponsPage() {
       categoryIds: draft.categoryIds,
       isActive: draft.isActive,
     };
+    saveInFlight.current = true;
     setSaving(true);
     try {
       if (editing) await api.coupons.update(subdomain, editing.id, body);
@@ -145,16 +149,21 @@ export function CouponsPage() {
     } catch (err: any) {
       toast.error(safeError(err));
     } finally {
+      saveInFlight.current = false;
       setSaving(false);
     }
   };
 
   const toggleActive = async (coupon: any) => {
+    if (toggleBusyId) return;
+    setToggleBusyId(coupon.id);
     try {
       await api.coupons.update(subdomain, coupon.id, { isActive: !coupon.isActive });
       reload();
     } catch (err: any) {
       toast.error(safeError(err));
+    } finally {
+      setToggleBusyId(null);
     }
   };
 
@@ -268,7 +277,7 @@ export function CouponsPage() {
                     {coupon.perCustomerLimit ? <div className="mt-0.5 text-[10px] text-subtle">الحد لكل عميل: {number(coupon.perCustomerLimit)}</div> : null}
                   </Td>
                   <Td>
-                    <button onClick={() => toggleActive(coupon)} aria-label="تبديل التفعيل">
+                    <button onClick={() => toggleActive(coupon)} disabled={Boolean(toggleBusyId)} aria-label="تبديل التفعيل" className="disabled:cursor-not-allowed disabled:opacity-50">
                       <ActivePill active={coupon.isActive} />
                     </button>
                   </Td>

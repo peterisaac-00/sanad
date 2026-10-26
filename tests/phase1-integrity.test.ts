@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
-import { app, prisma, registerMerchant, truncateAll, closeDb, uid } from "./helpers.js";
+import { app, prisma, registerMerchant, truncateAll, closeDb, uid, orderIdByNumber } from "./helpers.js";
 
 beforeEach(truncateAll);
 afterAll(closeDb);
@@ -63,14 +63,16 @@ describe("Phase 1 accounting consistency", () => {
       .post(`/api/stores/${subdomain}/checkout`)
       .send({ customer_name: "Lost", items: [{ sku: "TOP-A", qty: 3 }] })
       .expect(201);
-    await setOrderStatus(agent, subdomain, lost.body.order.id, "cancelled").expect(200);
+    const lostId = await orderIdByNumber(subdomain, lost.body.order.orderNumber);
+    await setOrderStatus(agent, subdomain, lostId, "cancelled").expect(200);
 
     const won = await request(app)
       .post(`/api/stores/${subdomain}/checkout`)
       .send({ customer_name: "Won", items: [{ sku: "TOP-B", qty: 2 }] })
       .expect(201);
+    const wonId = await orderIdByNumber(subdomain, won.body.order.orderNumber);
     for (const status of ["confirmed", "shipped", "delivered"]) {
-      await setOrderStatus(agent, subdomain, won.body.order.id, status).expect(200);
+      await setOrderStatus(agent, subdomain, wonId, status).expect(200);
     }
 
     const summary = await agent.get(`/api/stores/${subdomain}/summary`).expect(200);
@@ -140,10 +142,11 @@ describe("Phase 1 checkout idempotency and coupon serialisation", () => {
       request(app).post(`/api/stores/${subdomain}/checkout`).set("Idempotency-Key", key).send(payload),
     ]);
     expect([first.status, second.status]).toEqual([201, 201]);
-    expect(first.body.order.id).toBe(second.body.order.id);
+    expect(first.body.order.orderNumber).toBe(second.body.order.orderNumber);
 
-    expect(await prisma.order.count({ where: { storeId: (await prisma.store.findUnique({ where: { subdomain } }))!.id } })).toBe(1);
-    const product = await prisma.product.findFirst({ where: { storeId: first.body.order.storeId, sku: "IDEM-1" } });
+    const store = await prisma.store.findUnique({ where: { subdomain } });
+    expect(await prisma.order.count({ where: { storeId: store!.id } })).toBe(1);
+    const product = await prisma.product.findFirst({ where: { storeId: store!.id, sku: "IDEM-1" } });
     expect(product?.stock).toBe(4);
 
     const different = await request(app)
@@ -151,7 +154,17 @@ describe("Phase 1 checkout idempotency and coupon serialisation", () => {
       .set("Idempotency-Key", `${key}-different`)
       .send(payload)
       .expect(201);
-    expect(different.body.order.id).not.toBe(first.body.order.id);
+    expect(different.body.order.orderNumber).not.toBe(first.body.order.orderNumber);
+    expect((await prisma.product.findFirst({ where: { sku: "IDEM-1" } }))?.stock).toBe(3);
+
+    // Reusing a key for a different cart must be rejected instead of silently
+    // returning the earlier order.
+    const changed = await request(app)
+      .post(`/api/stores/${subdomain}/checkout`)
+      .set("Idempotency-Key", key)
+      .send({ ...payload, items: [{ sku: "IDEM-1", qty: 2 }] })
+      .expect(409);
+    expect(changed.body.error.code).toBe("IDEMPOTENCY_KEY_REUSED");
     expect((await prisma.product.findFirst({ where: { sku: "IDEM-1" } }))?.stock).toBe(3);
 
     const invalid = await request(app)
@@ -212,7 +225,11 @@ describe("Phase 1 checkout idempotency and coupon serialisation", () => {
         items: [{ sku: "ID-1", qty: 1 }],
       })
       .expect(201);
-    expect(first.body.order.customerPhone).toBe("201001234567");
+    const firstOrder = await prisma.order.findFirst({
+      where: { storeId: (await prisma.store.findUnique({ where: { subdomain } }))!.id, orderNumber: first.body.order.orderNumber },
+      select: { customerPhone: true },
+    });
+    expect(firstOrder?.customerPhone).toBe("201001234567");
 
     const second = await request(app)
       .post(`/api/stores/${subdomain}/checkout`)
@@ -333,7 +350,7 @@ describe("Phase 1 loyalty lifecycle", () => {
       .post(`/api/stores/${subdomain}/checkout`)
       .send({ customer_name: "Loyal", customer_phone: "01000000099", items: [{ sku: "LOY-1", qty: 1 }] })
       .expect(201);
-    const orderId = checkout.body.order.id as string;
+    const orderId = await orderIdByNumber(subdomain, checkout.body.order.orderNumber);
 
     expect(await prisma.loyaltyAccount.count()).toBe(0);
     expect(await prisma.loyaltyTransaction.count()).toBe(0);
@@ -374,7 +391,8 @@ describe("Phase 1 loyalty lifecycle", () => {
       .post(`/api/stores/${subdomain}/checkout`)
       .send({ customer_name: "Cancelled", customer_phone: "01000000098", items: [{ sku: "LOYC-1", qty: 1 }] })
       .expect(201);
-    await setOrderStatus(agent, subdomain, checkout.body.order.id, "cancelled").expect(200);
+    const checkoutId = await orderIdByNumber(subdomain, checkout.body.order.orderNumber);
+    await setOrderStatus(agent, subdomain, checkoutId, "cancelled").expect(200);
 
     expect(await prisma.loyaltyTransaction.count()).toBe(0);
     expect(await prisma.loyaltyAccount.count()).toBe(0);

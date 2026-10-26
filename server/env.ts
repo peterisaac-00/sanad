@@ -27,6 +27,10 @@ const raw = {
   // Optional integration credentials. Empty values leave the integration
   // explicitly "not configured" instead of silently faking success.
   APP_URL: process.env.APP_URL || "http://localhost:3000",
+  // Base domain used for storefront subdomains (for example `soqeg.com`
+  // produces `test.soqeg.com`). Defaults to the APP_URL hostname with a
+  // leading `www.` removed, so a normal deployment only needs APP_URL.
+  PLATFORM_DOMAIN: process.env.PLATFORM_DOMAIN || "",
   STORAGE_DRIVER: process.env.STORAGE_DRIVER || "local",
   STORAGE_DIR: process.env.STORAGE_DIR || "data/uploads",
   AI_BASE_URL: process.env.AI_BASE_URL || "",
@@ -73,6 +77,17 @@ const envSchema = z.object({
       message: "DATABASE_URL must be a postgresql:// connection string",
     }),
   APP_URL: z.string().url(),
+  PLATFORM_DOMAIN: z.union([
+    z.literal(""),
+    z
+      .string()
+      .trim()
+      .toLowerCase()
+      .max(253)
+      .regex(/^(?!-)[a-z0-9-]{1,63}(?:\.[a-z0-9-]{1,63})*$/, {
+        message: "PLATFORM_DOMAIN must be a bare hostname such as soqeg.com",
+      }),
+  ]),
   STORAGE_DRIVER: z.enum(["local", "s3"]),
   STORAGE_DIR: z.string().min(1),
   AI_BASE_URL: z.string(),
@@ -201,6 +216,26 @@ const demoMode = parsed.data.DEMO_MODE === "true";
 const requireEmailVerification = parsed.data.REQUIRE_EMAIL_VERIFICATION === "true";
 const emailConfigured = Boolean(parsed.data.SMTP_URL && parsed.data.EMAIL_FROM);
 
+const appUrl = parsed.data.APP_URL.replace(/\/$/, "");
+const platformDomain = (
+  parsed.data.PLATFORM_DOMAIN || new URL(appUrl).hostname.replace(/^www\./i, "")
+)
+  .replace(/\.$/, "")
+  .toLowerCase();
+
+if (isProduction) {
+  if (!appUrl.startsWith("https://")) {
+    console.error("[env] APP_URL must use https:// in production (for example https://soqeg.com). Refusing to boot.");
+    process.exit(1);
+  }
+  if (platformDomain === "localhost" || isIP(platformDomain) !== 0) {
+    console.error(
+      "[env] PLATFORM_DOMAIN must be the public base domain in production (for example soqeg.com), not localhost or an IP. Refusing to boot."
+    );
+    process.exit(1);
+  }
+}
+
 if (isProduction && requireEmailVerification && !emailConfigured) {
   console.error(
     "[env] REQUIRE_EMAIL_VERIFICATION=true requires SMTP_URL and EMAIL_FROM. Refusing to boot without a way to deliver verification links."
@@ -248,6 +283,11 @@ if (isProduction && parsed.data.TRACKING_SECRET && parsed.data.TRACKING_SECRET.l
 }
 
 let totpEncryptionKey = parsed.data.TOTP_ENCRYPTION_KEY || derivedSecret("totp");
+if (isProduction && !parsed.data.TOTP_ENCRYPTION_KEY) {
+  console.warn(
+    "[env] TOTP_ENCRYPTION_KEY is not set. Existing TOTP secrets are derived from SESSION_SECRET; rotating SESSION_SECRET will invalidate administrator MFA. Set a dedicated key before rotating."
+  );
+}
 if (isProduction && parsed.data.TOTP_ENCRYPTION_KEY && parsed.data.TOTP_ENCRYPTION_KEY.length < 32) {
   console.error("[env] TOTP_ENCRYPTION_KEY must be at least 32 characters when set in production. Refusing to boot.");
   process.exit(1);
@@ -272,7 +312,8 @@ export const env = {
         name: parsed.data.ADMIN_BOOTSTRAP_NAME || "Platform Admin",
       }
     : null,
-  appUrl: parsed.data.APP_URL.replace(/\/$/, ""),
+  appUrl,
+  platformDomain,
   storageDriver: parsed.data.STORAGE_DRIVER,
   storageDir: parsed.data.STORAGE_DIR,
   mediaMaxBytes: parsed.data.MEDIA_MAX_BYTES,

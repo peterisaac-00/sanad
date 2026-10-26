@@ -51,6 +51,8 @@ dashboardRouter.get(
       todayOrders,
       monthSales,
       revenueOrders,
+      totalRefunds,
+      monthRefunds,
     ] = await prisma.$transaction([
       prisma.store.findUnique({ where: { id: storeId } }),
       prisma.order.count({ where: { storeId } }),
@@ -71,7 +73,31 @@ dashboardRouter.get(
       prisma.order.aggregate({ where: { ...revenueWhere(storeId), createdAt: { gte: startOfMonth } }, _sum: { amountEgp: true } }),
       prisma.order.findMany({
         where: { storeId, createdAt: { gte: since14 } },
-        select: { createdAt: true, amountEgp: true, status: true },
+        select: {
+          createdAt: true,
+          amountEgp: true,
+          status: true,
+          refunds: { where: { status: "processed" }, select: { amount: true } },
+        },
+      }),
+      prisma.refund.aggregate({
+        where: {
+          storeId,
+          status: "processed",
+          order: { status: { notIn: [...EXCLUDED_REVENUE_STATUSES] } },
+        },
+        _sum: { amount: true },
+      }),
+      prisma.refund.aggregate({
+        where: {
+          storeId,
+          status: "processed",
+          order: {
+            status: { notIn: [...EXCLUDED_REVENUE_STATUSES] },
+            createdAt: { gte: startOfMonth },
+          },
+        },
+        _sum: { amount: true },
       }),
     ]);
 
@@ -84,9 +110,18 @@ dashboardRouter.get(
       SELECT oi."product_id" AS "productId",
              MAX(oi."name") AS "name",
              SUM(oi."qty")::int AS "qty",
-             SUM(oi."qty" * oi."unit_price_egp")::double precision AS "revenue"
+             SUM(
+               oi."qty" * oi."unit_price_egp" *
+               (1 - LEAST(1.0, COALESCE(r."refunded", 0) / GREATEST(o."amount_egp", 0.01)))
+             )::double precision AS "revenue"
       FROM "order_items" oi
       JOIN "orders" o ON o."id" = oi."order_id"
+      LEFT JOIN (
+        SELECT "order_id", SUM("amount") AS "refunded"
+        FROM "refunds"
+        WHERE "store_id" = ${storeId} AND "status" = 'processed'
+        GROUP BY "order_id"
+      ) r ON r."order_id" = o."id"
       WHERE o."store_id" = ${storeId}
         AND o."status" NOT IN ('cancelled', 'returned')
         AND oi."product_id" IS NOT NULL
@@ -95,7 +130,9 @@ dashboardRouter.get(
       LIMIT 5
     `;
 
-    const totalSales = Math.round(sales._sum.amountEgp ?? 0);
+    const totalRefunded = totalRefunds._sum.amount ?? 0;
+    const totalSales = Math.round((sales._sum.amountEgp ?? 0) - totalRefunded);
+    const monthSalesValue = Math.round((monthSales._sum.amountEgp ?? 0) - (monthRefunds._sum.amount ?? 0));
     const codCount = methods
       .filter((m) => /cod/i.test(m.paymentMethod) || m.paymentMethod.includes("استلام"))
       .reduce((s, m) => s + m._count._all, 0);
@@ -110,7 +147,10 @@ dashboardRouter.get(
       const entry = byDay.get(key);
       if (!entry) continue;
       entry.orders += 1;
-      if (o.status !== "cancelled" && o.status !== "returned") entry.revenue += o.amountEgp;
+      if (o.status !== "cancelled" && o.status !== "returned") {
+        const refunded = Math.min(o.amountEgp, o.refunds.reduce((sum, refund) => sum + refund.amount, 0));
+        entry.revenue += o.amountEgp - refunded;
+      }
     }
 
     res.json({
@@ -119,13 +159,14 @@ dashboardRouter.get(
         total_orders: total,
         delivered_orders: delivered,
         total_sales_egp: totalSales,
-        // AOV is revenue divided by orders that actually count as revenue,
+        total_refunds_egp: Math.round(totalRefunded * 100) / 100,
+        // AOV is net revenue divided by orders that actually count as revenue,
         // never by cancelled/returned orders.
         avg_order_egp: validOrders ? Math.round(totalSales / validOrders) : 0,
         cod_share_percent: total ? Math.round((codCount / total) * 100) : 0,
         orders_today: todayOrders,
         pending_orders: pendingOrders,
-        month_sales_egp: Math.round(monthSales._sum.amountEgp ?? 0),
+        month_sales_egp: monthSalesValue,
         products_count: productsCount,
         low_stock_products: lowStock,
         customers_count: customersCount,

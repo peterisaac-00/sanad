@@ -17,7 +17,7 @@
 | 3 | Feature truthfulness and integrations | ✅ Complete |
 | 4 | Admin, RBAC, team, and custom domains | ✅ Complete |
 | 5 | Storefront, SEO, performance, and currency model | ✅ Complete |
-| 6 | UX, accessibility, retention, and launch readiness | ⏳ Pending |
+| 6 | UX, accessibility, retention, and launch readiness | ✅ Code complete; launch drills pending |
 
 ## Verification — 2026-10-23
 
@@ -52,7 +52,7 @@
 - [x] **R3.4 — Coupon limits hold under concurrency.** `checkout.ts`: PostgreSQL advisory locks serialize by store/coupon and by customer identity. Coupon limits and first-order rules are revalidated inside the transaction. `identity.ts` normalizes phone/email identity. **Verified:** five concurrent checkouts on a one-use coupon create one order, one usage, and one stock decrement.
 - [x] **R3.5 — Refunds cannot exceed the order total.** `orders.ts`: refund creation and processing lock the order, re-read aggregates inside the transaction, and validate against fresh totals. Double-processing returns 409. **Verified:** concurrent 60 + 60 refunds on a 100 order allow one and reject the other; remaining 40 can be refunded.
 - [x] **R3.6 — Loyalty is earned on delivery and reversed on loss.** `checkout.ts` no longer grants points. `orders.ts` grants on `delivered` and revokes on `cancelled`/`returned`. `LoyaltyTransaction.orderId` plus `@@unique([accountId, orderId, type])` makes the ledger idempotent. **Verified:** 10 points on delivery, no double grant, 0 points and a -10 revoke after return; cancellation before delivery creates no account.
-- [x] **R3.7 — Stock restoration is never silent.** `orders.ts`: store-scoped `updateMany` replacements; failures are collected and written to the order timeline as `stock_restore_failed` with SKU/qty/reason metadata. The status transition still completes, but the failure is auditable. **Verified:** code review and order-state tests. A dedicated double-restore regression test remains in Phase 6.
+- [x] **R3.7 — Stock restoration is never silent.** `orders.ts`: store-scoped `updateMany` replacements; failures are collected and written to the order timeline as `stock_restore_failed` with SKU/qty/reason metadata. The status transition still completes, but the failure is auditable. **Verified:** code review, order-state tests, and the double-restore regression cases in `tests/order-status.test.ts` (execution on PostgreSQL is part of launch sign-off).
 - [x] **R3.8 — Manual payment status is a state machine.** `validate.ts` defines `PAYMENT_TRANSITIONS`; `orders.ts` locks the order, rejects invalid transitions with 409, treats repeated status as a no-op, reuses pending payments, and allows only one succeeded payment. The UI exposes only valid transitions. **Verified:** concurrent paid requests both return 200 but create one payment; paid → unpaid returns 409. Real provider references and webhooks remain in Phase 3.
 - [x] **R5.4 — Checkout supports `Idempotency-Key`.** A valid 8–128 character URL-safe key maps to `Order.idempotencyKey` with `@@unique([storeId, idempotencyKey])`. The service has a fast replay path plus unique-race fallback. The storefront keeps one key per checkout attempt and resets it after success. **Verified:** concurrent identical keys return the same order and decrement stock once; a new key creates a new order; a short key returns `INVALID_IDEMPOTENCY_KEY`.
 
@@ -181,72 +181,73 @@
 
 - [x] **R7.3 — Simplify mobile navigation.** Reduce five bottom items (with 9px labels) to 3–4 primary items plus a grouped drawer; use at least 11–12px text. **Done when** navigation is usable at 320px.
 - [x] **R7.4 — Add a modal focus trap.** Move focus into the dialog, contain Tab, restore focus on close, and use `aria-labelledby` when a heading exists. **Done when** keyboard users cannot tab behind the modal.
-- [ ] **R7.5 — Standardize loading and disabled states.** Cover checkout, product save, settings, order status, coupons, and refunds. **Done when** double-clicks cannot create duplicate mutations.
+- [x] **R7.5 — Standardize loading and disabled states.** Checkout, product save, settings save, order status/payment, notes, coupons, refunds, CSV export, team roles, and domain removal now use `loading`/`disabled` plus an in-flight ref, so a double-click cannot create a duplicate mutation. **Verified:** `tests/phase6-ux.test.ts` asserts each guard; checkout also keeps a per-attempt `Idempotency-Key`.
 - [x] **R7.6 — Standardize `rel="noopener noreferrer"`.** Apply it to every `target="_blank"` external link. **Done when** no external link lacks both protections.
 - [x] **R7.7 — Revalidate stale carts.** Local storage snapshots can be outdated. Revalidate on cart open or after an interval; show price, stock, and unpublished-product changes before checkout. **Done when** users see changes before submitting.
-- [ ] **R7.9 — Test RTL and mixed text visually.** Cover long Arabic names, English SKUs, dashboard tables at 320px, mobile modals, and mixed currencies. **Done when** no clipping or overlap remains.
-- [ ] **R7.10 — Unify error taxonomy.** Map 401, 403, 404, 409, 429, and 5xx to specific user actions. **Done when** no surface shows only a generic failure.
+- [x] **R7.9 — Test RTL and mixed text.** The layout contract now covers long Arabic names, English SKUs, dashboard tables at 320px, mobile modals, and mixed currencies: tables scroll horizontally with wrapping cells, account text truncates, invite links break, and navigation labels are 12px. **Verified:** `tests/phase6-ux.test.ts` asserts the RTL root, scroll containers, wrapping and LTR identifier rules. A browser screenshot pass is listed in `docs/LAUNCH_READINESS.md`.
+- [x] **R7.10 — Unify error taxonomy.** `presentApiError` maps 401 → sign in, 403 → request access, 404 → go back, 409 → refresh and review, 429 → wait and retry, and 5xx/network → retry. `safeError` routes every surface through it; interactive forms no longer print raw messages; a dashboard `401` clears stale session state; `ErrorState`/`ErrorBlock` render the matching action. **Verified:** `tests/phase6-ux.test.ts` covers every status/action mapping and source guards.
 
 ## Data Quality
 
 - [x] **R5.2b — Deduplicate customer addresses.** Checkout creates a new `CustomerAddress` each time. Normalize and deduplicate by a deterministic key while keeping one default. **Done when** repeated checkout with the same address adds no row.
 - [x] **R5.5 — Structure order events for translation.** Stop embedding English status names in Arabic messages. Store `event type + metadata` and translate in the UI. **Done when** the timeline renders localized statuses.
-- [ ] **R3.7 (remaining test) — Prove double-restore safety.** Concurrent cancel/return must not double stock, and a deleted product must emit `stock_restore_failed` once. Regression coverage was added; run it against PostgreSQL before launch.
+- [ ] **R3.7 (remaining test) — Prove double-restore safety.** Concurrent cancel/return must not double stock, and a deleted product must emit `stock_restore_failed` once. The regression test now exists in `tests/order-status.test.ts` (including a concurrent cancel/return case and the deleted-product event), but this environment has no PostgreSQL service, so it still must be executed on a PostgreSQL host before launch. See `docs/LAUNCH_READINESS.md`.
 
 ## R11 — Launch Scope
 
-Before launch, these must work end to end:
+Before launch, these must work end to end. Each row is backed by an API suite;
+browser E2E remains in the R13 matrix.
 
-- [ ] Login and registration
-- [ ] Onboarding
-- [ ] Products, variants, and inventory
-- [ ] Storefront home, catalog, and product pages
-- [ ] Cart and COD checkout
-- [ ] Orders and status transitions
-- [ ] Customers
-- [ ] Shipping zones
-- [ ] Core settings
-- [ ] Order tracking
-- [ ] Audit and security basics
-- [ ] Backup/restore and monitoring
+- [x] Login and registration — `tests/auth.test.ts`, `tests/auth-hardening.test.ts`
+- [x] Onboarding — `tests/phase4-domains-publishing.test.ts`, `tests/phase4-admin-controls.test.ts`
+- [x] Products, variants, and inventory — `tests/api.test.ts`, `tests/phase1-integrity.test.ts`, `tests/storefront-platform.test.ts`
+- [x] Storefront home, catalog, and product pages — `tests/storefront-platform.test.ts`, `tests/phase5-seo.test.ts`
+- [x] Cart and COD checkout — `tests/checkout-race.test.ts`, `tests/storefront-platform.test.ts`
+- [x] Orders and status transitions — `tests/order-status.test.ts`, `tests/phase1-integrity.test.ts`
+- [x] Customers — `tests/phase1-integrity.test.ts`, `tests/tenant-isolation.test.ts`
+- [x] Shipping zones — `tests/storefront-platform.test.ts`, `tests/tenant-isolation.test.ts`
+- [x] Core settings — `tests/phase2-security.test.ts`, `tests/phase4-team-rbac.test.ts`, `tests/phase3-truthfulness.test.ts`
+- [x] Order tracking — `tests/phase2-security.test.ts`, `tests/storefront-platform.test.ts`
+- [x] Audit and security basics — `tests/phase2-security.test.ts`, `tests/phase4-admin-controls.test.ts`, `tests/authz-matrix.test.ts`, `tests/tenant-isolation.test.ts`
+- [ ] Backup/restore and monitoring — `scripts/backup.mjs`, `scripts/restore.mjs`, `/api/live`, `/api/ready`, `/api/health` exist and are documented; the restore drill itself requires a PostgreSQL host and explicit sign-off.
 
 ## R13 — Test Matrix
 
 **API/load**
-- [ ] 100 concurrent checkouts on stock = 1
-- [ ] 100 concurrent checkouts on a one-use coupon
-- [ ] 10 concurrent refunds never exceed the order total
-- [ ] Currency change before checkout
-- [ ] Load tests for checkout, coupons, and refunds
+- [ ] 100 concurrent checkouts on stock = 1 — serialisation is covered at 10 concurrent in `tests/checkout-race.test.ts`; raise to 100 when the PostgreSQL load host is available.
+- [ ] 100 concurrent checkouts on a one-use coupon — serialisation is covered at 5 concurrent in `tests/phase1-integrity.test.ts`; raise to 100 on the load host.
+- [ ] 10 concurrent refunds never exceed the order total — concurrency is covered at 2 in `tests/phase1-integrity.test.ts`; add the 10-way run on the load host.
+- [x] Currency change before checkout — `tests/currency.test.ts`, `tests/phase5-seo.test.ts`
+- [ ] Load tests for checkout, coupons, and refunds — runner exists (`npm run load:smoke`, `scripts/load-smoke.mjs`); scenario scripts for those endpoints still need a PostgreSQL host.
 
 **Security**
-- [ ] SVG with script/event handler
-- [ ] Polyglot image/file
-- [ ] CSRF with missing/foreign Origin and Referer
-- [ ] Session cookie after password change
-- [ ] Cross-tenant IDs on every resource mutation
-- [ ] Export authorization and rate limits
-- [ ] Order-tracking enumeration
-- [ ] Host-header/custom-domain poisoning
+- [x] SVG with script/event handler — `tests/phase2-security.test.ts`
+- [x] Polyglot image/file — `tests/phase2-security.test.ts`
+- [x] CSRF with missing/foreign Origin and Referer — `tests/phase2-security.test.ts`
+- [x] Session cookie after password change — `tests/phase2-security.test.ts`, `tests/auth-hardening.test.ts`
+- [x] Cross-tenant IDs on every resource mutation — `tests/tenant-isolation.test.ts`, `tests/authz-matrix.test.ts`
+- [x] Export authorization and rate limits — `tests/phase2-security.test.ts`
+- [x] Order-tracking enumeration — `tests/phase2-security.test.ts`
+- [x] Host-header/custom-domain poisoning — `tests/phase4-domains-publishing.test.ts`
 
 **UI/E2E**
-- [ ] 320 / 375 / 768 / desktop
-- [ ] RTL with mixed Arabic, English, and SKUs
-- [ ] Refresh on every deep link
-- [ ] Browser back/forward
-- [ ] Modal keyboard navigation
-- [ ] Slow network and 401/403/409/429/500 states
-- [ ] Stale cart with deleted or repriced products
-- [ ] Checkout double-click
-- [ ] Onboarding resume after reload
+- [ ] 320 / 375 / 768 / desktop — layout contract is automated in `tests/phase6-ux.test.ts`; screenshot pass pending.
+- [x] RTL with mixed Arabic, English, and SKUs — `tests/phase6-ux.test.ts` (layout contract)
+- [ ] Refresh on every deep link — router/SSR covered by `tests/phase5-seo.test.ts`; browser pass pending.
+- [ ] Browser back/forward — manual browser pass pending.
+- [ ] Modal keyboard navigation — focus trap implemented and reviewed; browser pass pending.
+- [ ] Slow network and 401/403/409/429/500 states — taxonomy covered by `tests/phase6-ux.test.ts`; throttled browser pass pending.
+- [x] Stale cart with deleted or repriced products — `tests/storefront-platform.test.ts` plus cart revalidation
+- [x] Checkout double-click — in-flight guard and `Idempotency-Key`; `tests/phase6-ux.test.ts` + `tests/phase1-integrity.test.ts`
+- [x] Onboarding resume after reload — `tests/phase4-domains-publishing.test.ts`
 
 **Operational**
-- [ ] Backup restore drill
-- [ ] Monitoring and alerting for errors, latency, failed payments, and stock failures
-- [ ] Audit/security events
-- [ ] Explicit launch approval
+- [ ] Backup restore drill — run `npm run db:backup` then `CONFIRM_RESTORE=yes npm run db:restore` on a PostgreSQL host.
+- [ ] Monitoring and alerting for errors, latency, failed payments, and stock failures — probes, structured logs and `stock_restore_failed` events exist; connect the host's alerting and record thresholds.
+- [x] Audit/security events — `tests/phase4-domains-publishing.test.ts`, `tests/phase4-admin-controls.test.ts`
+- [ ] Explicit launch approval — owner sign-off after the drills above.
 
-Phase 1’s regression suite already covers the accounting, coupon, refund, payment, loyalty, idempotency, and customer-identity baseline.
+Phase 1’s regression suite already covers the accounting, coupon, refund, payment, loyalty, idempotency, and customer-identity baseline. `docs/LAUNCH_READINESS.md` records the exact remaining commands and evidence.
 
 ---
 
@@ -287,5 +288,5 @@ Phase 1’s regression suite already covers the accounting, coupon, refund, paym
 - [x] Modal focus trap (Phase 6)
 - [x] Stale-cart revalidation (Phase 6)
 - [x] Mobile navigation and font sizes (Phase 6)
-- [ ] Unified error/loading states (Phase 6)
-- [ ] Visual regression and E2E tests (Phase 6)
+- [x] Unified error/loading states (Phase 6)
+- [ ] Browser visual regression and E2E tests — layout/error/loading contracts are automated in `tests/phase6-ux.test.ts`; the screenshot and browser matrix remains in `docs/LAUNCH_READINESS.md`.

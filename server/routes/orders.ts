@@ -23,7 +23,7 @@ import {
 import { customerIdentity, normalizePhone } from "../identity.js";
 import {
   ORDER_DETAIL_INCLUDE,
-  ORDER_EXPORT_COLUMNS,
+  ORDER_EXPORT_HEADERS,
   addOrderEvent,
   allocateOrderNumber,
   applyOrderStatus,
@@ -144,7 +144,7 @@ ordersRouter.get(
     res.setHeader("Cache-Control", "no-store, max-age=0");
     res.setHeader("Pragma", "no-cache");
     res.setHeader("X-Content-Type-Options", "nosniff");
-    res.write(CSV_BOM + csvHeader([...ORDER_EXPORT_COLUMNS]) + "\n");
+    res.write(CSV_BOM + csvHeader([...ORDER_EXPORT_HEADERS]) + "\n");
 
     const select = {
       id: true,
@@ -166,6 +166,15 @@ ordersRouter.get(
       amountEgp: true,
       couponCode: true,
       itemsSummary: true,
+      items: {
+        select: {
+          name: true,
+          sku: true,
+          variantLabel: true,
+          qty: true,
+          unitPriceEgp: true,
+        },
+      },
     } satisfies Prisma.OrderSelect;
 
     let cursor: string | undefined;

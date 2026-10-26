@@ -10,6 +10,7 @@ import {
   findAdminSession,
   type AdminPermission,
 } from "./services/platformAdmin.js";
+import { isTrustedStorefrontOrigin, normalizeOrigin } from "./services/domains.js";
 
 /**
  * Authorization model (OWASP A01 - deny by default):
@@ -87,6 +88,7 @@ export interface AdminAuthContext {
   name: string;
   role: string;
   permissions: AdminPermission[];
+  mustChangeCredentials: boolean;
 }
 
 declare global {
@@ -293,6 +295,7 @@ export async function requireStoreOwnership(req: Request, _res: Response, next: 
   // operations, write, or unrelated dashboard endpoint gets this exception.
   const approvalLifecycleException =
     (req.method === "GET" && /\/settings(?:\/|$)/.test(cleanPath)) ||
+    (req.method === "GET" && cleanPath.endsWith("/notifications")) ||
     (req.method === "POST" && cleanPath.endsWith("/publishing") && req.body?.action === "publish");
 
   if (store.status !== "active" && !approvalLifecycleException) {
@@ -349,6 +352,7 @@ export async function requirePlatformAdmin(req: Request, _res: Response, next: N
     name: session.admin.name,
     role: session.admin.role,
     permissions: adminPermissions(session.admin.role),
+    mustChangeCredentials: session.admin.mustChangeCredentials,
   };
   next();
 }
@@ -357,6 +361,16 @@ export function requireAdminPermission(permission: AdminPermission): RequestHand
   return (req: Request, _res: Response, next: NextFunction) => {
     if (!req.adminAuth) {
       next(new ApiError(401, "ADMIN_UNAUTHENTICATED", "Platform administrator authentication required."));
+      return;
+    }
+    if (req.adminAuth.mustChangeCredentials) {
+      next(
+        new ApiError(
+          403,
+          "ADMIN_CREDENTIAL_CHANGE_REQUIRED",
+          "Replace the initial administrator email and password before using the console."
+        )
+      );
       return;
     }
     if (!req.adminAuth.permissions.includes(permission)) {
@@ -416,17 +430,74 @@ export function evaluateCsrfRequest(input: CsrfEvaluationInput): CsrfEvaluation 
   return { ok: true };
 }
 
+function customDomainAllowedForPath(req: Request): boolean {
+  // A merchant-controlled custom domain must never become a trusted origin for
+  // platform-admin cookie APIs. Admin remains restricted to configured platform
+  // origins even when a store domain is verified.
+  return !req.originalUrl.split("?")[0].startsWith("/api/admin");
+}
+
+/**
+ * CORS gate with the same trust decision as CSRF. Only configured platform
+ * origins and verified custom domains receive CORS headers; preflight requests
+ * are answered here so a custom-domain storefront can POST JSON to the API.
+ */
+export async function corsOriginGuard(req: Request, res: Response, next: NextFunction) {
+  const rawOrigin = req.headers.origin;
+  if (!rawOrigin) {
+    next();
+    return;
+  }
+  const origin = normalizeOrigin(rawOrigin);
+  if (!origin) {
+    next(new ApiError(403, "CORS_ORIGIN_REJECTED", "Origin not allowed."));
+    return;
+  }
+  const platformOrigin = env.corsOrigins.includes(origin);
+  if (
+    !platformOrigin &&
+    (!customDomainAllowedForPath(req) || !(await isTrustedStorefrontOrigin(origin)))
+  ) {
+    next(new ApiError(403, "CORS_ORIGIN_REJECTED", "Origin not allowed."));
+    return;
+  }
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.append("Vary", "Origin");
+  if (req.method === "OPTIONS") {
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Idempotency-Key");
+    res.setHeader("Access-Control-Max-Age", "600");
+    res.status(204).end();
+    return;
+  }
+  next();
+}
+
 /**
  * CSRF protection for cookie auth. SameSite=Lax is the primary defense; this
  * additionally rejects cross-site mutations and, in production, requests
- * that do not declare any source at all.
+ * that do not declare any source at all. Verified custom domains are accepted
+ * as first-party origins for storefront/merchant APIs, but never for the
+ * platform-admin cookie surface.
  */
-export function csrfOriginCheck(req: Request, _res: Response, next: NextFunction) {
+export async function csrfOriginCheck(req: Request, _res: Response, next: NextFunction) {
+  let allowedOrigins = env.corsOrigins;
+  const source = req.headers.origin || req.headers.referer;
+  const normalized = normalizeOrigin(source);
+  if (
+    normalized &&
+    customDomainAllowedForPath(req) &&
+    !allowedOrigins.includes(normalized) &&
+    (await isTrustedStorefrontOrigin(normalized))
+  ) {
+    allowedOrigins = [...allowedOrigins, normalized];
+  }
   const result = evaluateCsrfRequest({
     method: req.method,
     origin: req.headers.origin,
     referer: req.headers.referer,
-    allowedOrigins: env.corsOrigins,
+    allowedOrigins,
     requireSource: env.isProduction,
   });
   if (!result.ok) {

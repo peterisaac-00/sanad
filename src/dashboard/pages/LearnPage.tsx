@@ -25,7 +25,7 @@ const GUIDE_ICONS = {
 };
 
 export function LearnPage() {
-  const { subdomain } = useDashboard();
+  const { storefrontUrl } = useDashboard();
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [openArticle, setOpenArticle] = useState<string | null>(null);
   const [openSection, setOpenSection] = useState<string | null>(null);
@@ -180,7 +180,7 @@ export function LearnPage() {
           <div className="mt-0.5 text-[11px] text-subtle">راسلنا عبر واتساب وسيساعدك فريق سند في تشغيل متجرك.</div>
         </div>
         <Link
-          href={`/store/${subdomain}`}
+          href={storefrontUrl}
           target="_blank" rel="noopener noreferrer"
           className="rounded-brand border border-line px-4 py-2 text-xs font-semibold text-ink transition hover:border-brand-line"
         >

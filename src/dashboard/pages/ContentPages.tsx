@@ -62,7 +62,7 @@ interface PageDraft {
 const emptyPage: PageDraft = { title: "", slug: "", type: "custom", content: "", seoTitle: "", seoDescription: "", published: false };
 
 export function PagesPage() {
-  const { subdomain } = useDashboard();
+  const { subdomain, storefrontUrl, storefrontLabel } = useDashboard();
   const toast = useToast();
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
@@ -181,7 +181,7 @@ export function PagesPage() {
                 <tr key={page.id} className="border-b border-line transition hover:bg-surface">
                   <Td>
                     <div className="font-semibold text-ink">{page.title}</div>
-                    <div className="mt-0.5 font-mono text-[10px] text-subtle" dir="ltr">/store/{subdomain}/page/{page.slug}</div>
+                    <div className="mt-0.5 font-mono text-[10px] text-subtle" dir="ltr">{storefrontLabel}/pages/{page.slug}</div>
                   </Td>
                   <Td><Badge tone="bg-surface text-ink-soft border-line">{PAGE_TYPES[page.type] ?? page.type}</Badge></Td>
                   <Td><span className="text-[11px] text-subtle">{dateTime(page.updatedAt)}</span></Td>
@@ -193,7 +193,7 @@ export function PagesPage() {
                   <Td>
                     <div className="flex items-center justify-end gap-1">
                       {page.status === "published" ? (
-                        <Link href={`/store/${subdomain}/page/${page.slug}`} target="_blank" rel="noopener noreferrer" className="rounded-brand-sm p-2 text-subtle hover:bg-surface hover:text-brand" title="عرض">
+                        <Link href={`${storefrontUrl}/pages/${encodeURIComponent(page.slug)}`} target="_blank" rel="noopener noreferrer" className="rounded-brand-sm p-2 text-subtle hover:bg-surface hover:text-brand" title="عرض">
                           <ExternalLink className="h-3.5 w-3.5" />
                         </Link>
                       ) : null}
@@ -306,7 +306,7 @@ function splitCsv(value: string): string[] {
 }
 
 export function BlogPage() {
-  const { subdomain } = useDashboard();
+  const { subdomain, storefrontUrl } = useDashboard();
   const toast = useToast();
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
@@ -452,7 +452,7 @@ export function BlogPage() {
                     <Td>
                       <div className="flex items-center justify-end gap-1">
                         {post.status === "published" ? (
-                          <Link href={`/store/${subdomain}/blog/${post.slug}`} target="_blank" rel="noopener noreferrer" className="rounded-brand-sm p-2 text-subtle hover:bg-surface hover:text-brand" title="عرض">
+                          <Link href={`${storefrontUrl}/blog/${encodeURIComponent(post.slug)}`} target="_blank" rel="noopener noreferrer" className="rounded-brand-sm p-2 text-subtle hover:bg-surface hover:text-brand" title="عرض">
                             <ExternalLink className="h-3.5 w-3.5" />
                           </Link>
                         ) : null}
@@ -554,7 +554,7 @@ interface AffiliateDraft {
 const emptyAffiliate: AffiliateDraft = { name: "", phone: "", email: "", referralCode: "", commissionRate: "5", isActive: true };
 
 export function AffiliatesPage() {
-  const { subdomain, store } = useDashboard();
+  const { subdomain, store, storefrontUrl } = useDashboard();
   const toast = useToast();
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
@@ -652,7 +652,7 @@ export function AffiliatesPage() {
     }
   };
 
-  const referralLink = (code: string) => `${window.location.origin}/store/${subdomain}?ref=${code}`;
+  const referralLink = (code: string) => `${storefrontUrl}?ref=${encodeURIComponent(code)}`;
 
   return (
     <div className="space-y-5">

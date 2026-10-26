@@ -8,7 +8,6 @@ import {
   Copy,
   Download,
   ExternalLink,
-  FileText,
   Flag,
   Globe,
   KeyRound,
@@ -725,8 +724,8 @@ export function AdminsPanel({ can, admin }: AdminIdentityPanelProps) {
   const admins = data?.admins ?? [];
 
   const create = async () => {
-    if (!draft.email.trim() || draft.password.length < 10) {
-      toast.error("أدخل بريداً صحيحاً وكلمة مرور من 10 أحرف على الأقل.");
+    if (!draft.email.trim() || draft.password.length < 12) {
+      toast.error("أدخل بريداً صحيحاً وكلمة مرور من 12 حرفاً على الأقل.");
       return;
     }
     setCreateBusy(true);
@@ -874,7 +873,7 @@ export function AdminsPanel({ can, admin }: AdminIdentityPanelProps) {
           <Field label="البريد الإلكتروني" required>
             <Input type="email" value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} dir="ltr" autoComplete="off" />
           </Field>
-          <Field label="كلمة المرور" required hint="10 أحرف على الأقل.">
+          <Field label="كلمة المرور" required hint="12 حرفاً على الأقل.">
             <Input type="password" value={draft.password} onChange={(event) => setDraft({ ...draft, password: event.target.value })} dir="ltr" autoComplete="new-password" />
           </Field>
           <Field label="الدور" hint="يمكن تعديله لاحقاً من الجدول.">
@@ -884,66 +883,6 @@ export function AdminsPanel({ can, admin }: AdminIdentityPanelProps) {
           </Field>
         </div>
       </Modal>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Leads                                                               */
-/* ------------------------------------------------------------------ */
-
-export function LeadsPanel({ can }: AdminPanelProps) {
-  const { data, loading, error, reload } = useAsync(
-    () => (can("stores.read") ? api.admin.leads() : Promise.resolve(null)),
-    [can]
-  );
-  const leads = data?.leads ?? [];
-
-  if (!can("stores.read")) {
-    return <PermissionNote>دورك الحالي لا يمنح صلاحية قراءة طلبات المنصة.</PermissionNote>;
-  }
-
-  return (
-    <div className="space-y-5">
-      <PageHeader
-        eyebrow="طلبات المنصة"
-        title="العملاء المحتملون"
-        description="آخر الرسائل الواردة من نماذج المنصة والمتاجر. البيانات للعرض فقط، ولا يوجد إجراء آلي عليها."
-        actions={<Button variant="outline" onClick={reload} loading={loading}><RefreshCw className="h-4 w-4" /> تحديث</Button>}
-      />
-      {error ? <Alert tone="error" title="تعذر تحميل الطلبات">{safeError(error)}</Alert> : null}
-      <Card className="overflow-hidden">
-        {loading && !data ? (
-          <div className="space-y-2 p-4">{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-14" />)}</div>
-        ) : leads.length === 0 ? (
-          <EmptyState title="لا توجد طلبات" description="ستظهر هنا الرسائل الواردة من نماذج المنصة." icon={<FileText className="h-5 w-5" />} />
-        ) : (
-          <TableShell minWidth={900}>
-            <thead>
-              <tr className="border-b border-line bg-surface/60">
-                <Th>التاريخ</Th>
-                <Th>النوع</Th>
-                <Th>المتجر</Th>
-                <Th>البيانات</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {leads.map((lead: any) => (
-                <tr key={lead.id} className="border-b border-line align-top hover:bg-surface/50">
-                  <Td><span className="text-[10px] text-subtle">{dateTime(lead.createdAt)}</span></Td>
-                  <Td><Badge tone="bg-surface text-ink-soft border-line">{lead.type}</Badge></Td>
-                  <Td><span className="text-[11px] text-subtle">{lead.store?.storeName || "المنصة"}</span></Td>
-                  <Td>
-                    <pre className="max-h-28 max-w-[460px] overflow-auto whitespace-pre-wrap rounded-brand-sm bg-surface p-2 font-mono text-[10px] leading-4 text-ink-soft" dir="ltr">
-                      {JSON.stringify(lead.payload ?? {}, null, 2)}
-                    </pre>
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </TableShell>
-        )}
-      </Card>
     </div>
   );
 }
@@ -971,8 +910,8 @@ export function SecurityPanel({ admin, onAdminUpdated }: AdminIdentityPanelProps
   const twoFactorEnabled = Boolean(admin.two_factor_enabled);
 
   const changePassword = async () => {
-    if (passwordDraft.next.length < 8) {
-      toast.error("كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل.");
+    if (passwordDraft.next.length < 12) {
+      toast.error("كلمة المرور الجديدة يجب أن تكون 12 حرفاً على الأقل.");
       return;
     }
     if (passwordDraft.next !== passwordDraft.confirm) {
@@ -1105,7 +1044,7 @@ export function SecurityPanel({ admin, onAdminUpdated }: AdminIdentityPanelProps
             <Field label="كلمة المرور الحالية" required>
               <Input type="password" value={passwordDraft.current} onChange={(event) => setPasswordDraft({ ...passwordDraft, current: event.target.value })} dir="ltr" autoComplete="current-password" />
             </Field>
-            <Field label="كلمة المرور الجديدة" required hint="8 أحرف على الأقل.">
+            <Field label="كلمة المرور الجديدة" required hint="12 حرفاً على الأقل.">
               <Input type="password" value={passwordDraft.next} onChange={(event) => setPasswordDraft({ ...passwordDraft, next: event.target.value })} dir="ltr" autoComplete="new-password" />
             </Field>
             <Field label="تأكيد كلمة المرور" required>

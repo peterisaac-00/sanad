@@ -86,20 +86,6 @@ export const WALLET_STATUS: Record<string, { label: string; tone: string; dot: s
   cancelled: { label: "ملغى", tone: "bg-surface text-ink-soft border-line", dot: "bg-subtle" },
 };
 
-export const TICKET_STATUS: Record<string, { label: string; tone: string }> = {
-  open: { label: "مفتوحة", tone: "bg-warning-soft text-warning border-warning-line" },
-  in_progress: { label: "قيد المعالجة", tone: "bg-info-soft text-info border-info-line" },
-  resolved: { label: "تم الحل", tone: "bg-success-soft text-success border-success-line" },
-  closed: { label: "مغلقة", tone: "bg-surface text-ink-soft border-line" },
-};
-
-export const PRIORITY: Record<string, { label: string; tone: string }> = {
-  low: { label: "منخفضة", tone: "bg-surface text-ink-soft border-line" },
-  normal: { label: "عادية", tone: "bg-info-soft text-info border-info-line" },
-  high: { label: "عالية", tone: "bg-warning-soft text-warning border-warning-line" },
-  urgent: { label: "عاجلة", tone: "bg-danger-soft text-danger border-danger-line" },
-};
-
 export const DOMAIN_STATUS: Record<string, { label: string; tone: string; dot: string }> = {
   pending: { label: "بانتظار التحقق", tone: "bg-warning-soft text-warning border-warning-line", dot: "bg-warning" },
   verified: { label: "موثّق", tone: "bg-success-soft text-success border-success-line", dot: "bg-success" },

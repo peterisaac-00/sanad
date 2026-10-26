@@ -31,6 +31,7 @@ export function StorefrontPageView({ slug }: { slug: string }) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-14">
         <ErrorBlock
+          error={result.error}
           message="هذه الصفحة غير موجودة أو غير منشورة."
           onRetry={(result.error as any)?.status === 404 ? undefined : result.reload}
         />
@@ -92,7 +93,7 @@ export function StorefrontBlogPage() {
           ))}
         </div>
       ) : result.error ? (
-        <ErrorBlock message="تعذر تحميل المقالات." onRetry={result.reload} />
+        <ErrorBlock error={result.error} message="تعذر تحميل المقالات." onRetry={result.reload} />
       ) : posts.length ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {posts.map((post) => (
@@ -158,6 +159,7 @@ export function StorefrontBlogPostPage({ slug }: { slug: string }) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-14">
         <ErrorBlock
+          error={result.error}
           message="هذا المقال غير موجود أو غير منشور."
           onRetry={(result.error as any)?.status === 404 ? undefined : result.reload}
         />

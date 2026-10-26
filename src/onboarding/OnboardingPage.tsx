@@ -67,6 +67,7 @@ interface FormState {
 function fromData(data: any): FormState {
   const store = data.store ?? {};
   const branding = data.branding ?? {};
+  const fallbackZone = (data.shipping_zones ?? []).find((zone: any) => zone.isFallback) ?? data.shipping_zones?.[0];
   return {
     storeName: store.storeName ?? "",
     subdomain: store.subdomain ?? "",
@@ -90,7 +91,7 @@ function fromData(data: any): FormState {
     onlinePaymentEnabled: Boolean(store.onlinePaymentEnabled),
     shippingFee: Number(data.store?.shippingFee ?? 0),
     shippingThreshold: "",
-    shippingGovernorates: "",
+    shippingGovernorates: Array.isArray(fallbackZone?.governorates) ? fallbackZone.governorates.join(", ") : "",
   };
 }
 
@@ -603,8 +604,36 @@ export function OnboardingPage() {
                   <div className="rounded-brand border border-line bg-surface p-4">
                     <div className="mb-3 flex items-center gap-2 text-xs font-bold text-ink"><Truck className="h-4 w-4 text-brand" /> منطقة الشحن الافتراضية</div>
                     <div className="grid gap-4 sm:grid-cols-3">
-                      <Field label="المحافظات المشمولة" hint="اكتب أسماء المحافظات مفصولة بفاصلة. اتركها فارغة لتغطية كل الطلبات." className="sm:col-span-3">
-                        <Input value={form.shippingGovernorates} onChange={(e) => update("shippingGovernorates", e.target.value)} placeholder="القاهرة, الجيزة, الإسكندرية" />
+                      <Field label="المحافظات المشمولة" hint="اختر المحافظات التي سيظهرها العميل عند إتمام الطلب. اتركها بدون اختيار لتغطية كل المحافظات." className="sm:col-span-3">
+                        {(() => {
+                          const selected = form.shippingGovernorates.split(",").map((value) => value.trim()).filter(Boolean);
+                          const addGovernorate = (value: string) => {
+                            if (!value || selected.includes(value)) return;
+                            update("shippingGovernorates", [...selected, value].join(", "));
+                          };
+                          const removeGovernorate = (value: string) => update("shippingGovernorates", selected.filter((item) => item !== value).join(", "));
+                          return (
+                            <div className="space-y-2">
+                              <Select value="" onChange={(e) => addGovernorate(e.target.value)} aria-label="إضافة محافظة للشحن">
+                                <option value="">إضافة محافظة…</option>
+                                {EGYPT_GOVERNORATES.filter((governorate) => !selected.includes(governorate)).map((governorate) => (
+                                  <option key={governorate} value={governorate}>{governorate}</option>
+                                ))}
+                              </Select>
+                              {selected.length ? (
+                                <div className="flex flex-wrap gap-2 rounded-brand border border-line bg-surface p-3">
+                                  {selected.map((governorate) => (
+                                    <button key={governorate} type="button" onClick={() => removeGovernorate(governorate)} className="inline-flex items-center gap-1 rounded-full border border-brand-line bg-brand-soft px-2.5 py-1 text-[11px] font-semibold text-brand" aria-label={`إزالة ${governorate}`}>
+                                      {governorate}<span aria-hidden="true">×</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="rounded-brand border border-dashed border-line bg-surface px-3 py-2 text-[11px] text-subtle">لم يتم تحديد محافظات — سيتم قبول جميع المحافظات المصرية.</div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </Field>
                       <Field label="رسوم الشحن">
                         <Input type="number" min={0} step="0.01" value={form.shippingFee} onChange={(e) => update("shippingFee", Number(e.target.value))} />

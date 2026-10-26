@@ -22,7 +22,7 @@ import { api } from "../lib/api";
 import { money, number, ORDER_STATUS, PAYMENT_STATUS, date, safeError, statusLabel } from "../lib/format";
 import { Link } from "../lib/router";
 import { useAsync } from "../lib/useAsync";
-import { Alert, Badge, Card, EmptyState, PageHeader, Skeleton, StatCard, cn } from "../components/ui";
+import { Alert, Badge, Card, EmptyState, ErrorState, PageHeader, Skeleton, StatCard, cn } from "../components/ui";
 import { useDashboard } from "./DashboardShell";
 
 function RevenueChart({ series }: { series: Array<{ date: string; revenue: number; orders: number }> }) {
@@ -84,8 +84,8 @@ function ChecklistItem({ done, title, description, href }: { done: boolean; titl
 }
 
 export function DashboardHome() {
-  const { subdomain, store } = useDashboard();
-  const { data, loading, error } = useAsync(() => api.dashboard.summary(subdomain), [subdomain]);
+  const { subdomain, store, storefrontUrl } = useDashboard();
+  const { data, loading, error, reload } = useAsync(() => api.dashboard.summary(subdomain), [subdomain]);
 
   const kpis = data?.kpis;
   const series = data?.revenue_series ?? [];
@@ -106,12 +106,12 @@ export function DashboardHome() {
   }
 
   if (error) {
-    return <Alert tone="error" title="تعذر تحميل ملخص المتجر">{safeError(error)}</Alert>;
+    return <ErrorState error={error} onRetry={reload} />;
   }
 
   const checklist = [
     { done: Number(kpis?.products_count ?? 0) > 0, title: "أضف أول منتج", description: "أدخل منتجاتك بأسعار ومخزون حقيقيين.", href: "/dashboard/products" },
-    { done: Number(kpis?.customers_count ?? 0) > 0, title: "استقبل أول عميل", description: "شارك رابط متجرك وابدأ استقبال الطلبات.", href: `/store/${subdomain}` },
+    { done: Number(kpis?.customers_count ?? 0) > 0, title: "استقبل أول عميل", description: "شارك رابط متجرك وابدأ استقبال الطلبات.", href: storefrontUrl },
     { done: Number(kpis?.total_orders ?? 0) > 0, title: "جهّز طلبك الأول", description: "أكد الطلب وغيّر حالته إلى قيد التجهيز.", href: "/dashboard/orders" },
   ];
 
@@ -123,7 +123,7 @@ export function DashboardHome() {
         description="كل الأرقام أدناه محسوبة من طلبات ومنتجات هذا المتجر فقط. لا توجد بيانات تجريبية."
         actions={
           <>
-            <Link href={`/store/${subdomain}`} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center gap-2 rounded-brand border border-line px-4 text-xs font-semibold text-ink transition hover:border-brand-line hover:bg-surface">
+            <Link href={storefrontUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center gap-2 rounded-brand border border-line px-4 text-xs font-semibold text-ink transition hover:border-brand-line hover:bg-surface">
               <Store className="h-4 w-4 text-brand" /> فتح المتجر
             </Link>
             <Link href="/dashboard/products" className="inline-flex h-10 items-center gap-2 rounded-brand bg-brand px-4 text-xs font-semibold text-on-brand shadow-brand-card transition hover:bg-brand-hover">
@@ -193,7 +193,7 @@ export function DashboardHome() {
             <Link href="/dashboard/orders" className="text-[10px] font-semibold text-brand hover:text-brand">عرض الكل ←</Link>
           </div>
           {recentOrders.length === 0 ? (
-            <EmptyState title="لم يصل أي طلب بعد" description="شارك رابط متجرك مع عملائك ليبدأ أول طلب حقيقي في الظهور هنا." icon={<ShoppingCart className="h-5 w-5" />} action={<Link href={`/store/${subdomain}`} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-brand">فتح رابط المتجر</Link>} />
+            <EmptyState title="لم يصل أي طلب بعد" description="شارك رابط متجرك مع عملائك ليبدأ أول طلب حقيقي في الظهور هنا." icon={<ShoppingCart className="h-5 w-5" />} action={<Link href={storefrontUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-brand">فتح رابط المتجر</Link>} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[620px] text-xs">
