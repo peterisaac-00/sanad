@@ -692,6 +692,7 @@ export const onboardingBrandingSchema = z.strictObject({
 
 export const onboardingPatchSchema = z.strictObject({
   step: z.number().int().min(1).max(5).optional(),
+  plan: z.enum(["monthly", "annual"]).optional(),
   storeName: z.string().trim().min(2).max(120).optional(),
   subdomain: registerSubdomainField.optional(),
   businessType: z.enum(["fashion", "electronics", "restaurant", "beauty", "furniture", "digital", "services", "other"]).optional(),

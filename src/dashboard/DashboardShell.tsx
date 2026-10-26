@@ -7,6 +7,7 @@ import {
   BookOpen,
   Boxes,
   ChevronDown,
+  Clock,
   ExternalLink,
   FileText,
   Gift,
@@ -187,6 +188,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const publishReason: string = publishing?.publish_reason || store?.publishReason || "";
   const publishLabel = PUBLISH_STATUS_LABELS[publishStatus] ?? publishStatus;
   const canManagePublishing = can("settings.write");
+  const subscriptionExpired = Boolean(store?.subscriptionPaidUntil && new Date(store.subscriptionPaidUntil).getTime() <= Date.now());
 
   // The session snapshot lives in memory and survives client-side navigation,
   // so a store renamed elsewhere (publishing during onboarding) would keep every
@@ -385,6 +387,21 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (subscriptionExpired && path !== "/dashboard/wallet") {
+    return (
+      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-canvas p-6 font-arabic text-ink">
+        <div className="w-full max-w-lg rounded-brand-lg border border-warning-line bg-card p-7 text-center shadow-xl">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-warning-soft text-warning"><Clock className="h-7 w-7" /></div>
+          <h1 className="mt-4 font-heading text-2xl font-bold">انتهى اشتراك المتجر</h1>
+          <p className="mt-2 text-sm leading-7 text-subtle">تم قفل لوحة التحكم لانتهاء مدة الاشتراك. أرسل بيانات الدفع من صفحة الاشتراك، وبعد اعتماد الأدمن ستعود كل وظائف المتجر للعمل.</p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <button type="button" onClick={() => navigate("/dashboard/wallet")} className="rounded-brand bg-brand px-4 py-2.5 text-sm font-bold text-on-brand hover:bg-brand-hover">تجديد الاشتراك</button>
+            <button type="button" onClick={handleLogout} className="rounded-brand border border-line px-4 py-2.5 text-sm font-semibold text-ink-soft hover:bg-surface">تسجيل الخروج</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   const storeInitial = (store.storeName ?? "س").trim().charAt(0);
 
   return (

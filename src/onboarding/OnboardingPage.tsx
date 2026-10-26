@@ -57,6 +57,7 @@ interface FormState {
   templateKey: string;
   whatsapp: string;
   returnPolicy: string;
+  plan: "monthly" | "annual";
   codEnabled: boolean;
   onlinePaymentEnabled: boolean;
   shippingFee: number;
@@ -87,6 +88,7 @@ function fromData(data: any): FormState {
     templateKey: store.templateKey ?? branding.templateKey ?? "general",
     whatsapp: store.whatsapp ?? "",
     returnPolicy: store.returnPolicy ?? "",
+    plan: store.plan === "monthly" ? "monthly" : "annual",
     codEnabled: Boolean(store.codEnabled),
     onlinePaymentEnabled: Boolean(store.onlinePaymentEnabled),
     shippingFee: Number(data.store?.shippingFee ?? 0),
@@ -101,6 +103,7 @@ function payloadOf(form: FormState, step: number) {
     ...(form.storeName.trim().length >= 2 ? { storeName: form.storeName.trim() } : {}),
     ...(form.subdomain.trim() ? { subdomain: form.subdomain.trim().toLowerCase() } : {}),
     businessType: form.businessType,
+    plan: form.plan,
     description: form.description,
     countryCode: form.countryCode,
     governorate: form.governorate,
@@ -237,6 +240,7 @@ export function OnboardingPage() {
       if (form.description.trim().length < 10) return "أضف وصفاً قصيراً للمتجر (10 أحرف على الأقل) ليظهر للعملاء.";
     }
     if (step === 3 && !TEMPLATES[form.templateKey]) return "اختر قالباً لمتجرك.";
+    if (step === 4 && !["monthly", "annual"].includes(form.plan)) return "اختر باقة الاشتراك.";
     if (step === 4 && !form.codEnabled && !form.onlinePaymentEnabled) return "فعّل طريقة دفع واحدة على الأقل. الدفع عند الاستلام متاح فوراً.";
     return "";
   };
@@ -570,6 +574,26 @@ export function OnboardingPage() {
                 <div className="space-y-5">
                   <StepTitle icon={Wallet} title="إعدادات البيع والدفع" subtitle="ابدأ بالدفع عند الاستلام. الدفع الإلكتروني لا يُفعّل إلا عند إعداد بوابة دفع حقيقية." />
 
+                  <div className="rounded-brand-lg border border-brand-line bg-brand-soft/40 p-4">
+                    <div className="mb-1 text-sm font-bold text-ink">اختر باقة اشتراكك</div>
+                    <div className="mb-3 text-[11px] leading-5 text-subtle">يبدأ الاشتراك عند تفعيل الأدمن للحساب بعد تأكيد استلام الدفع.</div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {[
+                        { key: "monthly" as const, title: "الباقة الشهرية", price: "100 جنيه", period: "30 يوم" },
+                        { key: "annual" as const, title: "الباقة السنوية", price: "1000 جنيه", period: "365 يوم" },
+                      ].map((option) => (
+                        <button key={option.key} type="button" onClick={() => update("plan", option.key)} className={`rounded-brand border p-3 text-start transition ${form.plan === option.key ? "border-brand bg-card ring-2 ring-brand/20" : "border-line bg-card hover:border-brand-line"}`}>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-ink">{option.title}</span>
+                            {form.plan === option.key ? <CheckCircle2 className="h-4 w-4 text-brand" /> : null}
+                          </div>
+                          <div className="mt-2 text-lg font-black text-brand">{option.price}</div>
+                          <div className="mt-0.5 text-[10px] text-subtle">صلاحية الاشتراك: {option.period}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="رقم واتساب المتجر" hint="يثبّت زر «تواصل عبر واتساب» على واجهة المتجر">
                       <Input value={form.whatsapp} onChange={(e) => update("whatsapp", e.target.value)} placeholder="201012345678" dir="ltr" />
@@ -665,6 +689,7 @@ export function OnboardingPage() {
                     <ReviewItem icon={Store} label="اسم المتجر" value={form.storeName} />
                     <ReviewItem icon={Globe2} label="الرابط" value={`/store/${form.subdomain}`} ltr />
                     <ReviewItem icon={BadgeCheck} label="القالب" value={TEMPLATES[form.templateKey]?.label ?? form.templateKey} />
+                    <ReviewItem icon={CreditCard} label="الباقة" value={form.plan === "monthly" ? "شهرية · 100 جنيه · 30 يوم" : "سنوية · 1000 جنيه · 365 يوم"} />
                     <ReviewItem icon={CreditCard} label="طرق الدفع" value={[form.codEnabled && "الدفع عند الاستلام", form.onlinePaymentEnabled && "دفع إلكتروني"].filter(Boolean).join(" · ") || "لا توجد"} />
                     <ReviewItem icon={Truck} label="الشحن" value={form.shippingFee > 0 ? `${form.shippingFee} ${form.currency}` : "يُحدد حسب المنطقة"} />
                     <ReviewItem icon={CheckCircle2} label="الحالة" value="مسودة جاهزة للنشر" />

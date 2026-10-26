@@ -106,8 +106,7 @@ function utcMonthStart(value: Date): Date {
 
 function addPlanPeriod(base: Date, plan: string): Date {
   const next = new Date(base);
-  if (plan === "annual") next.setUTCFullYear(next.getUTCFullYear() + 1);
-  else next.setUTCMonth(next.getUTCMonth() + 1);
+  next.setUTCDate(next.getUTCDate() + (plan === "annual" ? 365 : 30));
   return next;
 }
 
@@ -857,10 +856,14 @@ async function reviewStore(
   let body: string;
   if (action === "approve") {
     const publish = publishStateAfterApproval(store, now);
+    const paidUntil = store.subscriptionPaidUntil && store.subscriptionPaidUntil.getTime() > now.getTime()
+      ? store.subscriptionPaidUntil
+      : addPlanPeriod(now, store.plan);
     data = {
       status: "active",
       statusReason: "",
       activatedAt,
+      subscriptionPaidUntil: paidUntil,
       ...publish,
     };
     title = "تم تفعيل متجرك";

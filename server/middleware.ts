@@ -269,7 +269,7 @@ export async function requireStoreOwnership(req: Request, _res: Response, next: 
   const subdomain = String(req.params.subdomain || "").toLowerCase();
   const store = await prisma.store.findUnique({
     where: { subdomain },
-    select: { id: true, subdomain: true, currency: true, status: true, statusReason: true },
+    select: { id: true, subdomain: true, currency: true, status: true, statusReason: true, plan: true, subscriptionPaidUntil: true },
   });
   if (!store) {
     next(new ApiError(404, "STORE_NOT_FOUND", "Store not found."));
@@ -293,10 +293,14 @@ export async function requireStoreOwnership(req: Request, _res: Response, next: 
   // and the publish action must reach its domain-specific validation (for
   // example ONBOARDING_INCOMPLETE or STORE_NOT_PUBLISHABLE). No catalog,
   // operations, write, or unrelated dashboard endpoint gets this exception.
+  const billingLifecycleException =
+    (req.method === "GET" && cleanPath.endsWith("/wallet")) ||
+    (req.method === "POST" && cleanPath.endsWith("/subscription-payments"));
   const approvalLifecycleException =
     (req.method === "GET" && /\/settings(?:\/|$)/.test(cleanPath)) ||
     (req.method === "GET" && cleanPath.endsWith("/notifications")) ||
-    (req.method === "POST" && cleanPath.endsWith("/publishing") && req.body?.action === "publish");
+    (req.method === "POST" && cleanPath.endsWith("/publishing") && req.body?.action === "publish") ||
+    billingLifecycleException;
 
   if (store.status !== "active" && !approvalLifecycleException) {
     next(
@@ -310,6 +314,11 @@ export async function requireStoreOwnership(req: Request, _res: Response, next: 
             : "Your store is awaiting platform administrator approval."
       )
     );
+    return;
+  }
+
+  if (store.status === "active" && store.subscriptionPaidUntil && store.subscriptionPaidUntil.getTime() <= Date.now() && !billingLifecycleException) {
+    next(new ApiError(423, "SUBSCRIPTION_EXPIRED", "انتهت مدة الاشتراك. أرسل إثبات الدفع من صفحة الاشتراك ليعيد الأدمن تفعيل لوحة التحكم."));
     return;
   }
 

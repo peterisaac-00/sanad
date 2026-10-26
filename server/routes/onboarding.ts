@@ -102,6 +102,9 @@ onboardingRouter.patch(
     }
     // Identity and branding are chosen once, during onboarding. After the
     // owner submits/publishes the store, only the platform admin may edit them.
+    if (store.onboardingCompleted && body.plan !== undefined && body.plan !== store.plan) {
+      throw new ApiError(409, "SUBSCRIPTION_PLAN_LOCKED", "لا يمكن تغيير باقة الاشتراك بعد إرسال المتجر للمراجعة.");
+    }
     if (store.onboardingCompleted && onboardingIdentityTouched(body)) {
       throw new ApiError(409, "STORE_IDENTITY_ADMIN_ONLY", OWNER_IDENTITY_LOCKED_MESSAGE);
     }
@@ -115,6 +118,7 @@ onboardingRouter.patch(
 
     const storeData: Prisma.StoreUpdateInput = {
       ...(body.step !== undefined ? { onboardingStep: body.step } : {}),
+      ...(body.plan !== undefined ? { plan: body.plan } : {}),
       ...(body.storeName !== undefined ? { storeName: body.storeName } : {}),
       ...(body.subdomain !== undefined ? { subdomain: body.subdomain } : {}),
       ...(body.businessType !== undefined ? { businessType: body.businessType } : {}),
@@ -210,6 +214,9 @@ onboardingRouter.post(
   asyncHandler(requireMerchantSession),
   asyncHandler(async (req, res) => {
     const store = await ownStore(req);
+    if (!store.plan || !["monthly", "annual"].includes(store.plan)) {
+      throw new ApiError(400, "ONBOARDING_INCOMPLETE", "اختر باقة الاشتراك قبل إرسال المتجر.");
+    }
     if (!store.storeName || !store.businessType) {
       throw new ApiError(400, "ONBOARDING_INCOMPLETE", "Brand name and business type are required before publishing.");
     }

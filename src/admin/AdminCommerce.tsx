@@ -901,7 +901,14 @@ export function SubscriptionsPanel({ can }: AdminPanelProps) {
                       <div className="font-mono text-[10px] text-ink-soft" dir="ltr">{payment.reference}</div>
                       <div className="mt-0.5 text-[10px] text-subtle">{payment.payerName || "بدون اسم دافع"}</div>
                     </Td>
-                    <Td><span className="text-[11px] text-ink-soft">{dateTime(payment.createdAt)}</span></Td>
+                    <Td>
+                      <span className="text-[11px] text-ink-soft">{dateTime(payment.createdAt)}</span>
+                      {payment.store?.subscriptionPaidUntil ? (
+                        <div className={`mt-1 text-[10px] ${new Date(payment.store.subscriptionPaidUntil).getTime() <= Date.now() ? "text-danger" : "text-success"}`}>
+                          {new Date(payment.store.subscriptionPaidUntil).getTime() <= Date.now() ? "الاشتراك منتهي" : `متبقي ${Math.ceil((new Date(payment.store.subscriptionPaidUntil).getTime() - Date.now()) / 86400000)} يوم`}
+                        </div>
+                      ) : null}
+                    </Td>
                     <Td>
                       <Badge tone={meta.tone} dot={meta.dot}>{meta.label}</Badge>
                       {payment.reviewNote ? <div className="mt-1 max-w-[170px] text-[10px] leading-4 text-subtle">{payment.reviewNote}</div> : null}

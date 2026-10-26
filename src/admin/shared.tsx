@@ -98,7 +98,7 @@ export const TLS_STATUS: Record<string, { label: string; tone: string }> = {
 };
 
 export const PLAN_LABEL: Record<string, string> = { monthly: "شهري", annual: "سنوي" };
-export const PLAN_PERIOD: Record<string, string> = { monthly: "شهر", annual: "سنة" };
+export const PLAN_PERIOD: Record<string, string> = { monthly: "30 يوم", annual: "365 يوم" };
 export const PAYMENT_METHOD: Record<string, string> = {
   bank_transfer: "تحويل بنكي",
   instapay: "إنستاباي",
@@ -261,6 +261,13 @@ export function StoreTable({
                 <div className="mt-0.5 text-[10px] text-subtle">
                   {store.subscriptionPaidUntil ? `مدفوع حتى ${date(store.subscriptionPaidUntil)}` : "لا يوجد تجديد معتمد"}
                 </div>
+                {store.subscriptionPaidUntil ? (
+                  <div className={`mt-0.5 text-[10px] ${new Date(store.subscriptionPaidUntil).getTime() <= Date.now() ? "text-danger" : "text-success"}`}>
+                    {new Date(store.subscriptionPaidUntil).getTime() <= Date.now()
+                      ? "منتهي — يحتاج تجديداً"
+                      : `متبقي ${Math.ceil((new Date(store.subscriptionPaidUntil).getTime() - Date.now()) / 86400000)} يوم`}
+                  </div>
+                ) : null}
                 <div className="mt-0.5 text-[10px] text-subtle">{number(store.visitsThisMonth ?? 0)} زيارة هذا الشهر</div>
               </Td>
               <Td>
