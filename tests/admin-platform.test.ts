@@ -71,6 +71,7 @@ describe("store approval lifecycle", () => {
     expect(merchant.store.status).toBe("pending");
     expect(merchant.store.activatedAt).toBeNull();
     await request(app).get(publicBase).expect(404);
+    await merchant.agent.get(`/api/stores/${merchant.subdomain}/products`).expect(423);
 
     const before = await admin.agent.get("/api/admin/overview").expect(200);
     expect(before.body.summary.pendingStores).toBe(1);
@@ -85,6 +86,7 @@ describe("store approval lifecycle", () => {
       .expect(200);
     expect(approval.body.store.status).toBe("active");
     expect(approval.body.store.activatedAt).toBeTruthy();
+    await merchant.agent.get(`/api/stores/${merchant.subdomain}/products`).expect(200);
     // Approval does not skip onboarding: the store is active but still draft.
     expect(approval.body.publishing.published).toBe(false);
 

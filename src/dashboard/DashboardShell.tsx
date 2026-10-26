@@ -39,6 +39,7 @@ import { useTheme, ThemeToggle } from "../lib/theme";
 import { useAsync } from "../lib/useAsync";
 import { BrandLogo } from "../components/Brand";
 import { Alert, Badge, Spinner, cn, useToast } from "../components/ui";
+import { StoreApprovalGate } from "./FeatureGate";
 import { isFeatureVisible, resolveFeature } from "./features";
 
 export interface DashboardContextValue {
@@ -229,6 +230,15 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     const timer = window.setInterval(() => void loadNotifications(), 60_000);
     return () => window.clearInterval(timer);
   }, [subdomain]);
+
+  // A pending store may be approved from another browser by the platform
+  // administrator. Refresh the session while locked so the dashboard opens
+  // automatically without requiring a logout/login cycle.
+  useEffect(() => {
+    if (loading || !store || store.status === "active") return;
+    const timer = window.setInterval(() => void refresh(), 10_000);
+    return () => window.clearInterval(timer);
+  }, [loading, store?.id, store?.status, refresh]);
 
   // Integration badges must reflect the running server, not a static guess.
   // The assistant page already asks this endpoint; the sidebar reuses the same
@@ -528,28 +538,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </header>
 
           <main className="mx-auto w-full max-w-[1440px] px-4 pb-28 pt-5 sm:px-6 lg:pb-10">
-            {store.status === "pending" ? (
-              <div className="mb-4">
-                <Alert tone="warning" title="متجرك بانتظار موافقة الإدارة">
-                  أرسلت متجرك للمراجعة. يمكنك تجهيز المنتجات والطلبات الآن، لكن واجهة المتجر لن تفتح للعملاء حتى تعتمده إدارة سند.
-                  {publishStatus !== "published" ? " حالة النشر الحالية: غير منشور." : ""}
-                </Alert>
-              </div>
-            ) : null}
-            {store.status === "rejected" ? (
-              <div className="mb-4">
-                <Alert tone="error" title="طلب فتح المتجر يحتاج تعديلاً">
-                  راجع بيانات متجرك أو تواصل مع إدارة سند. لن يظهر المتجر للعملاء حتى يتم اعتماده.
-                </Alert>
-              </div>
-            ) : null}
-            {store.status === "suspended" ? (
-              <div className="mb-4">
-                <Alert tone="error" title="المتجر موقوف مؤقتاً">
-                  أوقفت إدارة سند واجهة المتجر. تواصل مع الإدارة لمعرفة سبب الإيقاف وطريقة الاستئناف.
-                </Alert>
-              </div>
-            ) : null}
+            <StoreApprovalGate status={store.status} reason={store.statusReason} />
             {store.status === "active" && publishStatus !== "published" ? (
               <div className="mb-4">
                 <Alert
@@ -581,7 +570,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 </Alert>
               </div>
             ) : null}
-            {children}
+            {store.status === "active" ? children : null}
           </main>
 
           {/* Mobile bottom navigation */}
