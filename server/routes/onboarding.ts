@@ -58,9 +58,15 @@ onboardingRouter.get(
     const store = await ownStore(req);
     await ensureStoreDefaults(store.id, store.currency);
     const branding = await prisma.storeBranding.findUnique({ where: { storeId: store.id } });
+    const shippingZones = await prisma.shippingZone.findMany({
+      where: { storeId: store.id, isActive: true },
+      orderBy: [{ isFallback: "desc" }, { createdAt: "asc" }],
+      select: { id: true, name: true, governorates: true, fee: true, freeShippingThreshold: true, isFallback: true },
+    });
     res.json({
       store,
       branding,
+      shipping_zones: shippingZones,
       progress: progressOf(store),
       publishing: publishingSnapshot(store),
       payments: {

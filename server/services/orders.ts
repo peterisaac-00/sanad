@@ -265,12 +265,50 @@ export const ORDER_EXPORT_COLUMNS = [
   "amountEgp",
   "couponCode",
   "itemsSummary",
+  "itemsPurchased",
 ] as const;
 
+export const ORDER_EXPORT_HEADERS = [
+  "Order Number [orderNumber]",
+  "Source [source]",
+  "Created At [createdAt]",
+  "Order Status [status]",
+  "Payment Status [paymentStatus]",
+  "Payment Method [paymentMethod]",
+  "Customer Name [customerName]",
+  "Customer Phone [customerPhone]",
+  "Customer Email [customerEmail]",
+  "Governorate [governorate]",
+  "City [city]",
+  "Full Address [address]",
+  "Subtotal EGP [subtotal]",
+  "Discount EGP [discount]",
+  "Shipping Fee EGP [shippingFee]",
+  "Total EGP [amountEgp]",
+  "Coupon Code [couponCode]",
+  "Items Summary [itemsSummary]",
+  "Items Purchased [itemsPurchased]",
+] as const;
+
+function purchasedItemsValue(items: unknown): string {
+  if (!Array.isArray(items) || items.length === 0) return "";
+  return items.map((item: any) => {
+    const name = String(item?.name ?? item?.sku ?? "منتج").trim();
+    const variant = String(item?.variantLabel ?? "").trim();
+    const sku = String(item?.sku ?? "").trim();
+    const qty = Number(item?.qty ?? 0);
+    const unitPrice = Number(item?.unitPriceEgp ?? 0);
+    const label = [name, variant ? `(${variant})` : "", sku ? `[${sku}]` : ""].filter(Boolean).join(" ");
+    return `${label} ×${qty}${Number.isFinite(unitPrice) ? ` — ${unitPrice.toFixed(2)} EGP` : ""}`;
+  }).join(" | ");
+}
+
 export function orderExportRow(row: Record<string, unknown>): string {
-  return csvRow(ORDER_EXPORT_COLUMNS.map((column) => row[column]));
+  return csvRow(ORDER_EXPORT_COLUMNS.map((column) =>
+    column === "itemsPurchased" ? purchasedItemsValue(row.items) || row.itemsSummary : row[column]
+  ));
 }
 
 export function ordersToCsv(rows: Array<Record<string, unknown>>): string {
-  return [csvHeader([...ORDER_EXPORT_COLUMNS]), ...rows.map(orderExportRow)].join("\n");
+  return [csvHeader([...ORDER_EXPORT_HEADERS]), ...rows.map(orderExportRow)].join("\n");
 }

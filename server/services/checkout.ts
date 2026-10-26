@@ -263,6 +263,14 @@ export async function quoteShipping(
     where: { storeId: input.storeId, isActive: true },
     include: { rates: { where: { isActive: true } } },
   });
+  const configuredGovernorates = new Set(
+    zones.flatMap((zone) => Array.isArray(zone.governorates)
+      ? (zone.governorates as string[]).map((value) => String(value).trim()).filter(Boolean)
+      : [])
+  );
+  if (input.governorate && configuredGovernorates.size && !configuredGovernorates.has(input.governorate.trim())) {
+    throw new ApiError(422, "SHIPPING_GOVERNORATE_UNAVAILABLE", "The selected governorate is not covered by this store.");
+  }
   let zone = input.zoneId ? zones.find((z) => z.id === input.zoneId) : undefined;
   if (!zone && (input.governorate || input.city)) {
     const list = (v: unknown): string[] => (Array.isArray(v) ? (v as string[]) : []);
