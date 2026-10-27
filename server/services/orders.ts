@@ -246,69 +246,152 @@ export async function bulkOrderStatus(input: {
   return results;
 }
 
-export const ORDER_EXPORT_COLUMNS = [
-  "orderNumber",
-  "source",
-  "createdAt",
-  "status",
-  "paymentStatus",
-  "paymentMethod",
-  "customerName",
-  "customerPhone",
-  "customerEmail",
-  "governorate",
-  "city",
-  "address",
-  "subtotal",
-  "discount",
-  "shippingFee",
-  "amountEgp",
-  "couponCode",
-  "itemsSummary",
-  "itemsPurchased",
-] as const;
+/**
+ * Human-readable, spreadsheet-friendly order export.
+ *
+ * The column order deliberately starts with the fields a merchant needs to
+ * fulfil an order (customer, phone, address, payment status, items) and uses
+ * Arabic labels while keeping the numeric totals machine-summable. Excel is
+ * told explicitly that the delimiter is a comma, because many Windows locales
+ * otherwise open a comma-separated CSV as one wide column.
+ */
+export const CSV_EXCEL_SEPARATOR = "sep=,";
 
 export const ORDER_EXPORT_HEADERS = [
-  "Order Number [orderNumber]",
-  "Source [source]",
-  "Created At [createdAt]",
-  "Order Status [status]",
-  "Payment Status [paymentStatus]",
-  "Payment Method [paymentMethod]",
-  "Customer Name [customerName]",
-  "Customer Phone [customerPhone]",
-  "Customer Email [customerEmail]",
-  "Governorate [governorate]",
-  "City [city]",
-  "Full Address [address]",
-  "Subtotal EGP [subtotal]",
-  "Discount EGP [discount]",
-  "Shipping Fee EGP [shippingFee]",
-  "Total EGP [amountEgp]",
-  "Coupon Code [couponCode]",
-  "Items Summary [itemsSummary]",
-  "Items Purchased [itemsPurchased]",
+  "رقم الطلب",
+  "تاريخ الطلب (توقيت القاهرة)",
+  "اسم العميل",
+  "رقم الهاتف",
+  "البريد الإلكتروني",
+  "العنوان الكامل",
+  "المحافظة",
+  "المدينة",
+  "حالة الطلب",
+  "حالة الدفع",
+  "طريقة الدفع",
+  "المنتجات المشتراة",
+  "عدد القطع",
+  "المجموع الفرعي (EGP)",
+  "الخصم (EGP)",
+  "الشحن (EGP)",
+  "الإجمالي (EGP)",
+  "كود الخصم",
+  "مصدر الطلب [source]",
 ] as const;
+
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  pending: "قيد الانتظار",
+  needs_confirmation: "بانتظار التأكيد",
+  confirmed: "مؤكد",
+  preparing: "قيد التجهيز",
+  ready_to_ship: "جاهز للشحن",
+  shipped: "تم الشحن",
+  out_for_delivery: "خرج للتوصيل",
+  delivered: "تم التوصيل",
+  cancelled: "ملغي",
+  returned: "مرتجع",
+};
+
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  unpaid: "غير مدفوع",
+  paid: "مدفوع",
+  partially_refunded: "مسترد جزئياً",
+  refunded: "مسترد",
+  failed: "فشل الدفع",
+};
+
+function text(value: unknown): string {
+  // Keep every exported record on one physical CSV row. Quoted newlines are
+  // valid CSV but break many spreadsheet/import tools and make the file hard
+  // to scan when an address was entered across multiple lines.
+  return value == null ? "" : String(value).replace(/\s+/g, " ").trim();
+}
+
+function exportDate(value: unknown): string {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(String(value));
+  if (Number.isNaN(date.getTime())) return text(value);
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Cairo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date).replace(",", "");
+}
+
+function fullAddress(row: Record<string, unknown>): string {
+  const parts = [text(row.governorate), text(row.city), text(row.address)].filter(Boolean);
+  return parts.filter((part, index) => parts.indexOf(part) === index).join(" - ");
+}
+
+function paymentMethodLabel(value: unknown): string {
+  const method = text(value);
+  if (/cod|cash|استلام/i.test(method)) return "الدفع عند الاستلام";
+  if (/card|visa|master/i.test(method)) return "بطاقة بنكية";
+  if (/wallet|محفظة/i.test(method)) return "محفظة إلكترونية";
+  if (/online|إلكترون/i.test(method)) return "دفع إلكتروني";
+  return method;
+}
+
+function sourceLabel(value: unknown): string {
+  return text(value) === "manual" ? "إدخال يدوي" : "متجر إلكتروني";
+}
+
+function money(value: unknown): string {
+  const amount = Number(value ?? 0);
+  return Number.isFinite(amount) ? amount.toFixed(2) : "";
+}
+
+function itemQuantity(items: unknown): string {
+  if (!Array.isArray(items) || items.length === 0) return "";
+  const total = items.reduce((sum, item: any) => {
+    const qty = Number(item?.qty ?? 0);
+    return sum + (Number.isFinite(qty) ? qty : 0);
+  }, 0);
+  return total > 0 ? String(total) : "";
+}
 
 function purchasedItemsValue(items: unknown): string {
   if (!Array.isArray(items) || items.length === 0) return "";
   return items.map((item: any) => {
-    const name = String(item?.name ?? item?.sku ?? "منتج").trim();
-    const variant = String(item?.variantLabel ?? "").trim();
-    const sku = String(item?.sku ?? "").trim();
+    const name = text(item?.name) || text(item?.sku) || "منتج";
+    const variant = text(item?.variantLabel);
+    const sku = text(item?.sku);
     const qty = Number(item?.qty ?? 0);
     const unitPrice = Number(item?.unitPriceEgp ?? 0);
     const label = [name, variant ? `(${variant})` : "", sku ? `[${sku}]` : ""].filter(Boolean).join(" ");
-    return `${label} ×${qty}${Number.isFinite(unitPrice) ? ` — ${unitPrice.toFixed(2)} EGP` : ""}`;
+    const price = Number.isFinite(unitPrice) ? ` × ${unitPrice.toFixed(2)} EGP` : "";
+    return `${label} ×${Number.isFinite(qty) ? qty : 0}${price}`;
   }).join(" | ");
 }
 
 export function orderExportRow(row: Record<string, unknown>): string {
-  return csvRow(ORDER_EXPORT_COLUMNS.map((column) =>
-    column === "itemsPurchased" ? purchasedItemsValue(row.items) || row.itemsSummary : row[column]
-  ));
+  return csvRow([
+    `SND-${text(row.orderNumber)}`,
+    exportDate(row.createdAt),
+    text(row.customerName),
+    text(row.customerPhone),
+    text(row.customerEmail),
+    fullAddress(row),
+    text(row.governorate),
+    text(row.city),
+    ORDER_STATUS_LABELS[text(row.status)] ?? text(row.status),
+    PAYMENT_STATUS_LABELS[text(row.paymentStatus)] ?? text(row.paymentStatus),
+    paymentMethodLabel(row.paymentMethod),
+    purchasedItemsValue(row.items) || text(row.itemsSummary),
+    itemQuantity(row.items),
+    money(row.subtotal),
+    money(row.discount),
+    money(row.shippingFee),
+    money(row.amountEgp),
+    text(row.couponCode),
+    sourceLabel(row.source),
+  ]);
 }
 
 export function ordersToCsv(rows: Array<Record<string, unknown>>): string {
-  return [csvHeader([...ORDER_EXPORT_HEADERS]), ...rows.map(orderExportRow)].join("\n");
+  return [CSV_EXCEL_SEPARATOR, csvHeader([...ORDER_EXPORT_HEADERS]), ...rows.map(orderExportRow)].join("\r\n");
 }

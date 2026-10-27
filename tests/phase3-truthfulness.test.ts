@@ -239,6 +239,10 @@ describe("R5.1 manual orders are labelled as external records", () => {
       .send({
         customer_name: "طلب خارجي",
         customer_phone: "01000000000",
+        customer_email: "buyer@example.com",
+        governorate: "القاهرة",
+        city: "مدينة نصر",
+        address: "شارع عباس العقاد 12",
         items_summary: "قميص ×1",
         amount_egp: 250,
       })
@@ -253,10 +257,33 @@ describe("R5.1 manual orders are labelled as external records", () => {
     const list = await merchant.agent.get(`${base}/orders`).expect(200);
     expect(list.body.orders[0].source).toBe("manual");
 
+    await prisma.orderItem.create({
+      data: {
+        id: uid("item_"),
+        orderId: created.body.order.id,
+        name: "قميص",
+        variantLabel: "أزرق - L",
+        sku: "SH-1",
+        qty: 2,
+        unitPriceEgp: 125,
+      },
+    });
+
     const csv = await merchant.agent.get(`${base}/orders/export`).expect(200);
-    const header = csv.text.split(/\r?\n/)[0];
-    expect(header).toContain("source");
-    expect(csv.text).toContain("manual");
+    const lines = csv.text.replace(/^\uFEFF/, "").split(/\r?\n/);
+    expect(lines[0]).toBe("sep=,");
+    const header = lines[1];
+    expect(header).toContain("اسم العميل");
+    expect(header).toContain("رقم الهاتف");
+    expect(header).toContain("البريد الإلكتروني");
+    expect(header).toContain("العنوان الكامل");
+    expect(header).toContain("حالة الدفع");
+    expect(header).toContain("المنتجات المشتراة");
+    expect(header).toContain("[source]");
+    expect(csv.text).toContain("إدخال يدوي");
+    expect(csv.text).toContain("buyer@example.com");
+    expect(csv.text).toContain("القاهرة - مدينة نصر - شارع عباس العقاد 12");
+    expect(csv.text).toContain("قميص (أزرق - L) [SH-1] ×2 × 125.00 EGP");
   });
 });
 

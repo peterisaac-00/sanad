@@ -101,7 +101,7 @@ function num(value: string): number {
 }
 
 export function ProductsPage() {
-  const { subdomain, store, storefrontUrl } = useDashboard();
+  const { subdomain, store } = useDashboard();
   const examples = getBusinessExamples(store?.businessType);
   const toast = useToast();
   const [page, setPage] = useState(1);
@@ -323,6 +323,7 @@ function ProductEditor({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { storefrontUrl } = useDashboard();
   const toast = useToast();
   const [tab, setTab] = useState<"basic" | "images" | "variants" | "seo">("basic");
   const [busy, setBusy] = useState(false);

@@ -152,7 +152,12 @@ export function OrdersPage() {
         description="كل طلب هنا أُنشئ فعلاً من متجرك. غيّر الحالة أو حالة الدفع فوراً، والعدادات محسوبة من قاعدة البيانات."
         actions={
           <>
-            <Button variant="outline" loading={exportBusy} onClick={exportCsv}>
+            <Button
+              variant="outline"
+              loading={exportBusy}
+              onClick={exportCsv}
+              title="ملف CSV منسّق بأعمدة العميل والهاتف والعنوان وحالة الدفع والمنتجات، يفتح مباشرة في Excel."
+            >
               <Download className="h-4 w-4" /> تصدير CSV
             </Button>
             <Button onClick={() => setManualOpen(true)}>

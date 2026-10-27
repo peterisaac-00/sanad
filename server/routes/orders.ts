@@ -22,6 +22,7 @@ import {
 } from "../validate.js";
 import { customerIdentity, normalizePhone } from "../identity.js";
 import {
+  CSV_EXCEL_SEPARATOR,
   ORDER_DETAIL_INCLUDE,
   ORDER_EXPORT_HEADERS,
   addOrderEvent,
@@ -138,13 +139,13 @@ ordersRouter.get(
       ip: req.ip,
     });
 
-    const filename = `orders-${new Date().toISOString().slice(0, 10)}.csv`;
+    const filename = `orders-${req.ownedStore!.subdomain}-${new Date().toISOString().slice(0, 10)}.csv`;
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.setHeader("Cache-Control", "no-store, max-age=0");
     res.setHeader("Pragma", "no-cache");
     res.setHeader("X-Content-Type-Options", "nosniff");
-    res.write(CSV_BOM + csvHeader([...ORDER_EXPORT_HEADERS]) + "\n");
+    res.write(CSV_BOM + CSV_EXCEL_SEPARATOR + "\r\n" + csvHeader([...ORDER_EXPORT_HEADERS]) + "\r\n");
 
     const select = {
       id: true,
@@ -191,7 +192,7 @@ ordersRouter.get(
         if (rows.length === 0) break;
         for (const row of rows) {
           const { id, ...values } = row;
-          res.write(orderExportRow(values as unknown as Record<string, unknown>) + "\n");
+          res.write(orderExportRow(values as unknown as Record<string, unknown>) + "\r\n");
           written++;
           if (written > env.exportMaxRows) {
             throw new ApiError(413, "EXPORT_TOO_LARGE", "The export grew beyond the configured row limit while streaming.");
